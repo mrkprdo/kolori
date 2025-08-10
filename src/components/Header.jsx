@@ -59,11 +59,11 @@ export default function Header({
         <div className="flex items-center gap-2">
           {scheduleMode && scheduleMode !== "off" && (
             <div className="relative">
-              {scheduleMode === "morning" && <Sunrise size={20} className="text-yellow-600" />}
+              {scheduleMode === "day" && <Sunrise size={20} className="text-yellow-600" />}
               {scheduleMode === "night" && <Moon size={20} className="text-purple-600" />}
-              {scheduleMode === "allday" && <Sun size={20} className="text-blue-600" />}
+              {scheduleMode === "all-day" && <Sun size={20} className="text-blue-600" />}
               <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                scheduleMode === "morning" ? "bg-yellow-500" :
+                scheduleMode === "day" ? "bg-yellow-500" :
                 scheduleMode === "night" ? "bg-purple-500" :
                 "bg-blue-500"
               }`}></div>

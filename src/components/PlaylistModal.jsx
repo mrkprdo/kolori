@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Music, Play, Square, Plus, Trash2, GripVertical } from "lucide-react";
-import { SEASONAL_PRESETS } from "../constants/presets";
+import SavePlaylistModal from "./SavePlaylistModal";
 
 export default function PlaylistModal({
   isOpen,
@@ -10,9 +10,62 @@ export default function PlaylistModal({
   onTogglePlaylist,
   onAddToPlaylist,
   onRemoveFromPlaylist,
+  onReorderPlaylist,
+  onSavePlaylist,
+  customEffects,
   isDark,
 }) {
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newPlaylist = [...currentPlaylist];
+    const draggedItem = newPlaylist[draggedIndex];
+    
+    // Remove the dragged item
+    newPlaylist.splice(draggedIndex, 1);
+    
+    // Insert it at the new position
+    const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+    newPlaylist.splice(insertIndex, 0, draggedItem);
+    
+    onReorderPlaylist(newPlaylist);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
@@ -28,7 +81,7 @@ export default function PlaylistModal({
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Music size={20} />
+              <Play size={20} />
               <h2
                 className={`text-lg font-semibold ${
                   isDark ? "text-white" : ""
@@ -57,17 +110,42 @@ export default function PlaylistModal({
             <div className="space-y-2 mb-4">
               {currentPlaylist.map((item, index) => (
                 <div
-                  key={index}
-                  className={`rounded-lg p-3 flex items-center gap-3 ${
-                    isDark ? "bg-gray-800" : "bg-gray-50"
+                  key={item.playlistItemId || item.id || `item-${index}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`rounded-lg p-3 flex items-center gap-3 transition-all duration-200 cursor-move ${
+                    draggedIndex === index
+                      ? isDark 
+                        ? "bg-gray-700 opacity-50 transform rotate-2" 
+                        : "bg-gray-200 opacity-50 transform rotate-2"
+                      : dragOverIndex === index
+                      ? isDark
+                        ? "bg-gray-700 border-2 border-blue-500"
+                        : "bg-blue-50 border-2 border-blue-500"
+                      : isDark 
+                        ? "bg-gray-800" 
+                        : "bg-gray-50"
+                  } ${
+                    draggedIndex !== null && draggedIndex !== index
+                      ? "hover:bg-opacity-80"
+                      : ""
                   }`}
                 >
-                  <GripVertical size={16} className="text-gray-400" />
+                  <GripVertical 
+                    size={16} 
+                    className={`text-gray-400 ${
+                      draggedIndex === index ? "text-blue-500" : ""
+                    }`} 
+                  />
                   <div
                     className="w-6 h-6 rounded"
                     style={{ background: item.gradient }}
                   ></div>
-                  <div className="flex-1">
+                  <div className="flex-1 pointer-events-none">
                     <div className="font-medium text-sm">{item.name}</div>
                     <div className="text-xs text-gray-500">
                       {item.duration}s duration
@@ -75,7 +153,7 @@ export default function PlaylistModal({
                   </div>
                   <button
                     onClick={() => onRemoveFromPlaylist(index)}
-                    className="p-1 text-red-500 hover:bg-red-50 rounded"
+                    className="p-1 text-red-500 hover:bg-red-50 rounded pointer-events-auto"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -95,6 +173,7 @@ export default function PlaylistModal({
                   {isPlaying ? "Stop" : "Play"}
                 </button>
                 <button
+                  onClick={() => setShowSaveModal(true)}
                   className={`px-4 py-2 rounded-lg font-medium ${
                     isDark
                       ? "bg-green-900 text-green-200"
@@ -107,7 +186,7 @@ export default function PlaylistModal({
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <Music size={48} className="mx-auto mb-4 opacity-50" />
+              <Play size={48} className="mx-auto mb-4 opacity-50" />
               <div>No presets in playlist</div>
               <div className="text-sm">Add presets from the main screen</div>
             </div>
@@ -118,30 +197,50 @@ export default function PlaylistModal({
               isDark ? "border-gray-700" : "border-gray-200"
             }`}
           >
-            <h3 className="font-semibold mb-3">Add Presets</h3>
+            <h3 className="font-semibold mb-3">Add Custom Effects</h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {[...SEASONAL_PRESETS].map((preset) => (
-                <button
-                  key={preset.id}
-                  onClick={() => onAddToPlaylist(preset)}
-                  className={`w-full border rounded-lg p-3 flex items-center gap-3 ${
-                    isDark
-                      ? "bg-gray-800 border-gray-700 hover:bg-gray-700"
-                      : "bg-white border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <div
-                    className="w-6 h-6 rounded"
-                    style={{ background: preset.gradient }}
-                  ></div>
-                  <div className="flex-1 text-left text-sm">{preset.name}</div>
-                  <Plus size={14} />
-                </button>
-              ))}
+              {customEffects && customEffects.length > 0 ? (
+                customEffects.map((effect) => (
+                  <button
+                    key={effect.id}
+                    onClick={() => onAddToPlaylist(effect)}
+                    className={`w-full border rounded-lg p-3 flex items-center gap-3 ${
+                      isDark
+                        ? "bg-gray-800 border-gray-700 hover:bg-gray-700"
+                        : "bg-white border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div
+                      className="w-6 h-6 rounded"
+                      style={{ background: effect.gradient }}
+                    ></div>
+                    <div className="flex-1 text-left text-sm">{effect.name}</div>
+                    <Plus size={14} />
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Plus size={48} className="mx-auto mb-4 opacity-50" />
+                  <div>No custom effects yet</div>
+                  <div className="text-sm">Create custom effects from the main screen to add them to playlists</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Save Playlist Modal */}
+      <SavePlaylistModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={(playlistName) => {
+          onSavePlaylist(playlistName);
+          setShowSaveModal(false);
+        }}
+        currentPlaylist={currentPlaylist}
+        isDark={isDark}
+      />
     </div>
   );
 }

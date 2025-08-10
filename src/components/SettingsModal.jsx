@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Check, Power, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info } from "lucide-react";
+import { Plus, Check, Power, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
 
@@ -22,6 +22,8 @@ export default function SettingsModal({
   isDark,
   wledVersion,
   onWledVersionChange,
+  scheduleMode,
+  onScheduleChange,
 }) {
   const [showAbout, setShowAbout] = useState(false);
   
@@ -200,6 +202,27 @@ export default function SettingsModal({
               <option value="light">Light</option>
               <option value="dark">Dark</option>
               <option value="system">System</option>
+            </select>
+          </div>
+
+          {/* Schedule Settings */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} />
+              <h3 className="font-semibold">Schedule</h3>
+            </div>
+            <select
+              value={scheduleMode}
+              onChange={(e) => onScheduleChange(e.target.value)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium border ${
+                isDark
+                  ? "bg-gray-800 border-gray-600 text-white"
+                  : "bg-white border-gray-300"
+              }`}
+            >
+              <option value="all-day">All Day</option>
+              <option value="day">Day 7am-7pm</option>
+              <option value="night">Night 7pm-7am</option>
             </select>
           </div>
 

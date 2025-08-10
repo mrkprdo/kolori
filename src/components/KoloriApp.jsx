@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import Header from "./Header";
 import PresetGrid from "./PresetGrid";
-import SchedulerView from "./SchedulerView";
 import PlaylistModal from "./PlaylistModal";
 import SettingsModal from "./SettingsModal";
 import WelcomePage from "./WelcomePage";
 import UserAgreement from "./UserAgreement";
 import ConfirmModal from "./ConfirmModal";
-import { activateWledPreset, activateWledPresetById, activateWledEffect } from "../config/wledApi";
+import Notification from "./Notification";
+import { activateWledPreset, activateWledPresetById, activateWledEffect, createWledPlaylist, startWledPlaylist, stopWledPlaylist } from "../config/wledApi";
 import { SEASONAL_PRESETS } from "../constants/presets";
 
 export default function KoloriApp() {
@@ -37,7 +37,6 @@ export default function KoloriApp() {
   };
 
   // State management with localStorage initialization
-  const [currentView, setCurrentView] = useState("presets");
   const [customEffects, setCustomEffects] = useState([]);
   const [theme, setTheme] = useState("system");
   const [wledVersion, setWledVersion] = useState(() =>
@@ -53,12 +52,19 @@ export default function KoloriApp() {
     loadFromStorage(USER_AGREEMENT_STORAGE_KEY, false)
   );
   const [currentPlaylist, setCurrentPlaylist] = useState([]);
-  const [scheduleMode, setScheduleMode] = useState("off");
+  const [savedPlaylists, setSavedPlaylists] = useState([]);
+  const [scheduleMode, setScheduleMode] = useState("all-day");
   const [showSettings, setShowSettings] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showDeviceForm, setShowDeviceForm] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState(null);
+  const [notification, setNotification] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
   const [newDevice, setNewDevice] = useState({
     name: "",
     ip: "",
@@ -394,17 +400,142 @@ export default function KoloriApp() {
     updateDevice(activeDeviceId, { activePreset: presetId });
   };
 
-  const togglePlaylist = () => {
+  const togglePlaylist = async () => {
     const newPlayingState = !isPlaying;
+    
+    if (!activeDevice) {
+      console.log('No active device');
+      return;
+    }
+
+    const savedPlaylist = savedPlaylists.find(p => p.isActive);
+    if (!savedPlaylist) {
+      console.log('No active saved playlist to play');
+      updateDevice(activeDeviceId, { isPlaying: newPlayingState });
+      return;
+    }
+
+    if (newPlayingState) {
+      const result = await startWledPlaylist(
+        activeDevice.ip, 
+        savedPlaylist.firstPresetId, 
+        savedPlaylist.lastPresetId
+      );
+      if (result.success) {
+        console.log('Playlist started successfully');
+      } else {
+        console.error('Failed to start playlist:', result.message);
+      }
+    } else {
+      const result = await stopWledPlaylist(activeDevice.ip);
+      if (result.success) {
+        console.log('Playlist stopped successfully');
+      } else {
+        console.error('Failed to stop playlist:', result.message);
+      }
+    }
+    
     updateDevice(activeDeviceId, { isPlaying: newPlayingState });
   };
 
   const addToPlaylist = (preset) => {
-    setCurrentPlaylist([...currentPlaylist, { ...preset, duration: 30 }]);
+    const playlistItem = {
+      ...preset,
+      duration: 30,
+      playlistItemId: `${preset.id || preset.name}_${Date.now()}`
+    };
+    setCurrentPlaylist([...currentPlaylist, playlistItem]);
   };
 
   const removeFromPlaylist = (index) => {
     setCurrentPlaylist(currentPlaylist.filter((_, i) => i !== index));
+  };
+
+  const reorderPlaylist = (newPlaylist) => {
+    setCurrentPlaylist(newPlaylist);
+  };
+
+  const showNotification = (type, title, message) => {
+    setNotification({
+      isVisible: true,
+      type,
+      title,
+      message
+    });
+  };
+
+  const closeNotification = () => {
+    setNotification({
+      ...notification,
+      isVisible: false
+    });
+  };
+
+  const editPlaylist = (playlist) => {
+    // Load playlist items into current playlist for editing
+    const playlistEffects = playlist.items.map(item => ({
+      ...item,
+      playlistItemId: `${item.name}_${Date.now()}`
+    }));
+    setCurrentPlaylist(playlistEffects);
+    setShowPlaylist(true);
+    
+    // Remove the playlist from saved playlists while editing
+    setSavedPlaylists(prev => prev.filter(p => p.id !== playlist.id));
+    
+    console.log('Editing playlist:', playlist.name);
+  };
+
+  const removePlaylist = (playlistId) => {
+    setSavedPlaylists(prev => prev.filter(p => p.id !== playlistId));
+    console.log('Removed playlist:', playlistId);
+  };
+
+  const savePlaylist = async (playlistName) => {
+    if (currentPlaylist.length === 0) {
+      console.log('Cannot save empty playlist');
+      return;
+    }
+
+    if (!activeDevice) {
+      console.log('No active device');
+      return;
+    }
+
+    const finalPlaylistName = playlistName || `Playlist_${Date.now()}`;
+    
+    const playlistItems = currentPlaylist.map(item => ({
+      name: item.name,
+      effectId: item.effectId || 0,
+      paletteId: item.paletteId || 0,
+      duration: item.duration || 30,
+      gradient: item.gradient // Preserve gradient for playlist cards
+    }));
+    
+    const result = await createWledPlaylist(activeDevice.ip, playlistItems, finalPlaylistName);
+    
+    if (result.success) {
+      const newSavedPlaylist = {
+        id: Date.now(),
+        name: finalPlaylistName,
+        items: playlistItems,
+        presets: result.presets,
+        firstPresetId: result.firstPresetId,
+        lastPresetId: result.lastPresetId,
+        isActive: true
+      };
+      
+      setSavedPlaylists(prev => [
+        ...prev.map(p => ({ ...p, isActive: false })), 
+        newSavedPlaylist
+      ]);
+      
+      console.log('Playlist saved successfully:', finalPlaylistName);
+      showNotification('success', 'Playlist Saved!', `"${finalPlaylistName}" has been saved to your WLED device.`);
+    } else {
+      console.error('Failed to save playlist:', result.message);
+      showNotification('error', 'Save Failed', `Could not save playlist: ${result.message}`);
+    }
   };
 
   // Schedule functions
@@ -413,9 +544,6 @@ export default function KoloriApp() {
     console.log(`Schedule set to: ${mode}`);
   };
 
-  // View navigation
-  const showScheduler = () => setCurrentView("scheduler");
-  const showPresets = () => setCurrentView("presets");
 
   // Handle first device addition
   const handleAddFirstDevice = () => {
@@ -502,6 +630,8 @@ export default function KoloriApp() {
           isDark={isDark}
           wledVersion={wledVersion}
           onWledVersionChange={setWledVersion}
+          scheduleMode={scheduleMode}
+          onScheduleChange={setSchedule}
         />
       </>
     );
@@ -522,30 +652,19 @@ export default function KoloriApp() {
       />
 
       {/* Main Content */}
-      {currentView === "presets" && (
-        <>
-          <PresetGrid
-            activePreset={activePreset}
-            onPresetSelect={applyPreset}
-            isDark={isDark}
-            isPlaying={isPlaying}
-            currentPlaylist={currentPlaylist}
-            onShowPlaylist={() => setShowPlaylist(true)}
-            onShowScheduler={showScheduler}
-            activeDevice={activeDevice}
-            onCustomEffectUpdate={setCustomEffects}
-          />
-        </>
-      )}
-
-      {currentView === "scheduler" && (
-        <SchedulerView
-          scheduleMode={scheduleMode}
-          onScheduleChange={setSchedule}
-          onBack={showPresets}
-          isDark={isDark}
-        />
-      )}
+      <PresetGrid
+        activePreset={activePreset}
+        onPresetSelect={applyPreset}
+        isDark={isDark}
+        isPlaying={isPlaying}
+        currentPlaylist={currentPlaylist}
+        onShowPlaylist={() => setShowPlaylist(true)}
+        activeDevice={activeDevice}
+        onCustomEffectUpdate={setCustomEffects}
+        savedPlaylists={savedPlaylists}
+        onPlaylistEdit={editPlaylist}
+        onPlaylistRemove={removePlaylist}
+      />
 
       {/* Modals */}
       <PlaylistModal
@@ -556,6 +675,9 @@ export default function KoloriApp() {
         onTogglePlaylist={togglePlaylist}
         onAddToPlaylist={addToPlaylist}
         onRemoveFromPlaylist={removeFromPlaylist}
+        onReorderPlaylist={reorderPlaylist}
+        onSavePlaylist={savePlaylist}
+        customEffects={customEffects}
         isDark={isDark}
       />
 
@@ -598,6 +720,8 @@ export default function KoloriApp() {
         isDark={isDark}
         wledVersion={wledVersion}
         onWledVersionChange={setWledVersion}
+        scheduleMode={scheduleMode}
+        onScheduleChange={setSchedule}
       />
 
       {/* Confirmation Modal for Device Deletion */}
@@ -618,6 +742,15 @@ export default function KoloriApp() {
         cancelText="Cancel"
         isDark={isDark}
         isDestructive={true}
+      />
+
+      {/* Notification */}
+      <Notification
+        isVisible={notification.isVisible}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={closeNotification}
       />
     </div>
   );

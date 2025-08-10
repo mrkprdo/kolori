@@ -1,5 +1,5 @@
 import React from "react";
-import { Music, Calendar } from "lucide-react";
+import { Play, Calendar } from "lucide-react";
 
 export default function QuickActions({
   onShowPlaylist,
@@ -14,7 +14,7 @@ export default function QuickActions({
           isDark ? "bg-blue-900 text-blue-200" : "bg-blue-50 text-blue-700"
         }`}
       >
-        <Music size={18} />
+        <Play size={18} />
         Playlist
       </button>
       <button
