@@ -1,11 +1,20 @@
 import React, { useState } from "react";
-import { Calendar, Palette, Play, ChevronDown, ChevronUp, Music, Settings } from "lucide-react";
+import {
+  Calendar,
+  Palette,
+  Play,
+  ChevronDown,
+  ChevronUp,
+  Music,
+  Settings,
+} from "lucide-react";
+import { activateWledPreset } from "../config/wledApi";
 
 const SEASONAL_PRESETS = [
   {
     id: 1,
-    name: "Halloween",
-    icon: "🎃",
+    name: "Autumn",
+    icon: "🍂",
     gradient: "linear-gradient(135deg, #ff6600, #ff9933)",
   },
   {
@@ -19,12 +28,6 @@ const SEASONAL_PRESETS = [
     name: "Christmas",
     icon: "🎄",
     gradient: "linear-gradient(135deg, #228B22, #32CD32)",
-  },
-  {
-    id: 4,
-    name: "Valentine's",
-    icon: "💕",
-    gradient: "linear-gradient(135deg, #ff69b4, #ffb6c1)",
   },
 ];
 
@@ -104,13 +107,22 @@ function PresetCard({ preset, isActive, onClick, showIcon = false }) {
   );
 }
 
-export default function PresetGrid({ activePreset, onPresetSelect, isDark, isPlaying, currentPlaylist, onShowPlaylist, onShowScheduler }) {
+export default function PresetGrid({
+  activePreset,
+  onPresetSelect,
+  isDark,
+  isPlaying,
+  currentPlaylist,
+  onShowPlaylist,
+  onShowScheduler,
+}) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isColorThemesCollapsed, setIsColorThemesCollapsed] = useState(true);
-  
+
   const allPresets = [...SEASONAL_PRESETS, ...COLOR_PRESETS];
-  const activePresetData = allPresets.find(p => p.id === activePreset);
-  const hasActiveContent = activePresetData || (isPlaying && currentPlaylist.length > 0);
+  const activePresetData = allPresets.find((p) => p.id === activePreset);
+  const hasActiveContent =
+    activePresetData || (isPlaying && currentPlaylist.length > 0);
 
   return (
     <div className={`p-4 space-y-6 pb-24 ${isDark ? "text-white" : ""}`}>
@@ -121,11 +133,13 @@ export default function PresetGrid({ activePreset, onPresetSelect, isDark, isPla
           Current Playing
         </h2>
         {hasActiveContent ? (
-          <div className={`border rounded-xl p-4 ${
-            isDark
-              ? "bg-gray-800 border-gray-700"
-              : "bg-gray-50 border-gray-200"
-          }`}>
+          <div
+            className={`border rounded-xl p-4 ${
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               <div className="flex-1">
@@ -141,9 +155,11 @@ export default function PresetGrid({ activePreset, onPresetSelect, isDark, isPla
                   </>
                 )}
                 {isPlaying && currentPlaylist.length > 0 && (
-                  <div className={`text-xs ${
-                    isDark ? "text-green-400" : "text-green-600"
-                  }`}>
+                  <div
+                    className={`text-xs ${
+                      isDark ? "text-green-400" : "text-green-600"
+                    }`}
+                  >
                     Playing playlist ({currentPlaylist.length} items)...
                   </div>
                 )}
@@ -151,11 +167,13 @@ export default function PresetGrid({ activePreset, onPresetSelect, isDark, isPla
             </div>
           </div>
         ) : (
-          <div className={`border rounded-xl p-4 text-center ${
-            isDark
-              ? "bg-gray-800 border-gray-700 text-gray-400"
-              : "bg-gray-50 border-gray-200 text-gray-500"
-          }`}>
+          <div
+            className={`border rounded-xl p-4 text-center ${
+              isDark
+                ? "bg-gray-800 border-gray-700 text-gray-400"
+                : "bg-gray-50 border-gray-200 text-gray-500"
+            }`}
+          >
             <div className="text-sm">
               Selected animation or playlist will show here
             </div>
@@ -201,9 +219,13 @@ export default function PresetGrid({ activePreset, onPresetSelect, isDark, isPla
         >
           <div className="flex items-center gap-2">
             <Calendar size={20} />
-            <h2 className="text-lg font-semibold">Seasonal</h2>
+            <h2 className="text-lg font-semibold">Seasonal Presets</h2>
           </div>
-          {isSeasonalCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+          {isSeasonalCollapsed ? (
+            <ChevronDown size={20} />
+          ) : (
+            <ChevronUp size={20} />
+          )}
         </button>
         {!isSeasonalCollapsed && (
           <div className="grid grid-cols-2 gap-3">
@@ -230,7 +252,11 @@ export default function PresetGrid({ activePreset, onPresetSelect, isDark, isPla
             <Palette size={20} />
             <h2 className="text-lg font-semibold">Color Themes</h2>
           </div>
-          {isColorThemesCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+          {isColorThemesCollapsed ? (
+            <ChevronDown size={20} />
+          ) : (
+            <ChevronUp size={20} />
+          )}
         </button>
         {!isColorThemesCollapsed && (
           <div className="grid grid-cols-2 gap-3">

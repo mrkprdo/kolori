@@ -178,9 +178,10 @@ export default function SettingsModal({
                   : "bg-white border-gray-300"
               }`}
             >
-              <option value="0.14.1">v0.14.1 (Latest)</option>
-              <option value="0.13.3">v0.13.3</option>
-              <option value="0.12.0">v0.12.0</option>
+              <option value="0.15.x">v0.15.x (Latest)</option>
+              <option value="0.14.x">v0.14.x</option>
+              <option value="0.13.x">v0.13.x</option>
+              <option value="0.12.x">v0.12.x</option>
             </select>
           </div>
 
