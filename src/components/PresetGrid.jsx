@@ -7,82 +7,15 @@ import {
   ChevronUp,
   Music,
   Settings,
+  Plus,
+  Trash2,
+  MoreVertical,
 } from "lucide-react";
-import { activateWledPreset } from "../config/wledApi";
+import ConfirmModal from "./ConfirmModal";
+import { SEASONAL_PRESETS } from "../constants/presets";
 
-const SEASONAL_PRESETS = [
-  {
-    id: 1,
-    name: "Autumn",
-    icon: "🍂",
-    gradient: "linear-gradient(135deg, #ff6600, #ff9933)",
-  },
-  {
-    id: 2,
-    name: "Canada Day",
-    icon: "🇨🇦",
-    gradient: "linear-gradient(135deg, #ff0000, #ff4444)",
-  },
-  {
-    id: 3,
-    name: "Christmas",
-    icon: "🎄",
-    gradient: "linear-gradient(135deg, #228B22, #32CD32)",
-  },
-];
-
-const COLOR_PRESETS = [
-  {
-    id: 5,
-    name: "Sunset Glow",
-    gradient: "linear-gradient(135deg, #ff7e5f, #feb47b)",
-  },
-  {
-    id: 6,
-    name: "Ocean Breeze",
-    gradient: "linear-gradient(135deg, #4facfe, #00f2fe)",
-  },
-  {
-    id: 7,
-    name: "Candy Mix",
-    gradient: "linear-gradient(135deg, #a8edea, #fed6e3)",
-  },
-  {
-    id: 8,
-    name: "Pastel Dreams",
-    gradient: "linear-gradient(135deg, #ffecd2, #fcb69f)",
-  },
-  {
-    id: 9,
-    name: "Fire Dance",
-    gradient: "linear-gradient(135deg, #ff512f, #f09819)",
-  },
-  {
-    id: 10,
-    name: "Forest Mist",
-    gradient: "linear-gradient(135deg, #56ab2f, #a8e6cf)",
-  },
-  {
-    id: 11,
-    name: "Arctic Ice",
-    gradient: "linear-gradient(135deg, #667eea, #764ba2)",
-  },
-  {
-    id: 12,
-    name: "Galaxy",
-    gradient: "linear-gradient(135deg, #2c3e50, #4a90e2)",
-  },
-  {
-    id: 13,
-    name: "Coral Reef",
-    gradient: "linear-gradient(135deg, #ff9a8b, #84fab0)",
-  },
-  {
-    id: 14,
-    name: "Mint Fresh",
-    gradient: "linear-gradient(135deg, #a8e6cf, #88d8a3)",
-  },
-];
+// Custom Effects will be managed dynamically
+const CUSTOM_EFFECTS = [];
 
 function PresetCard({ preset, isActive, onClick, showIcon = false }) {
   return (
@@ -107,7 +40,115 @@ function PresetCard({ preset, isActive, onClick, showIcon = false }) {
   );
 }
 
-export default function PresetGrid({
+function CustomEffectCard({ effect, isActive, onClick, onRemove, isDark }) {
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDeleteClick = () => {
+    setShowOptionsModal(false);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    onRemove(effect.id);
+    setShowDeleteConfirm(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => onClick(effect.id)}
+        className={`w-full rounded-xl shadow-sm border-2 transition-all overflow-hidden relative ${
+          isActive
+            ? "border-white shadow-lg ring-2 ring-blue-500"
+            : "border-white/20 hover:border-white/40"
+        }`}
+        style={{ background: effect.gradient }}
+      >
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative p-4 text-white">
+          <div className="h-8 mb-2"></div>
+          <div className="font-medium text-sm drop-shadow-md">{effect.name}</div>
+          <div className="text-xs opacity-75 mt-1">
+            {effect.effectName} • {effect.paletteName}
+          </div>
+        </div>
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowOptionsModal(true);
+        }}
+        className={`absolute -top-2 -right-2 p-1 rounded-full transition-colors ${
+          isDark ? "bg-gray-800 hover:bg-gray-700 text-gray-400" : "bg-white hover:bg-gray-100 text-gray-600"
+        }`}
+        title="More options"
+      >
+        <MoreVertical size={14} />
+      </button>
+
+      {/* Options Modal */}
+      {showOptionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowOptionsModal(false)}>
+          <div 
+            className={`p-4 rounded-lg shadow-lg min-w-48 ${
+              isDark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+              Options
+            </h3>
+            <button
+              onClick={handleDeleteClick}
+              className="w-full text-left px-3 py-2 rounded text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)}>
+          <div 
+            className={`p-6 rounded-lg shadow-lg max-w-sm w-full mx-4 ${
+              isDark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+              Delete Effect
+            </h3>
+            <p className={`mb-4 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+              Are you sure you want to delete "{effect.name}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className={`px-4 py-2 rounded transition-colors ${
+                  isDark ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PresetGrid({
   activePreset,
   onPresetSelect,
   isDark,
@@ -117,12 +158,82 @@ export default function PresetGrid({
   onShowScheduler,
 }) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
-  const [isColorThemesCollapsed, setIsColorThemesCollapsed] = useState(true);
+  const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
+  const [customEffects, setCustomEffects] = useState([]);
+  const [showEffectForm, setShowEffectForm] = useState(false);
+  const [selectedEffect, setSelectedEffect] = useState("");
+  const [selectedPalette, setSelectedPalette] = useState("");
+  const [effectName, setEffectName] = useState("");
 
-  const allPresets = [...SEASONAL_PRESETS, ...COLOR_PRESETS];
+  // Mock WLED effects - in real implementation, these would be fetched from WLED device
+  const WLED_EFFECTS = [
+    { id: 0, name: "Solid" },
+    { id: 1, name: "Blink" },
+    { id: 2, name: "Breathe" },
+    { id: 3, name: "Wipe" },
+    { id: 4, name: "Wipe Random" },
+    { id: 5, name: "Random Colors" },
+    { id: 6, name: "Sweep" },
+    { id: 7, name: "Dynamic" },
+    { id: 8, name: "Colorloop" },
+    { id: 9, name: "Rainbow" },
+    { id: 10, name: "Scan" },
+    { id: 11, name: "Theater Chase" },
+    { id: 12, name: "Fade" },
+    { id: 13, name: "Smooth" },
+  ];
+
+  // Mock WLED palettes - in real implementation, these would be fetched from WLED device
+  const WLED_PALETTES = [
+    { id: 0, name: "Default" },
+    { id: 1, name: "Random Cycle" },
+    { id: 2, name: "Primary Color" },
+    { id: 3, name: "Based on Primary" },
+    { id: 4, name: "Set Colors" },
+    { id: 5, name: "Based on Set" },
+    { id: 6, name: "Party" },
+    { id: 7, name: "Cloud" },
+    { id: 8, name: "Lava" },
+    { id: 9, name: "Ocean" },
+    { id: 10, name: "Forest" },
+    { id: 11, name: "Rainbow" },
+    { id: 12, name: "Rainbow Bands" },
+    { id: 13, name: "Sunset" },
+    { id: 14, name: "Rivendell" },
+  ];
+
+  const allPresets = [...SEASONAL_PRESETS, ...customEffects];
   const activePresetData = allPresets.find((p) => p.id === activePreset);
   const hasActiveContent =
     activePresetData || (isPlaying && currentPlaylist.length > 0);
+
+  const addCustomEffect = () => {
+    if (!effectName || !selectedEffect || !selectedPalette) return;
+    
+    const effectData = WLED_EFFECTS.find(e => e.id.toString() === selectedEffect);
+    const paletteData = WLED_PALETTES.find(p => p.id.toString() === selectedPalette);
+    
+    const newEffect = {
+      id: Date.now(),
+      name: effectName,
+      effectId: parseInt(selectedEffect),
+      effectName: effectData.name,
+      paletteId: parseInt(selectedPalette),
+      paletteName: paletteData.name,
+      gradient: `linear-gradient(135deg, #${Math.floor(Math.random()*16777215).toString(16)}, #${Math.floor(Math.random()*16777215).toString(16)})`,
+      isCustom: true
+    };
+    
+    setCustomEffects([...customEffects, newEffect]);
+    setEffectName("");
+    setSelectedEffect("");
+    setSelectedPalette("");
+    setShowEffectForm(false);
+  };
+
+  const removeCustomEffect = (effectId) => {
+    setCustomEffects(customEffects.filter(e => e.id !== effectId));
+  };
 
   return (
     <div className={`p-4 space-y-6 pb-24 ${isDark ? "text-white" : ""}`}>
@@ -242,33 +353,154 @@ export default function PresetGrid({
         )}
       </div>
 
-      {/* Color Presets */}
+      {/* Custom Effects */}
       <div>
         <button
-          onClick={() => setIsColorThemesCollapsed(!isColorThemesCollapsed)}
+          onClick={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
           className="w-full text-left mb-3 flex items-center justify-between hover:opacity-75 transition-opacity"
         >
           <div className="flex items-center gap-2">
             <Palette size={20} />
-            <h2 className="text-lg font-semibold">Color Themes</h2>
+            <h2 className="text-lg font-semibold">Custom Effects</h2>
           </div>
-          {isColorThemesCollapsed ? (
+          {isCustomEffectsCollapsed ? (
             <ChevronDown size={20} />
           ) : (
             <ChevronUp size={20} />
           )}
         </button>
-        {!isColorThemesCollapsed && (
-          <div className="grid grid-cols-2 gap-3">
-            {COLOR_PRESETS.map((preset) => (
-              <PresetCard
-                key={preset.id}
-                preset={preset}
-                isActive={activePreset === preset.id}
-                onClick={onPresetSelect}
-                showIcon={false}
-              />
-            ))}
+        
+        {!isCustomEffectsCollapsed && (
+          <div className="space-y-4">
+            {/* Add Effect Form */}
+            {!showEffectForm ? (
+              <button
+                onClick={() => setShowEffectForm(true)}
+                className={`w-full p-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-colors ${
+                  isDark
+                    ? "border-gray-600 hover:border-gray-500 text-gray-400"
+                    : "border-gray-300 hover:border-gray-400 text-gray-500"
+                }`}
+              >
+                <Plus size={20} />
+                <span>Add Custom Effect</span>
+              </button>
+            ) : (
+              <div className={`p-4 border rounded-xl space-y-3 ${
+                isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-50"
+              }`}>
+                <div>
+                  <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                    Effect Name
+                  </label>
+                  <input
+                    type="text"
+                    value={effectName}
+                    onChange={(e) => {
+                      const value = e.target.value.slice(0, 50); // Limit to 50 characters
+                      setEffectName(value);
+                    }}
+                    placeholder="e.g., My Rainbow Effect"
+                    maxLength={50}
+                    className={`w-full px-3 py-2 rounded border ${
+                      isDark
+                        ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                        : "bg-white border-gray-300 placeholder-gray-500"
+                    }`}
+                  />
+                  <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                    {effectName.length}/50 characters
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                      Effect
+                    </label>
+                    <select
+                      value={selectedEffect}
+                      onChange={(e) => setSelectedEffect(e.target.value)}
+                      className={`w-full px-3 py-2 rounded border ${
+                        isDark
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300"
+                      }`}
+                    >
+                      <option value="">Select Effect</option>
+                      {WLED_EFFECTS.map((effect) => (
+                        <option key={effect.id} value={effect.id}>
+                          {effect.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                      Palette
+                    </label>
+                    <select
+                      value={selectedPalette}
+                      onChange={(e) => setSelectedPalette(e.target.value)}
+                      className={`w-full px-3 py-2 rounded border ${
+                        isDark
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300"
+                      }`}
+                    >
+                      <option value="">Select Palette</option>
+                      {WLED_PALETTES.map((palette) => (
+                        <option key={palette.id} value={palette.id}>
+                          {palette.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowEffectForm(false);
+                      setEffectName("");
+                      setSelectedEffect("");
+                      setSelectedPalette("");
+                    }}
+                    className={`flex-1 py-2 px-4 rounded transition-colors ${
+                      isDark
+                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addCustomEffect}
+                    disabled={!effectName || !selectedEffect || !selectedPalette}
+                    className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Add Effect
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Custom Effects Grid */}
+            {customEffects.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                {customEffects.map((effect) => (
+                  <CustomEffectCard
+                    key={effect.id}
+                    effect={effect}
+                    isActive={activePreset === effect.id}
+                    onClick={onPresetSelect}
+                    onRemove={removeCustomEffect}
+                    isDark={isDark}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -276,4 +508,4 @@ export default function PresetGrid({
   );
 }
 
-export { SEASONAL_PRESETS, COLOR_PRESETS };
+export default PresetGrid;

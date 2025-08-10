@@ -1,6 +1,6 @@
 import React from "react";
 import { Music, Play, Square, Plus, Trash2, GripVertical } from "lucide-react";
-import { SEASONAL_PRESETS, COLOR_PRESETS } from "./PresetGrid";
+import { SEASONAL_PRESETS } from "../constants/presets";
 
 export default function PlaylistModal({
   isOpen,
@@ -120,7 +120,7 @@ export default function PlaylistModal({
           >
             <h3 className="font-semibold mb-3">Add Presets</h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {[...SEASONAL_PRESETS, ...COLOR_PRESETS].map((preset) => (
+              {[...SEASONAL_PRESETS].map((preset) => (
                 <button
                   key={preset.id}
                   onClick={() => onAddToPlaylist(preset)}

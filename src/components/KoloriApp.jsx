@@ -8,7 +8,7 @@ import WelcomePage from "./WelcomePage";
 import UserAgreement from "./UserAgreement";
 import ConfirmModal from "./ConfirmModal";
 import { activateWledPreset } from "../config/wledApi";
-import { SEASONAL_PRESETS, COLOR_PRESETS } from "./PresetGrid";
+import { SEASONAL_PRESETS } from "../constants/presets";
 
 export default function KoloriApp() {
   // LocalStorage keys
@@ -336,27 +336,33 @@ export default function KoloriApp() {
 
   // Preset and playlist functions
   const applyPreset = async (presetId) => {
-    const allPresets = [...SEASONAL_PRESETS, ...COLOR_PRESETS];
-    const preset = allPresets.find(p => p.id === presetId);
+    // First check seasonal presets
+    const seasonalPreset = SEASONAL_PRESETS.find(p => p.id === presetId);
     
-    if (!preset || !activeDevice) {
-      console.log(`Preset ${presetId} not found or no active device`);
+    if (seasonalPreset) {
+      if (!activeDevice) {
+        console.log(`No active device`);
+        return;
+      }
+
+      console.log(`Applying preset "${seasonalPreset.name}" to device ${activeDevice.ip}`);
+      
+      // Call WLED API to activate preset
+      const result = await activateWledPreset(activeDevice.ip, seasonalPreset.name);
+      
+      if (result.success) {
+        updateDevice(activeDeviceId, { activePreset: presetId });
+        console.log(`Successfully activated preset: ${seasonalPreset.name}`);
+      } else {
+        console.error(`Failed to activate preset: ${result.message}`);
+      }
       return;
     }
 
-    console.log(`Applying preset "${preset.name}" to device ${activeDevice.ip}`);
-    
-    // Call WLED API to activate preset
-    const result = await activateWledPreset(activeDevice.ip, preset.name);
-    
-    if (result.success) {
-      // Update local state only if WLED call was successful
-      updateDevice(activeDeviceId, { activePreset: presetId });
-      console.log(`Successfully activated preset: ${preset.name}`);
-    } else {
-      console.error(`Failed to activate preset: ${result.message}`);
-      // You could show a toast notification here
-    }
+    // If not a seasonal preset, it might be a custom effect (handled by PresetGrid)
+    // This will be passed through for now
+    console.log(`Custom effect activation for ID ${presetId} - handled by PresetGrid`);
+    updateDevice(activeDeviceId, { activePreset: presetId });
   };
 
   const togglePlaylist = () => {
