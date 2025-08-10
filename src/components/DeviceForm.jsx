@@ -1,4 +1,5 @@
 import React from "react";
+import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export default function DeviceForm({
   isOpen,
@@ -9,6 +10,12 @@ export default function DeviceForm({
   isDark,
 }) {
   if (!isOpen) return null;
+
+  // IP address validation function
+  const isValidIP = (ip) => {
+    const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    return ipPattern.test(ip);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
@@ -30,21 +37,26 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Device Name
+              Device Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={newDevice.name}
-              onChange={(e) =>
-                onDeviceChange({ ...newDevice, name: e.target.value })
-              }
+              onChange={(e) => {
+                const value = e.target.value.slice(0, 30); // Limit to 30 characters
+                onDeviceChange({ ...newDevice, name: value });
+              }}
               placeholder="e.g., Bedroom LEDs"
+              maxLength={30}
               className={`w-full px-3 py-2 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 isDark
                   ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                   : "bg-white border-gray-300 placeholder-gray-500"
               }`}
             />
+            <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+              {newDevice.name.length}/30 characters
+            </div>
           </div>
 
           <div>
@@ -53,21 +65,30 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              IP Address
+              IP Address <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={newDevice.ip}
-              onChange={(e) =>
-                onDeviceChange({ ...newDevice, ip: e.target.value })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                onDeviceChange({ ...newDevice, ip: value });
+              }}
               placeholder="192.168.1.100"
+              pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
               className={`w-full px-3 py-2 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                isDark
-                  ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                  : "bg-white border-gray-300 placeholder-gray-500"
+                newDevice.ip && !isValidIP(newDevice.ip)
+                  ? "border-red-500 focus:ring-red-500"
+                  : isDark
+                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                    : "bg-white border-gray-300 placeholder-gray-500"
               }`}
             />
+            {newDevice.ip && !isValidIP(newDevice.ip) && (
+              <div className="text-xs mt-1 text-red-500">
+                Please enter a valid IP address (e.g., 192.168.1.100)
+              </div>
+            )}
           </div>
 
           <div>
@@ -94,6 +115,26 @@ export default function DeviceForm({
           </div>
         </div>
 
+        {/* Validation Message */}
+        {(newDevice.validating || newDevice.validationMessage) && (
+          <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${
+            newDevice.validating 
+              ? isDark ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-800"
+              : newDevice.validationError
+                ? isDark ? "bg-red-900 text-red-300" : "bg-red-100 text-red-800"
+                : isDark ? "bg-green-900 text-green-300" : "bg-green-100 text-green-800"
+          }`}>
+            {newDevice.validating ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : newDevice.validationError ? (
+              <XCircle size={16} />
+            ) : (
+              <CheckCircle size={16} />
+            )}
+            <span className="text-sm">{newDevice.validationMessage}</span>
+          </div>
+        )}
+
         <div className="flex gap-2 mt-6">
           <button
             onClick={onClose}
@@ -107,10 +148,11 @@ export default function DeviceForm({
           </button>
           <button
             onClick={onAddDevice}
-            disabled={!newDevice.name || !newDevice.ip}
-            className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={!newDevice.name || !newDevice.ip || !isValidIP(newDevice.ip) || newDevice.validating}
+            className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            Add Device
+            {newDevice.validating && <Loader2 size={16} className="animate-spin" />}
+            {newDevice.validating ? 'Validating...' : 'Add Device'}
           </button>
         </div>
       </div>
