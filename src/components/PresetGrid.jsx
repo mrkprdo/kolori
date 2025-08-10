@@ -11,8 +11,9 @@ import {
   MoreVertical,
 } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
+import DisconnectedOverlay from "./DisconnectedOverlay";
 import { SEASONAL_PRESETS } from "../constants/presets";
-import { createWledPreset, deleteWledPreset, activateWledEffect } from "../config/wledApi";
+import { createWledPreset, deleteWledPreset, activateWledEffect, checkWledHeartbeat } from "../config/wledApi";
 import { WLED_PALETTES_DATA } from "../constants/palettes.js";
 
 // Custom Effects will be managed dynamically
@@ -370,6 +371,7 @@ function PresetGrid({
   const [isCreatingEffect, setIsCreatingEffect] = useState(false);
   const [isTestingEffect, setIsTestingEffect] = useState(false);
   const [editingEffect, setEditingEffect] = useState(null);
+  const [isRetryingConnection, setIsRetryingConnection] = useState(false);
 
   // localStorage key for custom effects
   const CUSTOM_EFFECTS_STORAGE_KEY = "kolori_custom_effects";
@@ -463,6 +465,11 @@ function PresetGrid({
     if (!effectName || !selectedEffect || !selectedPalette) return;
     if (!activeDevice?.ip) {
       alert('No active WLED device connected. Please add and connect a device first.');
+      return;
+    }
+
+    if (!activeDevice.isConnected) {
+      alert(`${activeDevice.name} is disconnected. Please check your device connection before creating effects.`);
       return;
     }
 
@@ -563,6 +570,11 @@ function PresetGrid({
       return;
     }
 
+    if (!activeDevice.isConnected) {
+      alert(`${activeDevice.name} is disconnected. Please check your device connection before testing effects.`);
+      return;
+    }
+
     setIsTestingEffect(true);
 
     try {
@@ -618,8 +630,34 @@ function PresetGrid({
     }
   };
 
+  const retryConnection = async () => {
+    if (!activeDevice?.ip) return;
+    
+    setIsRetryingConnection(true);
+    
+    try {
+      const result = await checkWledHeartbeat(activeDevice.ip, activeDevice.protocol || "http");
+      console.log(`Manual connection check for ${activeDevice.name}:`, result.online ? 'Online' : 'Offline');
+    } catch (error) {
+      console.error('Error during manual connection check:', error);
+    } finally {
+      setIsRetryingConnection(false);
+    }
+  };
+
+  const isDeviceDisconnected = activeDevice && !activeDevice.isConnected;
+
   return (
-    <div className={`p-4 space-y-6 pb-24 ${isDark ? "text-white" : ""}`}>
+    <div className={`relative p-4 space-y-6 pb-24 ${isDark ? "text-white" : ""}`}>
+      {/* Disconnected Device Overlay */}
+      <DisconnectedOverlay
+        isVisible={isDeviceDisconnected}
+        deviceName={activeDevice?.name || "Device"}
+        onRetry={retryConnection}
+        isDark={isDark}
+        isRetrying={isRetryingConnection}
+      />
+      
       {/* Current Playing Section */}
       <div>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Check, Power, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar } from "lucide-react";
+import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
 
@@ -11,7 +11,6 @@ export default function SettingsModal({
   devices,
   activeDeviceId,
   onSetActiveDevice,
-  onConnectDevice,
   onRemoveDevice,
   showDeviceForm,
   onShowDeviceForm,
@@ -20,17 +19,21 @@ export default function SettingsModal({
   onNewDeviceChange,
   onAddDevice,
   isDark,
-  wledVersion,
-  onWledVersionChange,
   scheduleMode,
   onScheduleChange,
+  scheduleEnabled,
+  onScheduleEnabledChange,
+  onManualTurnOn,
+  onManualTurnOff,
+  onTestScheduleLogic,
 }) {
   const [showAbout, setShowAbout] = useState(false);
   
   if (!isOpen) return null;
 
-  const openWledInterface = (deviceIp) => {
-    window.open(`http://${deviceIp}`, '_blank');
+  const openWledInterface = (device) => {
+    const protocol = device.protocol || 'http';
+    window.open(`${protocol}://${device.ip}`, '_blank');
   };
 
   return (
@@ -70,7 +73,10 @@ export default function SettingsModal({
           {/* Device Management */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">WLED Devices</h3>
+              <div className="flex items-center gap-2">
+                <Monitor size={16} />
+                <h3 className="font-semibold">WLED Devices</h3>
+              </div>
               <button
                 onClick={onShowDeviceForm}
                 className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1"
@@ -111,7 +117,7 @@ export default function SettingsModal({
                     </div>
                     <div className="flex gap-1">
                       <button
-                        onClick={() => openWledInterface(device.ip)}
+                        onClick={() => openWledInterface(device)}
                         className={`p-2 rounded-lg transition-colors ${
                           isDark
                             ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
@@ -136,21 +142,6 @@ export default function SettingsModal({
                         <Check size={14} />
                       </button>
                       <button
-                        onClick={() => onConnectDevice(device.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          device.isConnected
-                            ? isDark
-                              ? "bg-red-900 text-red-300 hover:bg-red-800"
-                              : "bg-red-100 text-red-800 hover:bg-red-200"
-                            : isDark
-                              ? "bg-green-900 text-green-300 hover:bg-green-800"
-                              : "bg-green-100 text-green-800 hover:bg-green-200"
-                        }`}
-                        title={device.isConnected ? "Disconnect device" : "Connect device"}
-                      >
-                        <Power size={14} />
-                      </button>
-                      <button
                         onClick={() => onRemoveDevice(device.id)}
                         className={`p-2 rounded-lg transition-colors ${
                           isDark
@@ -168,28 +159,89 @@ export default function SettingsModal({
             </div>
           </div>
 
-          {/* WLED Version Settings */}
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">WLED Version</h3>
-            <select
-              value={wledVersion}
-              onChange={(e) => onWledVersionChange(e.target.value)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium border ${
-                isDark
-                  ? "bg-gray-800 border-gray-600 text-white"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              <option value="0.15.x">v0.15.x (Latest)</option>
-              <option value="0.14.x">v0.14.x</option>
-              <option value="0.13.x">v0.13.x</option>
-              <option value="0.12.x">v0.12.x</option>
-            </select>
+          {/* Schedule Settings */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar size={16} />
+                <h3 className="font-semibold">Schedule</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={scheduleEnabled}
+                    onChange={(e) => onScheduleEnabledChange(e.target.checked)}
+                    className="rounded"
+                  />
+                  Enabled
+                </label>
+                <select
+                  value={scheduleMode}
+                  onChange={(e) => onScheduleChange(e.target.value)}
+                  disabled={!scheduleEnabled}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium border ${
+                    isDark
+                      ? "bg-gray-800 border-gray-600 text-white"
+                      : "bg-white border-gray-300"
+                  } ${!scheduleEnabled ? "opacity-50" : ""}`}
+                >
+                  <option value="all-day">🕐 All Day</option>
+                  <option value="day">☀️ Day 7am-7pm</option>
+                  <option value="night">🌙 Night 7pm-7am</option>
+                </select>
+              </div>
+            </div>
+            
+            {/* Manual Control Buttons for Testing */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">Manual Control (Testing)</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={onManualTurnOn}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                    isDark
+                      ? "bg-green-900 text-green-200 hover:bg-green-800"
+                      : "bg-green-100 text-green-800 hover:bg-green-200"
+                  }`}
+                >
+                  Turn ON
+                </button>
+                <button
+                  onClick={onManualTurnOff}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                    isDark
+                      ? "bg-red-900 text-red-200 hover:bg-red-800"
+                      : "bg-red-100 text-red-800 hover:bg-red-200"
+                  }`}
+                >
+                  Turn OFF
+                </button>
+              </div>
+            </div>
+
+            {/* Schedule Debug Button */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">Schedule Debug</span>
+              <button
+                onClick={onTestScheduleLogic}
+                className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                  isDark
+                    ? "bg-blue-900 text-blue-200 hover:bg-blue-800"
+                    : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                }`}
+              >
+                🧪 Test Schedule
+              </button>
+            </div>
           </div>
 
           {/* Theme Settings */}
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Appearance</h3>
+            <div className="flex items-center gap-2">
+              <Palette size={16} />
+              <h3 className="font-semibold">Appearance</h3>
+            </div>
             <select
               value={theme}
               onChange={(e) => onThemeChange(e.target.value)}
@@ -199,45 +251,26 @@ export default function SettingsModal({
                   : "bg-white border-gray-300"
               }`}
             >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
-            </select>
-          </div>
-
-          {/* Schedule Settings */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar size={16} />
-              <h3 className="font-semibold">Schedule</h3>
-            </div>
-            <select
-              value={scheduleMode}
-              onChange={(e) => onScheduleChange(e.target.value)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium border ${
-                isDark
-                  ? "bg-gray-800 border-gray-600 text-white"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              <option value="all-day">All Day</option>
-              <option value="day">Day 7am-7pm</option>
-              <option value="night">Night 7pm-7am</option>
+              <option value="light">☀️ Light</option>
+              <option value="dark">🌙 Dark</option>
+              <option value="system">🖥️ System</option>
             </select>
           </div>
 
           {/* About Section */}
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">About</h3>
+            <div className="flex items-center gap-2">
+              <Info size={16} />
+              <h3 className="font-semibold">About</h3>
+            </div>
             <button
               onClick={() => setShowAbout(true)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${
+              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 isDark
                   ? "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
                   : "bg-white border-gray-300 hover:bg-gray-50"
               }`}
             >
-              <Info size={16} />
               App Info
             </button>
           </div>

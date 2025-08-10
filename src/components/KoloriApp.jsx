@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { StatusBar, Style } from '@capacitor/status-bar';
-import { Capacitor } from '@capacitor/core';
+import React, { useState, useEffect, useRef } from "react";
+import { StatusBar, Style } from "@capacitor/status-bar";
+import { Capacitor } from "@capacitor/core";
 import Header from "./Header";
 import PresetGrid from "./PresetGrid";
 import PlaylistModal from "./PlaylistModal";
@@ -9,15 +9,25 @@ import WelcomePage from "./WelcomePage";
 import UserAgreement from "./UserAgreement";
 import ConfirmModal from "./ConfirmModal";
 import Notification from "./Notification";
-import { activateWledPreset, activateWledPresetById, activateWledEffect, createWledPlaylist, startWledPlaylist, stopWledPlaylist } from "../config/wledApi";
+import {
+  activateWledPreset,
+  activateWledPresetById,
+  activateWledEffect,
+  createWledPlaylist,
+  startWledPlaylist,
+  stopWledPlaylist,
+  checkWledHeartbeat,
+  turnWledOn,
+  turnWledOff,
+} from "../config/wledApi";
 import { SEASONAL_PRESETS } from "../constants/presets";
 
 export default function KoloriApp() {
   // LocalStorage keys
   const DEVICES_STORAGE_KEY = "kolori_devices";
   const ACTIVE_DEVICE_STORAGE_KEY = "kolori_active_device";
-  const WLED_VERSION_STORAGE_KEY = "kolori_wled_version";
   const USER_AGREEMENT_STORAGE_KEY = "kolori_user_agreement";
+  const SCHEDULE_MODE_STORAGE_KEY = "kolori_schedule_mode";
 
   // LocalStorage helper functions
   const loadFromStorage = (key, defaultValue) => {
@@ -41,9 +51,6 @@ export default function KoloriApp() {
   // State management with localStorage initialization
   const [customEffects, setCustomEffects] = useState([]);
   const [theme, setTheme] = useState("system");
-  const [wledVersion, setWledVersion] = useState(() =>
-    loadFromStorage(WLED_VERSION_STORAGE_KEY, "0.15.x")
-  );
   const [devices, setDevices] = useState(() =>
     loadFromStorage(DEVICES_STORAGE_KEY, [])
   );
@@ -55,7 +62,11 @@ export default function KoloriApp() {
   );
   const [currentPlaylist, setCurrentPlaylist] = useState([]);
   const [savedPlaylists, setSavedPlaylists] = useState([]);
-  const [scheduleMode, setScheduleMode] = useState("all-day");
+  const [scheduleMode, setScheduleMode] = useState(() =>
+    loadFromStorage(SCHEDULE_MODE_STORAGE_KEY, "all-day")
+  );
+  const [scheduleEnabled, setScheduleEnabled] = useState(true);
+  const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showDeviceForm, setShowDeviceForm] = useState(false);
@@ -63,15 +74,21 @@ export default function KoloriApp() {
   const [deviceToDelete, setDeviceToDelete] = useState(null);
   const [notification, setNotification] = useState({
     isVisible: false,
-    type: 'success',
-    title: '',
-    message: ''
+    type: "success",
+    title: "",
+    message: "",
   });
   const [newDevice, setNewDevice] = useState({
     name: "",
     ip: "",
     protocol: "http",
   });
+
+  // Use ref to track current devices for heartbeat monitoring
+  const devicesRef = useRef(devices);
+  useEffect(() => {
+    devicesRef.current = devices;
+  }, [devices]);
 
   // Computed values
   const activeDevice =
@@ -92,20 +109,20 @@ export default function KoloriApp() {
         try {
           // Set status bar to be transparent/overlay
           await StatusBar.setOverlaysWebView({ overlay: true });
-          
+
           // Set status bar style based on theme
-          await StatusBar.setStyle({ 
-            style: isDark ? Style.Dark : Style.Light 
+          await StatusBar.setStyle({
+            style: isDark ? Style.Dark : Style.Light,
           });
-          
+
           // Set background color to transparent
-          await StatusBar.setBackgroundColor({ color: '#00000000' });
+          await StatusBar.setBackgroundColor({ color: "#00000000" });
         } catch (error) {
-          console.log('StatusBar not available:', error);
+          console.log("StatusBar not available:", error);
         }
       }
     };
-    
+
     configureStatusBar();
   }, [isDark]);
 
@@ -119,12 +136,12 @@ export default function KoloriApp() {
   }, [activeDeviceId]);
 
   useEffect(() => {
-    saveToStorage(WLED_VERSION_STORAGE_KEY, wledVersion);
-  }, [wledVersion]);
-
-  useEffect(() => {
     saveToStorage(USER_AGREEMENT_STORAGE_KEY, userAgreementAccepted);
   }, [userAgreementAccepted]);
+
+  useEffect(() => {
+    saveToStorage(SCHEDULE_MODE_STORAGE_KEY, scheduleMode);
+  }, [scheduleMode]);
 
   // Validate activeDeviceId when devices change
   useEffect(() => {
@@ -139,6 +156,67 @@ export default function KoloriApp() {
       setActiveDeviceId(null);
     }
   }, [devices, activeDeviceId]);
+
+  // Device heartbeat monitoring - check every 60 seconds
+  useEffect(() => {
+    if (devices.length === 0) return;
+
+    const checkAllDevicesHeartbeat = async () => {
+      const currentDevices = devicesRef.current;
+      if (currentDevices.length === 0) return;
+
+      const updatedDevices = [];
+
+      for (const device of currentDevices) {
+        const heartbeatResult = await checkWledHeartbeat(
+          device.ip,
+          device.protocol || "http"
+        );
+        const wasConnected = device.isConnected;
+        const isConnected = heartbeatResult.online;
+
+        // Log connection status changes
+        if (wasConnected && !isConnected) {
+          console.log(`Device ${device.name} (${device.ip}) went offline`);
+        } else if (!wasConnected && isConnected) {
+          console.log(`Device ${device.name} (${device.ip}) came back online`);
+        }
+
+        updatedDevices.push({
+          ...device,
+          isConnected,
+          lastHeartbeat: new Date().toISOString(),
+        });
+      }
+
+      setDevices(updatedDevices);
+    };
+
+    // Initial heartbeat check
+    checkAllDevicesHeartbeat();
+
+    // Set up interval for heartbeat checks every 60 seconds
+    const heartbeatInterval = setInterval(checkAllDevicesHeartbeat, 10000);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, [devices.length]); // Only re-run when number of devices changes
+
+  // Schedule monitoring - check every minute to enforce schedule
+  useEffect(() => {
+    if (!scheduleEnabled || scheduleMode === "all-day") return;
+
+    // Initial check
+    checkAndApplySchedule();
+
+    // Set up interval to check schedule every minute
+    const scheduleInterval = setInterval(checkAndApplySchedule, 60000);
+
+    return () => {
+      clearInterval(scheduleInterval);
+    };
+  }, [scheduleMode, scheduleEnabled, activeDevice?.id, activeDevice?.isConnected]);
 
   // Device validation function
   const validateDeviceUrl = async (ip, protocol = "http") => {
@@ -262,7 +340,10 @@ export default function KoloriApp() {
         }));
 
         // Validate device URL
-        const validation = await validateDeviceUrl(newDevice.ip, newDevice.protocol);
+        const validation = await validateDeviceUrl(
+          newDevice.ip,
+          newDevice.protocol
+        );
 
         if (validation.success) {
           // Show success message briefly before adding device
@@ -352,7 +433,7 @@ export default function KoloriApp() {
     console.log(
       `Removed device: ${deviceToDelete.name} at ${deviceToDelete.ip}`
     );
-    
+
     // Clean up state
     setDeviceToDelete(null);
   };
@@ -363,29 +444,44 @@ export default function KoloriApp() {
     );
   };
 
-  const connectToDevice = async (deviceId) => {
-    updateDevice(deviceId, {
-      isConnected: !devices.find((d) => d.id === deviceId)?.isConnected,
-    });
-    console.log(`Toggling connection to device ${deviceId}`);
-  };
-
   // Preset and playlist functions
   const applyPreset = async (presetId) => {
+    // Check if active device is connected
+    if (!activeDevice) {
+      console.log("No active device");
+      return;
+    }
+
+    if (!activeDevice.isConnected) {
+      console.log("Active device is disconnected, blocking preset activation");
+      showNotification(
+        "error",
+        "Device Offline",
+        `${activeDevice.name} is disconnected. Please check your device connection.`
+      );
+      return;
+    }
+
     // First check seasonal presets
-    const seasonalPreset = SEASONAL_PRESETS.find(p => p.id === presetId);
-    
+    const seasonalPreset = SEASONAL_PRESETS.find((p) => p.id === presetId);
+
     if (seasonalPreset) {
       if (!activeDevice) {
         console.log(`No active device`);
         return;
       }
 
-      console.log(`Applying preset "${seasonalPreset.name}" to device ${activeDevice.ip}`);
-      
+      console.log(
+        `Applying preset "${seasonalPreset.name}" to device ${activeDevice.ip}`
+      );
+
       // Call WLED API to activate preset
-      const result = await activateWledPreset(activeDevice.ip, seasonalPreset.name, activeDevice.protocol || "http");
-      
+      const result = await activateWledPreset(
+        activeDevice.ip,
+        seasonalPreset.name,
+        activeDevice.protocol || "http"
+      );
+
       if (result.success) {
         updateDevice(activeDeviceId, { activePreset: presetId });
         console.log(`Successfully activated preset: ${seasonalPreset.name}`);
@@ -396,28 +492,41 @@ export default function KoloriApp() {
     }
 
     // Check custom effects
-    const customEffect = customEffects.find(e => e.id === presetId);
-    
+    const customEffect = customEffects.find((e) => e.id === presetId);
+
     if (customEffect) {
       if (!activeDevice) {
         console.log(`No active device`);
         return;
       }
 
-      console.log(`Applying custom effect "${customEffect.name}" to device ${activeDevice.ip}`);
-      
+      console.log(
+        `Applying custom effect "${customEffect.name}" to device ${activeDevice.ip}`
+      );
+
       // Use preset ID if available, otherwise fall back to effect/palette activation
       let result;
       if (customEffect.presetId) {
-        result = await activateWledPresetById(activeDevice.ip, customEffect.presetId, activeDevice.protocol || "http");
+        result = await activateWledPresetById(
+          activeDevice.ip,
+          customEffect.presetId,
+          activeDevice.protocol || "http"
+        );
       } else {
         // Fallback for effects created before preset integration
-        result = await activateWledEffect(activeDevice.ip, customEffect.effectId, customEffect.paletteId, activeDevice.protocol || "http");
+        result = await activateWledEffect(
+          activeDevice.ip,
+          customEffect.effectId,
+          customEffect.paletteId,
+          activeDevice.protocol || "http"
+        );
       }
-      
+
       if (result.success) {
         updateDevice(activeDeviceId, { activePreset: presetId });
-        console.log(`Successfully activated custom effect: ${customEffect.name}`);
+        console.log(
+          `Successfully activated custom effect: ${customEffect.name}`
+        );
       } else {
         console.error(`Failed to activate custom effect: ${result.message}`);
       }
@@ -431,39 +540,49 @@ export default function KoloriApp() {
 
   const togglePlaylist = async () => {
     const newPlayingState = !isPlaying;
-    
+
     if (!activeDevice) {
-      console.log('No active device');
+      console.log("No active device");
       return;
     }
 
-    const savedPlaylist = savedPlaylists.find(p => p.isActive);
+    if (!activeDevice.isConnected) {
+      console.log("Active device is disconnected, blocking playlist control");
+      showNotification(
+        "error",
+        "Device Offline",
+        `${activeDevice.name} is disconnected. Please check your device connection.`
+      );
+      return;
+    }
+
+    const savedPlaylist = savedPlaylists.find((p) => p.isActive);
     if (!savedPlaylist) {
-      console.log('No active saved playlist to play');
+      console.log("No active saved playlist to play");
       updateDevice(activeDeviceId, { isPlaying: newPlayingState });
       return;
     }
 
     if (newPlayingState) {
       const result = await startWledPlaylist(
-        activeDevice.ip, 
-        savedPlaylist.firstPresetId, 
+        activeDevice.ip,
+        savedPlaylist.firstPresetId,
         savedPlaylist.lastPresetId
       );
       if (result.success) {
-        console.log('Playlist started successfully');
+        console.log("Playlist started successfully");
       } else {
-        console.error('Failed to start playlist:', result.message);
+        console.error("Failed to start playlist:", result.message);
       }
     } else {
       const result = await stopWledPlaylist(activeDevice.ip);
       if (result.success) {
-        console.log('Playlist stopped successfully');
+        console.log("Playlist stopped successfully");
       } else {
-        console.error('Failed to stop playlist:', result.message);
+        console.error("Failed to stop playlist:", result.message);
       }
     }
-    
+
     updateDevice(activeDeviceId, { isPlaying: newPlayingState });
   };
 
@@ -471,7 +590,7 @@ export default function KoloriApp() {
     const playlistItem = {
       ...preset,
       duration: 30,
-      playlistItemId: `${preset.id || preset.name}_${Date.now()}`
+      playlistItemId: `${preset.id || preset.name}_${Date.now()}`,
     };
     setCurrentPlaylist([...currentPlaylist, playlistItem]);
   };
@@ -489,60 +608,64 @@ export default function KoloriApp() {
       isVisible: true,
       type,
       title,
-      message
+      message,
     });
   };
 
   const closeNotification = () => {
     setNotification({
       ...notification,
-      isVisible: false
+      isVisible: false,
     });
   };
 
   const editPlaylist = (playlist) => {
     // Load playlist items into current playlist for editing
-    const playlistEffects = playlist.items.map(item => ({
+    const playlistEffects = playlist.items.map((item) => ({
       ...item,
-      playlistItemId: `${item.name}_${Date.now()}`
+      playlistItemId: `${item.name}_${Date.now()}`,
     }));
     setCurrentPlaylist(playlistEffects);
     setShowPlaylist(true);
-    
+
     // Remove the playlist from saved playlists while editing
-    setSavedPlaylists(prev => prev.filter(p => p.id !== playlist.id));
-    
-    console.log('Editing playlist:', playlist.name);
+    setSavedPlaylists((prev) => prev.filter((p) => p.id !== playlist.id));
+
+    console.log("Editing playlist:", playlist.name);
   };
 
   const removePlaylist = (playlistId) => {
-    setSavedPlaylists(prev => prev.filter(p => p.id !== playlistId));
-    console.log('Removed playlist:', playlistId);
+    setSavedPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+    console.log("Removed playlist:", playlistId);
   };
 
   const savePlaylist = async (playlistName) => {
     if (currentPlaylist.length === 0) {
-      console.log('Cannot save empty playlist');
+      console.log("Cannot save empty playlist");
       return;
     }
 
     if (!activeDevice) {
-      console.log('No active device');
+      console.log("No active device");
       return;
     }
 
     const finalPlaylistName = playlistName || `Playlist_${Date.now()}`;
-    
-    const playlistItems = currentPlaylist.map(item => ({
+
+    const playlistItems = currentPlaylist.map((item) => ({
       name: item.name,
       effectId: item.effectId || 0,
       paletteId: item.paletteId || 0,
       duration: item.duration || 30,
-      gradient: item.gradient // Preserve gradient for playlist cards
+      gradient: item.gradient, // Preserve gradient for playlist cards
     }));
-    
-    const result = await createWledPlaylist(activeDevice.ip, playlistItems, finalPlaylistName);
-    
+
+    const result = await createWledPlaylist(
+      activeDevice.ip,
+      playlistItems,
+      finalPlaylistName
+    );
+
     if (result.success) {
       const newSavedPlaylist = {
         id: Date.now(),
@@ -551,19 +674,27 @@ export default function KoloriApp() {
         presets: result.presets,
         firstPresetId: result.firstPresetId,
         lastPresetId: result.lastPresetId,
-        isActive: true
+        isActive: true,
       };
-      
-      setSavedPlaylists(prev => [
-        ...prev.map(p => ({ ...p, isActive: false })), 
-        newSavedPlaylist
+
+      setSavedPlaylists((prev) => [
+        ...prev.map((p) => ({ ...p, isActive: false })),
+        newSavedPlaylist,
       ]);
-      
-      console.log('Playlist saved successfully:', finalPlaylistName);
-      showNotification('success', 'Playlist Saved!', `"${finalPlaylistName}" has been saved to your WLED device.`);
+
+      console.log("Playlist saved successfully:", finalPlaylistName);
+      showNotification(
+        "success",
+        "Playlist Saved!",
+        `"${finalPlaylistName}" has been saved to your WLED device.`
+      );
     } else {
-      console.error('Failed to save playlist:', result.message);
-      showNotification('error', 'Save Failed', `Could not save playlist: ${result.message}`);
+      console.error("Failed to save playlist:", result.message);
+      showNotification(
+        "error",
+        "Save Failed",
+        `Could not save playlist: ${result.message}`
+      );
     }
   };
 
@@ -571,8 +702,155 @@ export default function KoloriApp() {
   const setSchedule = (mode) => {
     setScheduleMode(mode);
     console.log(`Schedule set to: ${mode}`);
+    // Reset last check time to allow immediate schedule application
+    setLastScheduleCheck(null);
+    // Force immediate schedule check when mode changes  
+    setTimeout(() => checkAndApplySchedule(), 100); // Small delay to ensure state update
   };
 
+  // Manual override functions for testing
+  const manualTurnOn = async () => {
+    if (!activeDevice?.isConnected) {
+      showNotification('error', 'Device Offline', 'Cannot control disconnected device');
+      return;
+    }
+    
+    console.log('🔧 Manual Override: Turning lights ON');
+    const result = await turnWledOn(activeDevice.ip, activeDevice.protocol || "http");
+    if (result.success) {
+      showNotification('success', 'Manual Control', 'Lights turned ON manually');
+    } else {
+      showNotification('error', 'Control Failed', result.message);
+    }
+  };
+
+  const manualTurnOff = async () => {
+    if (!activeDevice?.isConnected) {
+      showNotification('error', 'Device Offline', 'Cannot control disconnected device');
+      return;
+    }
+    
+    console.log('🔧 Manual Override: Turning lights OFF');
+    const result = await turnWledOff(activeDevice.ip, activeDevice.protocol || "http");
+    if (result.success) {
+      showNotification('success', 'Manual Control', 'Lights turned OFF manually');
+    } else {
+      showNotification('error', 'Control Failed', result.message);
+    }
+  };
+
+  // Debug function to test schedule logic
+  const testScheduleLogic = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const shouldBeOn = shouldLightsBeOn();
+    
+    console.log('🧪 SCHEDULE DEBUG:');
+    console.log(`🕐 Current time: ${now.toLocaleString()}`);
+    console.log(`🕐 Current hour: ${currentHour}`);
+    console.log(`📅 Schedule mode: ${scheduleMode}`);
+    console.log(`💡 Should lights be on: ${shouldBeOn}`);
+    console.log(`🔧 Schedule enabled: ${scheduleEnabled}`);
+    console.log(`📱 Active device: ${activeDevice?.name || 'none'}`);
+    console.log(`🌐 Device connected: ${activeDevice?.isConnected || false}`);
+    
+    if (scheduleMode === "day") {
+      console.log(`☀️ DAY MODE: Lights should be ON from 7am-7pm (7-19)`);
+      console.log(`☀️ Current evaluation: ${currentHour >= 7 && currentHour < 19 ? 'ON' : 'OFF'}`);
+    } else if (scheduleMode === "night") {
+      console.log(`🌙 NIGHT MODE: Lights should be ON from 7pm-7am (19-7)`);
+      console.log(`🌙 Current evaluation: ${currentHour >= 19 || currentHour < 7 ? 'ON' : 'OFF'}`);
+    }
+    
+    showNotification('info', 'Schedule Debug', `Current hour: ${currentHour}, Should be: ${shouldBeOn ? 'ON' : 'OFF'}`);
+    
+    // Immediately run schedule check
+    checkAndApplySchedule();
+  };
+
+  // Function to determine if lights should be on based on current time and schedule
+  const shouldLightsBeOn = () => {
+    if (scheduleMode === "all-day") {
+      return true; // Always on
+    }
+
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    if (scheduleMode === "day") {
+      // Day mode: 7am to 7pm (7:00 - 19:00)
+      return currentHour >= 7 && currentHour < 19;
+    } else if (scheduleMode === "night") {
+      // Night mode: 7pm to 7am (19:00 - 07:00)
+      return currentHour >= 19 || currentHour < 7;
+    }
+
+    return true; // Default to on if unknown mode
+  };
+
+  // Function to check and apply schedule
+  const checkAndApplySchedule = async () => {
+    console.log(`📅 Schedule Check: Starting check...`);
+    console.log(`📅 Active Device: ${activeDevice?.name || 'none'}`);
+    console.log(`📅 Device Connected: ${activeDevice?.isConnected || false}`);
+    console.log(`📅 Schedule Enabled: ${scheduleEnabled}`);
+    console.log(`📅 Schedule Mode: ${scheduleMode}`);
+    
+    if (!activeDevice) {
+      console.log(`📅 Schedule Check: No active device - skipping`);
+      return;
+    }
+    
+    if (!activeDevice.isConnected) {
+      console.log(`📅 Schedule Check: Device disconnected - skipping`);
+      return;
+    }
+    
+    if (!scheduleEnabled) {
+      console.log(`📅 Schedule Check: Schedule disabled - skipping`);
+      return;
+    }
+
+    const shouldBeOn = shouldLightsBeOn();
+    const currentTime = new Date().toISOString();
+    const currentHour = new Date().getHours();
+
+    console.log(`📅 Current Time: ${currentTime}`);
+    console.log(`📅 Current Hour: ${currentHour}`);
+    console.log(`📅 Should Lights Be On: ${shouldBeOn}`);
+
+    // Only apply if this is a new schedule decision (avoid spam)
+    if (lastScheduleCheck && 
+        Math.abs(new Date() - new Date(lastScheduleCheck)) < 60000) {
+      console.log(`📅 Schedule Check: Checked recently - skipping (last: ${lastScheduleCheck})`);
+      return;
+    }
+
+    setLastScheduleCheck(currentTime);
+    console.log(`📅 Schedule Check: Applying schedule action...`);
+
+    try {
+      if (shouldBeOn) {
+        console.log(`📅 Schedule Action: Calling turnWledOn for ${activeDevice.ip}`);
+        const result = await turnWledOn(activeDevice.ip, activeDevice.protocol || "http");
+        if (result.success) {
+          console.log(`✅ Schedule: Turned lights ON (${scheduleMode} mode) - ${result.message}`);
+        } else {
+          console.error(`❌ Schedule: Failed to turn lights ON - ${result.message}`);
+        }
+      } else {
+        console.log(`📅 Schedule Action: Calling turnWledOff for ${activeDevice.ip}`);
+        const result = await turnWledOff(activeDevice.ip, activeDevice.protocol || "http");
+        if (result.success) {
+          console.log(`✅ Schedule: Turned lights OFF (${scheduleMode} mode) - ${result.message}`);
+        } else {
+          console.error(`❌ Schedule: Failed to turn lights OFF - ${result.message}`);
+        }
+      }
+    } catch (error) {
+      console.error("📅 Schedule enforcement error:", error);
+    }
+  };
 
   // Handle first device addition
   const handleAddFirstDevice = () => {
@@ -595,7 +873,6 @@ export default function KoloriApp() {
     localStorage.removeItem(USER_AGREEMENT_STORAGE_KEY);
     localStorage.removeItem(DEVICES_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_DEVICE_STORAGE_KEY);
-    localStorage.removeItem(WLED_VERSION_STORAGE_KEY);
 
     alert("You must accept the terms to use Kolori. The page will now close.");
     window.close();
@@ -639,7 +916,6 @@ export default function KoloriApp() {
           devices={devices}
           activeDeviceId={activeDeviceId}
           onSetActiveDevice={setActiveDeviceId}
-          onConnectDevice={connectToDevice}
           onRemoveDevice={removeDevice}
           showDeviceForm={showDeviceForm}
           onShowDeviceForm={() => setShowDeviceForm(true)}
@@ -659,23 +935,26 @@ export default function KoloriApp() {
           onNewDeviceChange={setNewDevice}
           onAddDevice={addDevice}
           isDark={isDark}
-          wledVersion={wledVersion}
-          onWledVersionChange={setWledVersion}
           scheduleMode={scheduleMode}
           onScheduleChange={setSchedule}
+          scheduleEnabled={scheduleEnabled}
+          onScheduleEnabledChange={setScheduleEnabled}
+          onManualTurnOn={manualTurnOn}
+          onManualTurnOff={manualTurnOff}
+          onTestScheduleLogic={testScheduleLogic}
         />
       </>
     );
   }
 
   return (
-    <div 
+    <div
       className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}
       style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        paddingLeft: 'env(safe-area-inset-left)',
-        paddingRight: 'env(safe-area-inset-right)',
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
       }}
     >
       {/* Header */}
@@ -739,7 +1018,6 @@ export default function KoloriApp() {
         devices={devices}
         activeDeviceId={activeDeviceId}
         onSetActiveDevice={setActiveDeviceId}
-        onConnectDevice={connectToDevice}
         onRemoveDevice={removeDevice}
         showDeviceForm={showDeviceForm}
         onShowDeviceForm={() => setShowDeviceForm(true)}
@@ -759,10 +1037,13 @@ export default function KoloriApp() {
         onNewDeviceChange={setNewDevice}
         onAddDevice={addDevice}
         isDark={isDark}
-        wledVersion={wledVersion}
-        onWledVersionChange={setWledVersion}
         scheduleMode={scheduleMode}
         onScheduleChange={setSchedule}
+        scheduleEnabled={scheduleEnabled}
+        onScheduleEnabledChange={setScheduleEnabled}
+        onManualTurnOn={manualTurnOn}
+        onManualTurnOff={manualTurnOff}
+        onTestScheduleLogic={testScheduleLogic}
       />
 
       {/* Confirmation Modal for Device Deletion */}

@@ -62,8 +62,8 @@ export const activateWledEffect = async (deviceIp, effectId, paletteId, protocol
 };
 
 // Function to get WLED device info including presets
-export const getWledInfo = async (deviceIp) => {
-  const url = `http://${deviceIp}/json/info`;
+export const getWledInfo = async (deviceIp, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, '/json/info');
   
   try {
     const response = await fetch(url, {
@@ -82,6 +82,31 @@ export const getWledInfo = async (deviceIp) => {
     return { 
       success: false, 
       message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Function to check if WLED device is online (heartbeat)
+export const checkWledHeartbeat = async (deviceIp, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, '/json/info');
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(3000) // Shorter timeout for heartbeat
+    });
+    
+    if (response.ok) {
+      return { success: true, online: true, message: 'Device online' };
+    } else {
+      return { success: false, online: false, message: `HTTP Error: ${response.status}` };
+    }
+      
+  } catch (error) {
+    return { 
+      success: false, 
+      online: false,
+      message: error.name === 'TimeoutError' ? 'Connection timeout' : `Connection failed: ${error.message}`
     };
   }
 };
@@ -370,6 +395,104 @@ export const deleteWledPlaylist = async (deviceIp, presetIds) => {
     return { 
       success: false, 
       message: `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Function to turn WLED lights on globally
+export const turnWledOn = async (deviceIp, protocol = "http") => {
+  // Try JSON API first (more reliable), fallback to HTTP API
+  const jsonUrl = buildWledUrl(deviceIp, protocol, '/json/state');
+  const httpUrl = buildWledUrl(deviceIp, protocol, '/win&T=1');
+  
+  console.log(`🔛 WLED API: Turning lights ON`);
+  console.log(`🔛 JSON API: ${jsonUrl}`);
+  console.log(`🔛 HTTP API Fallback: ${httpUrl}`);
+  
+  try {
+    // Try JSON API first
+    const jsonResponse = await fetch(jsonUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ on: true }),
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (jsonResponse.ok) {
+      console.log(`🔛 JSON API Success: ${jsonResponse.status} ${jsonResponse.statusText}`);
+      return { success: true, message: 'Lights turned on (JSON API)' };
+    }
+    
+    console.log(`🔛 JSON API Failed: ${jsonResponse.status}, trying HTTP API...`);
+    
+    // Fallback to HTTP API
+    const httpResponse = await fetch(httpUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    console.log(`🔛 HTTP API Response: ${httpResponse.status} ${httpResponse.statusText}`);
+    
+    return httpResponse.ok 
+      ? { success: true, message: 'Lights turned on (HTTP API)' }
+      : { success: false, message: `Both APIs failed. JSON: ${jsonResponse.status}, HTTP: ${httpResponse.status}` };
+      
+  } catch (error) {
+    console.error(`🔛 WLED API Error:`, error);
+    return { 
+      success: false, 
+      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Function to turn WLED lights off globally
+export const turnWledOff = async (deviceIp, protocol = "http") => {
+  // Try JSON API first (more reliable), fallback to HTTP API
+  const jsonUrl = buildWledUrl(deviceIp, protocol, '/json/state');
+  const httpUrl = buildWledUrl(deviceIp, protocol, '/win&T=0');
+  
+  console.log(`🔴 WLED API: Turning lights OFF`);
+  console.log(`🔴 JSON API: ${jsonUrl}`);
+  console.log(`🔴 HTTP API Fallback: ${httpUrl}`);
+  
+  try {
+    // Try JSON API first
+    const jsonResponse = await fetch(jsonUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ on: false }),
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (jsonResponse.ok) {
+      console.log(`🔴 JSON API Success: ${jsonResponse.status} ${jsonResponse.statusText}`);
+      return { success: true, message: 'Lights turned off (JSON API)' };
+    }
+    
+    console.log(`🔴 JSON API Failed: ${jsonResponse.status}, trying HTTP API...`);
+    
+    // Fallback to HTTP API
+    const httpResponse = await fetch(httpUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    console.log(`🔴 HTTP API Response: ${httpResponse.status} ${httpResponse.statusText}`);
+    
+    return httpResponse.ok 
+      ? { success: true, message: 'Lights turned off (HTTP API)' }
+      : { success: false, message: `Both APIs failed. JSON: ${jsonResponse.status}, HTTP: ${httpResponse.status}` };
+      
+  } catch (error) {
+    console.error(`🔴 WLED API Error:`, error);
+    return { 
+      success: false, 
+      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
     };
   }
 };
