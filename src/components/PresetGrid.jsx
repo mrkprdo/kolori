@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar,
   Palette,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
 import { SEASONAL_PRESETS } from "../constants/presets";
+import { createWledPreset, deleteWledPreset, activateWledEffect } from "../config/wledApi";
 
 // Custom Effects will be managed dynamically
 const CUSTOM_EFFECTS = [];
@@ -156,14 +157,50 @@ function PresetGrid({
   currentPlaylist,
   onShowPlaylist,
   onShowScheduler,
+  activeDevice,
+  onCustomEffectUpdate,
 }) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
-  const [customEffects, setCustomEffects] = useState([]);
   const [showEffectForm, setShowEffectForm] = useState(false);
   const [selectedEffect, setSelectedEffect] = useState("");
   const [selectedPalette, setSelectedPalette] = useState("");
   const [effectName, setEffectName] = useState("");
+  const [isCreatingEffect, setIsCreatingEffect] = useState(false);
+  const [isTestingEffect, setIsTestingEffect] = useState(false);
+
+  // localStorage key for custom effects
+  const CUSTOM_EFFECTS_STORAGE_KEY = "kolori_custom_effects";
+
+  // Helper functions for localStorage
+  const loadCustomEffectsFromStorage = () => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_EFFECTS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.warn("Failed to load custom effects from localStorage:", error);
+      return [];
+    }
+  };
+
+  const saveCustomEffectsToStorage = (effects) => {
+    try {
+      localStorage.setItem(CUSTOM_EFFECTS_STORAGE_KEY, JSON.stringify(effects));
+    } catch (error) {
+      console.warn("Failed to save custom effects to localStorage:", error);
+    }
+  };
+
+  // Initialize custom effects from localStorage
+  const [customEffects, setCustomEffects] = useState(() => loadCustomEffectsFromStorage());
+
+  // Sync with parent component on mount to pass initial custom effects from localStorage
+  useEffect(() => {
+    if (onCustomEffectUpdate && customEffects.length > 0) {
+      onCustomEffectUpdate(customEffects);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount to sync initial state
 
   // Mock WLED effects - in real implementation, these would be fetched from WLED device
   const WLED_EFFECTS = [
@@ -207,32 +244,128 @@ function PresetGrid({
   const hasActiveContent =
     activePresetData || (isPlaying && currentPlaylist.length > 0);
 
-  const addCustomEffect = () => {
+  const addCustomEffect = async () => {
     if (!effectName || !selectedEffect || !selectedPalette) return;
+    if (!activeDevice?.ip) {
+      alert('No active WLED device connected. Please add and connect a device first.');
+      return;
+    }
     
-    const effectData = WLED_EFFECTS.find(e => e.id.toString() === selectedEffect);
-    const paletteData = WLED_PALETTES.find(p => p.id.toString() === selectedPalette);
+    setIsCreatingEffect(true);
     
-    const newEffect = {
-      id: Date.now(),
-      name: effectName,
-      effectId: parseInt(selectedEffect),
-      effectName: effectData.name,
-      paletteId: parseInt(selectedPalette),
-      paletteName: paletteData.name,
-      gradient: `linear-gradient(135deg, #${Math.floor(Math.random()*16777215).toString(16)}, #${Math.floor(Math.random()*16777215).toString(16)})`,
-      isCustom: true
-    };
-    
-    setCustomEffects([...customEffects, newEffect]);
-    setEffectName("");
-    setSelectedEffect("");
-    setSelectedPalette("");
-    setShowEffectForm(false);
+    try {
+      const effectData = WLED_EFFECTS.find(e => e.id.toString() === selectedEffect);
+      const paletteData = WLED_PALETTES.find(p => p.id.toString() === selectedPalette);
+      
+      // Create preset on WLED device
+      const result = await createWledPreset(
+        activeDevice.ip,
+        parseInt(selectedEffect),
+        parseInt(selectedPalette),
+        effectName
+      );
+      
+      if (!result.success) {
+        alert(`Failed to create preset: ${result.message}`);
+        return;
+      }
+      
+      const newEffect = {
+        id: Date.now(),
+        name: effectName,
+        effectId: parseInt(selectedEffect),
+        effectName: effectData.name,
+        paletteId: parseInt(selectedPalette),
+        paletteName: paletteData.name,
+        presetId: result.presetId,
+        gradient: `linear-gradient(135deg, #${Math.floor(Math.random()*16777215).toString(16)}, #${Math.floor(Math.random()*16777215).toString(16)})`,
+        isCustom: true
+      };
+      
+      const updatedEffects = [...customEffects, newEffect];
+      setCustomEffects(updatedEffects);
+      saveCustomEffectsToStorage(updatedEffects);
+      
+      setEffectName("");
+      setSelectedEffect("");
+      setSelectedPalette("");
+      setShowEffectForm(false);
+      
+      // Notify parent component if callback provided
+      if (onCustomEffectUpdate) {
+        onCustomEffectUpdate(updatedEffects);
+      }
+      
+    } catch (error) {
+      alert(`Error creating preset: ${error.message}`);
+    } finally {
+      setIsCreatingEffect(false);
+    }
   };
 
-  const removeCustomEffect = (effectId) => {
-    setCustomEffects(customEffects.filter(e => e.id !== effectId));
+  const testEffect = async () => {
+    if (!selectedEffect || !selectedPalette) {
+      alert('Please select both an effect and palette before testing.');
+      return;
+    }
+    
+    if (!activeDevice?.ip) {
+      alert('No active WLED device connected. Please add and connect a device first.');
+      return;
+    }
+
+    setIsTestingEffect(true);
+
+    try {
+      const result = await activateWledEffect(
+        activeDevice.ip,
+        parseInt(selectedEffect),
+        parseInt(selectedPalette)
+      );
+
+      if (!result.success) {
+        alert(`Failed to test effect: ${result.message}`);
+      }
+    } catch (error) {
+      alert(`Error testing effect: ${error.message}`);
+    } finally {
+      setIsTestingEffect(false);
+    }
+  };
+
+  const removeCustomEffect = async (effectId) => {
+    const effect = customEffects.find(e => e.id === effectId);
+    if (!effect) return;
+    
+    try {
+      // Delete preset from WLED device if it has a preset ID
+      if (effect.presetId && activeDevice?.ip) {
+        const result = await deleteWledPreset(activeDevice.ip, effect.presetId);
+        if (!result.success) {
+          console.warn(`Failed to delete WLED preset: ${result.message}`);
+        }
+      }
+      
+      const updatedEffects = customEffects.filter(e => e.id !== effectId);
+      setCustomEffects(updatedEffects);
+      saveCustomEffectsToStorage(updatedEffects);
+      
+      // Notify parent component if callback provided
+      if (onCustomEffectUpdate) {
+        onCustomEffectUpdate(updatedEffects);
+      }
+      
+    } catch (error) {
+      console.error('Error removing custom effect:', error);
+      // Still remove from local state even if WLED deletion failed
+      const updatedEffects = customEffects.filter(e => e.id !== effectId);
+      setCustomEffects(updatedEffects);
+      saveCustomEffectsToStorage(updatedEffects);
+      
+      if (onCustomEffectUpdate) {
+        onCustomEffectUpdate(updatedEffects);
+      }
+    }
   };
 
   return (
@@ -477,10 +610,10 @@ function PresetGrid({
                   </button>
                   <button
                     onClick={addCustomEffect}
-                    disabled={!effectName || !selectedEffect || !selectedPalette}
+                    disabled={!effectName || !selectedEffect || !selectedPalette || isCreatingEffect}
                     className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Add Effect
+                    {isCreatingEffect ? "Creating..." : "Add Effect"}
                   </button>
                 </div>
               </div>

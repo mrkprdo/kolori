@@ -7,7 +7,7 @@ import SettingsModal from "./SettingsModal";
 import WelcomePage from "./WelcomePage";
 import UserAgreement from "./UserAgreement";
 import ConfirmModal from "./ConfirmModal";
-import { activateWledPreset } from "../config/wledApi";
+import { activateWledPreset, activateWledPresetById, activateWledEffect } from "../config/wledApi";
 import { SEASONAL_PRESETS } from "../constants/presets";
 
 export default function KoloriApp() {
@@ -38,6 +38,7 @@ export default function KoloriApp() {
 
   // State management with localStorage initialization
   const [currentView, setCurrentView] = useState("presets");
+  const [customEffects, setCustomEffects] = useState([]);
   const [theme, setTheme] = useState("system");
   const [wledVersion, setWledVersion] = useState(() =>
     loadFromStorage(WLED_VERSION_STORAGE_KEY, "0.15.x")
@@ -359,9 +360,37 @@ export default function KoloriApp() {
       return;
     }
 
-    // If not a seasonal preset, it might be a custom effect (handled by PresetGrid)
-    // This will be passed through for now
-    console.log(`Custom effect activation for ID ${presetId} - handled by PresetGrid`);
+    // Check custom effects
+    const customEffect = customEffects.find(e => e.id === presetId);
+    
+    if (customEffect) {
+      if (!activeDevice) {
+        console.log(`No active device`);
+        return;
+      }
+
+      console.log(`Applying custom effect "${customEffect.name}" to device ${activeDevice.ip}`);
+      
+      // Use preset ID if available, otherwise fall back to effect/palette activation
+      let result;
+      if (customEffect.presetId) {
+        result = await activateWledPresetById(activeDevice.ip, customEffect.presetId);
+      } else {
+        // Fallback for effects created before preset integration
+        result = await activateWledEffect(activeDevice.ip, customEffect.effectId, customEffect.paletteId);
+      }
+      
+      if (result.success) {
+        updateDevice(activeDeviceId, { activePreset: presetId });
+        console.log(`Successfully activated custom effect: ${customEffect.name}`);
+      } else {
+        console.error(`Failed to activate custom effect: ${result.message}`);
+      }
+      return;
+    }
+
+    // Unknown preset ID
+    console.log(`Unknown preset ID: ${presetId}`);
     updateDevice(activeDeviceId, { activePreset: presetId });
   };
 
@@ -503,6 +532,8 @@ export default function KoloriApp() {
             currentPlaylist={currentPlaylist}
             onShowPlaylist={() => setShowPlaylist(true)}
             onShowScheduler={showScheduler}
+            activeDevice={activeDevice}
+            onCustomEffectUpdate={setCustomEffects}
           />
         </>
       )}
