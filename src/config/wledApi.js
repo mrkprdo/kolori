@@ -1,5 +1,10 @@
 // Simplified WLED API - Focus on preset activation only
 
+// Helper function to build WLED URLs with protocol support
+const buildWledUrl = (deviceIp, protocol = "http", path) => {
+  return `${protocol}://${deviceIp}${path}`;
+};
+
 // Simple preset mapping - maps preset names to WLED preset numbers
 export const PRESET_MAPPING = {
   "Autumn": 1,
@@ -8,13 +13,13 @@ export const PRESET_MAPPING = {
 };
 
 // Simple function to activate presets by name
-export const activateWledPreset = async (deviceIp, presetName) => {
+export const activateWledPreset = async (deviceIp, presetName, protocol = "http") => {
   const wledPresetNumber = PRESET_MAPPING[presetName];
   if (!wledPresetNumber) {
     return { success: false, message: `No preset mapping found for: ${presetName}` };
   }
   
-  const url = `http://${deviceIp}/win&PL=${wledPresetNumber}`;
+  const url = buildWledUrl(deviceIp, protocol, `/win&PL=${wledPresetNumber}`);
   
   try {
     const response = await fetch(url, {
@@ -35,8 +40,8 @@ export const activateWledPreset = async (deviceIp, presetName) => {
 };
 
 // Function to activate custom effects (effect + palette combination)
-export const activateWledEffect = async (deviceIp, effectId, paletteId) => {
-  const url = `http://${deviceIp}/win&FX=${effectId}&FP=${paletteId}`;
+export const activateWledEffect = async (deviceIp, effectId, paletteId, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, `/win&FX=${effectId}&FP=${paletteId}`);
   
   try {
     const response = await fetch(url, {
@@ -107,9 +112,9 @@ export const getWledState = async (deviceIp) => {
 };
 
 // Function to create a WLED preset
-export const createWledPreset = async (deviceIp, effectId, paletteId, presetName, presetId = null) => {
+export const createWledPreset = async (deviceIp, effectId, paletteId, presetName, presetId = null, protocol = "http") => {
   // First, set the current effect and palette
-  const setEffectUrl = `http://${deviceIp}/win&FX=${effectId}&FP=${paletteId}`;
+  const setEffectUrl = buildWledUrl(deviceIp, protocol, `/win&FX=${effectId}&FP=${paletteId}`);
   
   try {
     const setEffectResponse = await fetch(setEffectUrl, {
@@ -149,7 +154,7 @@ export const createWledPreset = async (deviceIp, effectId, paletteId, presetName
       }]
     };
     
-    const createPresetResponse = await fetch(`http://${deviceIp}/json/state`, {
+    const createPresetResponse = await fetch(buildWledUrl(deviceIp, protocol, '/json/state'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -177,8 +182,8 @@ export const createWledPreset = async (deviceIp, effectId, paletteId, presetName
 };
 
 // Function to delete a WLED preset
-export const deleteWledPreset = async (deviceIp, presetId) => {
-  const url = `http://${deviceIp}/json/state`;
+export const deleteWledPreset = async (deviceIp, presetId, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, '/json/state');
   
   try {
     const response = await fetch(url, {
@@ -205,8 +210,8 @@ export const deleteWledPreset = async (deviceIp, presetId) => {
 };
 
 // Function to activate preset by ID
-export const activateWledPresetById = async (deviceIp, presetId) => {
-  const url = `http://${deviceIp}/win&PL=${presetId}`;
+export const activateWledPresetById = async (deviceIp, presetId, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, `/win&PL=${presetId}`);
   
   try {
     const response = await fetch(url, {

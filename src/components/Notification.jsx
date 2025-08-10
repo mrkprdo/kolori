@@ -59,11 +59,15 @@ export default function Notification({
 
   return (
     <div 
-      className={`fixed top-4 right-4 z-50 transition-all duration-300 ${
+      className={`fixed z-50 transition-all duration-300 ${
         isShowing 
           ? "transform translate-x-0 opacity-100" 
           : "transform translate-x-full opacity-0"
       }`}
+      style={{
+        top: 'calc(env(safe-area-inset-top) + 1rem)',
+        right: 'calc(env(safe-area-inset-right) + 1rem)',
+      }}
     >
       <div
         className={`max-w-sm w-full shadow-lg rounded-lg border-l-4 p-4 ${getColors()}`}

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 import Header from "./Header";
 import PresetGrid from "./PresetGrid";
 import PlaylistModal from "./PlaylistModal";
@@ -68,6 +70,7 @@ export default function KoloriApp() {
   const [newDevice, setNewDevice] = useState({
     name: "",
     ip: "",
+    protocol: "http",
   });
 
   // Computed values
@@ -81,6 +84,30 @@ export default function KoloriApp() {
     theme === "dark" ||
     (theme === "system" &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  // Configure status bar for mobile
+  useEffect(() => {
+    const configureStatusBar = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Set status bar to be transparent/overlay
+          await StatusBar.setOverlaysWebView({ overlay: true });
+          
+          // Set status bar style based on theme
+          await StatusBar.setStyle({ 
+            style: isDark ? Style.Dark : Style.Light 
+          });
+          
+          // Set background color to transparent
+          await StatusBar.setBackgroundColor({ color: '#00000000' });
+        } catch (error) {
+          console.log('StatusBar not available:', error);
+        }
+      }
+    };
+    
+    configureStatusBar();
+  }, [isDark]);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -114,10 +141,10 @@ export default function KoloriApp() {
   }, [devices, activeDeviceId]);
 
   // Device validation function
-  const validateDeviceUrl = async (ip) => {
+  const validateDeviceUrl = async (ip, protocol = "http") => {
     try {
-      // First check basic HTTP connectivity
-      const connectivityResponse = await fetch(`http://${ip}`, {
+      // First check basic connectivity
+      const connectivityResponse = await fetch(`${protocol}://${ip}`, {
         method: "GET",
         signal: AbortSignal.timeout(5000), // 5 second timeout
       });
@@ -130,7 +157,7 @@ export default function KoloriApp() {
       }
 
       // If basic connectivity works, try WLED-specific endpoint
-      const wledResponse = await fetch(`http://${ip}/json/info`, {
+      const wledResponse = await fetch(`${protocol}://${ip}/json/info`, {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -235,7 +262,7 @@ export default function KoloriApp() {
         }));
 
         // Validate device URL
-        const validation = await validateDeviceUrl(newDevice.ip);
+        const validation = await validateDeviceUrl(newDevice.ip, newDevice.protocol);
 
         if (validation.success) {
           // Show success message briefly before adding device
@@ -251,6 +278,7 @@ export default function KoloriApp() {
             id: Date.now(),
             name: newDevice.name,
             ip: newDevice.ip,
+            protocol: newDevice.protocol,
             isConnected: true, // Set to true since validation passed
             autoBrightness: true,
             maxBrightness: 80,
@@ -269,6 +297,7 @@ export default function KoloriApp() {
           setNewDevice({
             name: "",
             ip: "",
+            protocol: "http",
             description: "",
             validating: false,
             validationMessage: "",
@@ -355,7 +384,7 @@ export default function KoloriApp() {
       console.log(`Applying preset "${seasonalPreset.name}" to device ${activeDevice.ip}`);
       
       // Call WLED API to activate preset
-      const result = await activateWledPreset(activeDevice.ip, seasonalPreset.name);
+      const result = await activateWledPreset(activeDevice.ip, seasonalPreset.name, activeDevice.protocol || "http");
       
       if (result.success) {
         updateDevice(activeDeviceId, { activePreset: presetId });
@@ -380,10 +409,10 @@ export default function KoloriApp() {
       // Use preset ID if available, otherwise fall back to effect/palette activation
       let result;
       if (customEffect.presetId) {
-        result = await activateWledPresetById(activeDevice.ip, customEffect.presetId);
+        result = await activateWledPresetById(activeDevice.ip, customEffect.presetId, activeDevice.protocol || "http");
       } else {
         // Fallback for effects created before preset integration
-        result = await activateWledEffect(activeDevice.ip, customEffect.effectId, customEffect.paletteId);
+        result = await activateWledEffect(activeDevice.ip, customEffect.effectId, customEffect.paletteId, activeDevice.protocol || "http");
       }
       
       if (result.success) {
@@ -598,6 +627,7 @@ export default function KoloriApp() {
             setNewDevice({
               name: "",
               ip: "",
+              protocol: "http",
               description: "",
               validating: false,
               validationMessage: "",
@@ -618,6 +648,7 @@ export default function KoloriApp() {
             setNewDevice({
               name: "",
               ip: "",
+              protocol: "http",
               description: "",
               validating: false,
               validationMessage: "",
@@ -638,7 +669,15 @@ export default function KoloriApp() {
   }
 
   return (
-    <div className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
+    <div 
+      className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
+    >
       {/* Header */}
       <Header
         deviceName={deviceName}
@@ -688,6 +727,7 @@ export default function KoloriApp() {
           setNewDevice({
             name: "",
             ip: "",
+            protocol: "http",
             description: "",
             validating: false,
             validationMessage: "",
@@ -708,6 +748,7 @@ export default function KoloriApp() {
           setNewDevice({
             name: "",
             ip: "",
+            protocol: "http",
             description: "",
             validating: false,
             validationMessage: "",

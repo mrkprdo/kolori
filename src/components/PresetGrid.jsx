@@ -498,7 +498,9 @@ function PresetGrid({
           activeDevice.ip,
           parseInt(selectedEffect),
           parseInt(selectedPalette),
-          effectName
+          effectName,
+          null, // presetId
+          activeDevice.protocol || "http"
         );
 
         if (!result.success) {
@@ -567,7 +569,8 @@ function PresetGrid({
       const result = await activateWledEffect(
         activeDevice.ip,
         parseInt(selectedEffect),
-        parseInt(selectedPalette)
+        parseInt(selectedPalette),
+        activeDevice.protocol || "http"
       );
 
       if (!result.success) {
@@ -587,7 +590,7 @@ function PresetGrid({
     try {
       // Delete preset from WLED device if it has a preset ID
       if (effect.presetId && activeDevice?.ip) {
-        const result = await deleteWledPreset(activeDevice.ip, effect.presetId);
+        const result = await deleteWledPreset(activeDevice.ip, effect.presetId, activeDevice.protocol || "http");
         if (!result.success) {
           console.warn(`Failed to delete WLED preset: ${result.message}`);
         }

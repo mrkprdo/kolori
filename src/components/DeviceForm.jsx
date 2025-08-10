@@ -97,6 +97,47 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
+              Protocol
+            </label>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="protocol"
+                  value="http"
+                  checked={newDevice.protocol === "http"}
+                  onChange={(e) => onDeviceChange({ ...newDevice, protocol: e.target.value })}
+                  className="text-blue-500 focus:ring-blue-500"
+                />
+                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                  HTTP (Default)
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="protocol"
+                  value="https"
+                  checked={newDevice.protocol === "https"}
+                  onChange={(e) => onDeviceChange({ ...newDevice, protocol: e.target.value })}
+                  className="text-blue-500 focus:ring-blue-500"
+                />
+                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                  HTTPS (Secure)
+                </span>
+              </label>
+            </div>
+            <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+              Most WLED devices use HTTP. Use HTTPS only if your device supports SSL.
+            </div>
+          </div>
+
+          <div>
+            <label
+              className={`block text-sm mb-1 ${
+                isDark ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
               Description (Optional)
             </label>
             <input

@@ -1,0 +1,20 @@
+{
+  "appId": "dev.mrkprdo.kolori",
+  "appName": "Kolori",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "permissions": [
+      "android.permission.INTERNET",
+      "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.ACCESS_WIFI_STATE"
+    ]
+  },
+  "ios": {
+    "allowMixedContent": true,
+    "scheme": "Kolori"
+  }
+}

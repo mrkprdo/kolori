@@ -8,9 +8,19 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mobile:sync": "npm run build && npx cap sync android",
+    "mobile:android": "npm run mobile:sync && npx cap open android",
+    "mobile:ios": "npm run mobile:sync && npx cap open ios",
+    "mobile:run:android": "npm run mobile:sync && npx cap run android",
+    "mobile:run:ios": "npm run mobile:sync && npx cap run ios"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/ios": "^7.4.2",
+    "@capacitor/status-bar": "^7.0.2",
     "lucide-react": "^0.539.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
