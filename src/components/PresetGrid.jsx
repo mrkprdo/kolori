@@ -762,80 +762,50 @@ function PresetGrid({
         isRetrying={isRetryingConnection}
       />
 
-      {/* Current Playing Section */}
+      {/* Live View Section */}
       <div>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
           <Play size={20} />
-          Current Playing
+          Live View
         </h2>
-        {hasActiveContent ? (
-          <div
-            className={`border rounded-xl p-4 ${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-gray-50 border-gray-200"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <div className="flex-1">
-                {activePresetData && (
-                  <>
-                    <div className="font-medium text-sm mb-1">
-                      Active: {activePresetData.name}
-                    </div>
-                    <div
-                      className="w-full h-3 rounded-full mb-2"
-                      style={{ background: activePresetData.gradient }}
-                    ></div>
-                  </>
-                )}
-                {currentPlaylist.length > 0 && (
-                  <div
-                    className={`text-xs ${
-                      isDark ? "text-blue-400" : "text-blue-600"
-                    }`}
-                  >
-                    Playlist ready ({currentPlaylist.length} items)
+        <div
+          className={`border rounded-xl p-4 ${
+            isDark
+              ? "bg-gray-800 border-gray-700"
+              : "bg-gray-50 border-gray-200"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              {activePresetData && (
+                <>
+                  <div className="font-medium text-sm mb-1">
+                    Active: {activePresetData.name}
                   </div>
-                )}
-              </div>
+                  {/* Live LED Data */}
+                  {liveLedData.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex flex-wrap rounded-md overflow-hidden">
+                        {liveLedData.map((color, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              backgroundColor: `rgb(${color.b}, ${color.g}, ${color.r})`,
+                              width: "8px", // Adjust size as needed
+                              height: "11px", // Adjust size as needed
+                            }}
+                            title={`RGB: ${color.b}, ${color.g}, ${color.r}`}
+                          ></div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          </div>
-        ) : (
-          <div
-            className={`border rounded-xl p-4 text-center ${
-              isDark
-                ? "bg-gray-800 border-gray-700 text-gray-400"
-                : "bg-gray-50 border-gray-200 text-gray-500"
-            }`}
-          >
-            <div className="text-sm">
-              Selected animation or playlist will show here
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Live LED Data */}
-      {liveLedData.length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-md font-semibold mb-2">Live LED Data</h3>
-          <div className="flex flex-wrap rounded-md overflow-hidden">
-            {liveLedData.map((color, index) => (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: `rgb(${color.b}, ${color.g}, ${color.r})`,
-                  width: "10px", // Adjust size as needed
-                  height: "20px", // Adjust size as needed
-                }}
-                title={`RGB: ${color.b}, ${color.g}, ${color.r}`}
-              ></div>
-            ))}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Seasonal Presets */}
       <div>
