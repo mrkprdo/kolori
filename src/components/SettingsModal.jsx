@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette } from "lucide-react";
+import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
 
@@ -12,6 +12,7 @@ export default function SettingsModal({
   activeDeviceId,
   onSetActiveDevice,
   onRemoveDevice,
+  onUpdateDevice,
   showDeviceForm,
   onShowDeviceForm,
   onHideDeviceForm,
@@ -28,12 +29,31 @@ export default function SettingsModal({
   onTestScheduleLogic,
 }) {
   const [showAbout, setShowAbout] = useState(false);
-  
+  const [editingDeviceId, setEditingDeviceId] = useState(null);
+  const [newDeviceName, setNewDeviceName] = useState("");
+
   if (!isOpen) return null;
 
   const openWledInterface = (device) => {
     const protocol = device.protocol || 'http';
     window.open(`${protocol}://${device.ip}`, '_blank');
+  };
+
+  const handleEditClick = (device) => {
+    setEditingDeviceId(device.id);
+    setNewDeviceName(device.name);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDeviceId(null);
+    setNewDeviceName("");
+  };
+
+  const handleSaveEdit = (deviceId) => {
+    if (newDeviceName.trim() === "") return;
+    onUpdateDevice(deviceId, { name: newDeviceName.trim() });
+    setEditingDeviceId(null);
+    setNewDeviceName("");
   };
 
   return (
@@ -98,60 +118,116 @@ export default function SettingsModal({
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{device.name}</h4>
-                        <div className="flex items-center gap-1">
-                          {device.isConnected ? (
-                            <Wifi size={16} className="text-green-600" title="Connected" />
-                          ) : (
-                            <WifiOff size={16} className="text-red-600" title="Disconnected" />
-                          )}
-                          {activeDeviceId === device.id && (
-                            <CircleDot size={16} className="text-blue-600" title="Active Device" />
-                          )}
+                      {editingDeviceId === device.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={newDeviceName}
+                            onChange={(e) => setNewDeviceName(e.target.value)}
+                            className={`w-full max-w-xs px-2 py-1 rounded-md border ${
+                              isDark
+                                ? "bg-gray-700 border-gray-600 text-white"
+                                : "bg-white border-gray-300"
+                            }`}
+                            autoFocus
+                          />
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{device.name}</h4>
+                          <div className="flex items-center gap-1">
+                            {device.isConnected ? (
+                              <Wifi size={16} className="text-green-600" title="Connected" />
+                            ) : (
+                              <WifiOff size={16} className="text-red-600" title="Disconnected" />
+                            )}
+                            {activeDeviceId === device.id && (
+                              <CircleDot size={16} className="text-blue-600" title="Active Device" />
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <div className="text-sm text-gray-500">
                         {device.ip}
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button
-                        onClick={() => openWledInterface(device)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isDark
-                            ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
-                            : "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                        }`}
-                        title="Open WLED web interface"
-                      >
-                        <ExternalLink size={14} />
-                      </button>
-                      <button
-                        onClick={() => onSetActiveDevice(device.id)}
-                        disabled={activeDeviceId === device.id}
-                        className={`p-2 rounded-lg transition-colors ${
-                          activeDeviceId === device.id
-                            ? "bg-blue-100 text-blue-800 cursor-not-allowed"
-                            : isDark
-                            ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
-                        title="Select as active device"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        onClick={() => onRemoveDevice(device.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isDark
-                            ? "bg-red-900 text-red-300 hover:bg-red-800"
-                            : "bg-red-100 text-red-800 hover:bg-red-200"
-                        }`}
-                        title="Remove device"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {editingDeviceId === device.id ? (
+                        <>
+                          <button
+                            onClick={() => handleSaveEdit(device.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "bg-green-900 text-green-300 hover:bg-green-800"
+                                : "bg-green-100 text-green-800 hover:bg-green-200"
+                            }`}
+                            title="Save changes"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                            title="Cancel editing"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => openWledInterface(device)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
+                                : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                            }`}
+                            title="Open WLED web interface"
+                          >
+                            <ExternalLink size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleEditClick(device)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                            title="Edit device name"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => onSetActiveDevice(device.id)}
+                            disabled={activeDeviceId === device.id}
+                            className={`p-2 rounded-lg transition-colors ${
+                              activeDeviceId === device.id
+                                ? "bg-blue-100 text-blue-800 cursor-not-allowed"
+                                : isDark
+                                ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                            title="Select as active device"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={() => onRemoveDevice(device.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "bg-red-900 text-red-300 hover:bg-red-800"
+                                : "bg-red-100 text-red-800 hover:bg-red-200"
+                            }`}
+                            title="Remove device"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

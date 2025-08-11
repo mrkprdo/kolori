@@ -917,6 +917,7 @@ export default function KoloriApp() {
           activeDeviceId={activeDeviceId}
           onSetActiveDevice={setActiveDeviceId}
           onRemoveDevice={removeDevice}
+          onUpdateDevice={updateDevice}
           showDeviceForm={showDeviceForm}
           onShowDeviceForm={() => setShowDeviceForm(true)}
           onHideDeviceForm={() => {
@@ -1020,6 +1021,7 @@ export default function KoloriApp() {
           activeDeviceId={activeDeviceId}
           onSetActiveDevice={setActiveDeviceId}
           onRemoveDevice={removeDevice}
+          onUpdateDevice={updateDevice}
           showDeviceForm={showDeviceForm}
           onShowDeviceForm={() => setShowDeviceForm(true)}
           onHideDeviceForm={() => {
