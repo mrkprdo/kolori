@@ -11,6 +11,10 @@ export default defineConfig({
     sourcemap: false,
     minify: 'terser',
     rollupOptions: {
+      input: {
+        main: './index.html',
+        app: './app.html'
+      },
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
@@ -22,6 +26,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true
+    open: true,
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+      'Cross-Origin-Opener-Policy': 'same-origin'
+    }
   }
 })

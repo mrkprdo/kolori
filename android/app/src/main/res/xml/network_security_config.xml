@@ -12,12 +12,19 @@
         <domain includeSubdomains="true">192.168.2.0</domain>
         <domain includeSubdomains="true">192.168.3.0</domain>
         <domain includeSubdomains="true">192.168.4.0</domain>
+        <!-- mDNS .local domains -->
+        <domain includeSubdomains="true">.local</domain>
+        <!-- Common WLED device names -->
+        <domain includeSubdomains="true">wled.local</domain>
+        <domain includeSubdomains="true">esp32.local</domain>
+        <domain includeSubdomains="true">esp8266.local</domain>
     </domain-config>
     
-    <!-- For development/debugging - remove in production if needed -->
+    <!-- Allow all cleartext traffic (most permissive for WLED devices) -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
+            <certificates src="user"/>
         </trust-anchors>
     </base-config>
 </network-security-config>

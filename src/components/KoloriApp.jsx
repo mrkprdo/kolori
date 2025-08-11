@@ -14,6 +14,7 @@ import PlaylistModal from "./PlaylistModal";
 import SettingsModal from "./SettingsModal";
 import WelcomePage from "./WelcomePage";
 import UserAgreement from "./UserAgreement";
+import MixedContentProtection from "./MixedContentProtection";
 import ConfirmModal from "./ConfirmModal";
 import Notification from "./Notification";
 import {
@@ -65,6 +66,9 @@ export default function KoloriApp() {
   const [userAgreementAccepted, setUserAgreementAccepted] = useState(() =>
     loadFromStorage(USER_AGREEMENT_STORAGE_KEY, false)
   );
+  const [mixedContentAccepted, setMixedContentAccepted] = useState(() =>
+    loadFromStorage("kolori_mixed_content_accepted", false)
+  );
   const [currentPlaylist, setCurrentPlaylist] = useState([]);
   const [savedPlaylists, setSavedPlaylists] = useState(() =>
     loadFromStorage(PLAYLISTS_STORAGE_KEY, [])
@@ -88,6 +92,7 @@ export default function KoloriApp() {
   const [newDevice, setNewDevice] = useState({
     name: "",
     ip: "",
+    mdns: "",
     protocol: "http",
   });
   const [filterTerm, setFilterTerm] = useState("");
@@ -99,9 +104,30 @@ export default function KoloriApp() {
     devicesRef.current = devices;
   }, [devices]);
 
-  // One-time startup log
+  // One-time startup log and mixed content detection
   useEffect(() => {
     logger.log('🎉 KoloriApp initialized in development mode');
+    
+    // Detect if we're in an iframe and running over HTTPS
+    if (window.self !== window.top && location.protocol === 'https:') {
+      logger.log('🔒 Running in iframe with HTTPS - mixed content protection active');
+    }
+    
+    // Set up global error handler for mixed content issues
+    window.addEventListener('error', (event) => {
+      if (event.message && event.message.includes('mixed content')) {
+        logger.error('Mixed content error detected:', event.message);
+        
+        // Notify parent frame if we're in an iframe
+        if (window.parent !== window.self) {
+          window.parent.postMessage({
+            type: 'MIXED_CONTENT_ERROR',
+            url: event.filename || 'unknown',
+            message: event.message
+          }, '*');
+        }
+      }
+    });
   }, []);
 
   // Computed values
@@ -228,7 +254,7 @@ export default function KoloriApp() {
   useEffect(() => {
     let wsConnectTimer = null;
 
-    if (activeDevice && activeDevice.ip && activeDevice.isConnected) {
+    if (activeDevice && getDeviceAddress(activeDevice) && activeDevice.isConnected) {
       setWebSocketCallbacks({
         onOpen: () => {
           // Update device connection status to reflect WebSocket connection
@@ -310,7 +336,7 @@ export default function KoloriApp() {
       // Connect with a short delay to ensure callbacks are set
       wsConnectTimer = setTimeout(() => {
         const wsProtocol = activeDevice.protocol === "https" ? "wss" : "ws";
-        connectWebSocket(activeDevice.ip, wsProtocol);
+        connectWebSocket(getDeviceAddress(activeDevice), wsProtocol);
       }, 1000);
 
       // Fetch presets and playlists when active device is connected
@@ -372,7 +398,7 @@ export default function KoloriApp() {
     try {
       if (shouldBeOn) {
         const result = await turnWledOn(
-          activeDevice.ip,
+          getDeviceAddress(activeDevice),
           activeDevice.protocol || "http"
         );
         if (result.success) {
@@ -383,7 +409,7 @@ export default function KoloriApp() {
         }
       } else {
         const result = await turnWledOff(
-          activeDevice.ip,
+          getDeviceAddress(activeDevice),
           activeDevice.protocol || "http"
         );
         if (result.success) {
@@ -413,71 +439,40 @@ export default function KoloriApp() {
     };
   }, [scheduleMode, activeDevice?.id, activeDevice?.isConnected]);
 
-  // Device validation function
-  const validateDeviceUrl = async (ip, protocol = "http") => {
+  // Device validation function with mDNS support
+  const validateDevice = async (ip, mdns, protocol = "http") => {
     try {
-      // First check basic connectivity
-      const connectivityResponse = await fetch(`${protocol}://${ip}`, {
-        method: "GET",
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
-
-      if (!connectivityResponse.ok && connectivityResponse.status !== 404) {
-        return {
-          success: false,
-          message: `Device not accessible - HTTP ${connectivityResponse.status}`,
-        };
-      }
-
-      // If basic connectivity works, try WLED-specific endpoint
-      const wledResponse = await fetch(`${protocol}://${ip}/json/info`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
-
-      if (wledResponse.ok) {
-        const data = await wledResponse.json();
+      // Import the connectivity testing function
+      const { findBestDeviceAddress } = await import('../config/wledApi.js');
+      
+      logger.log('🔍 Testing device connectivity:', { ip, mdns, protocol });
+      
+      // Test both IP and mDNS addresses
+      const result = await findBestDeviceAddress(ip, mdns, protocol);
+      
+      if (result.success) {
+        logger.log('✅ Device found:', result.bestAddress, result.deviceInfo?.name);
         return {
           success: true,
-          data: data,
-          message: "WLED device found and accessible",
-        };
-      } else if (wledResponse.status === 404) {
-        return {
-          success: false,
-          message:
-            "Device accessible but WLED not detected - not a WLED device",
+          bestAddress: result.bestAddress,
+          responseTime: result.responseTime,
+          deviceInfo: result.deviceInfo,
+          message: `WLED device found: ${result.deviceInfo?.name || "Unknown"} via ${result.bestAddress} (${result.responseTime}ms)`,
+          allResults: result.allResults
         };
       } else {
+        logger.log('❌ Device validation failed:', result.message);
         return {
           success: false,
-          message: `WLED endpoint error - HTTP ${wledResponse.status}`,
+          message: result.details || result.message,
         };
       }
     } catch (error) {
-      if (error.name === "TimeoutError") {
-        return {
-          success: false,
-          message: "Connection timeout - device may be offline or unreachable",
-        };
-      } else if (
-        error.name === "TypeError" ||
-        error.message.includes("Failed to fetch")
-      ) {
-        return {
-          success: false,
-          message:
-            "Network error - check IP address and ensure device is on same network",
-        };
-      } else {
-        return {
-          success: false,
-          message: `Connection failed: ${error.message}`,
-        };
-      }
+      logger.error('💥 Device validation error:', error);
+      return {
+        success: false,
+        message: `Validation failed: ${error.message}`,
+      };
     }
   };
 
@@ -488,27 +483,43 @@ export default function KoloriApp() {
     return ipPattern.test(ip);
   };
 
-  // Device management functions
-  const addDevice = async () => {
-    logger.log('➕ Adding new device:', newDevice.name, newDevice.ip);
-    
-    if (newDevice.name && newDevice.ip && isValidIP(newDevice.ip)) {
-      try {
-        // Check for duplicate device name (case-insensitive)
-        const duplicateName = devices.find(
-          (device) => device.name.toLowerCase() === newDevice.name.toLowerCase()
-        );
-        if (duplicateName) {
-          setNewDevice((prev) => ({
-            ...prev,
-            validating: false,
-            validationMessage: `Device name "${newDevice.name}" already exists. Please choose a different name.`,
-            validationError: true,
-          }));
-          return;
-        }
+  // Helper to get the best device address (prioritizes bestAddress, falls back to IP)
+  const getDeviceAddress = (device) => {
+    if (!device) return null;
+    return device.bestAddress || device.ip;
+  };
 
-        // Check for duplicate IP address
+  // Device management functions  
+  const addDevice = async () => {
+    logger.log('➕ Adding new device:', newDevice.name, 'IP:', newDevice.ip, 'mDNS:', newDevice.mdns);
+    
+    // Validate that we have name and at least one connection method
+    if (!newDevice.name || (!newDevice.ip && !newDevice.mdns)) {
+      setNewDevice((prev) => ({
+        ...prev,
+        validationMessage: "Please provide a device name and at least an IP address or mDNS name.",
+        validationError: true,
+      }));
+      return;
+    }
+
+    try {
+      // Check for duplicate device name (case-insensitive)
+      const duplicateName = devices.find(
+        (device) => device.name.toLowerCase() === newDevice.name.toLowerCase()
+      );
+      if (duplicateName) {
+        setNewDevice((prev) => ({
+          ...prev,
+          validating: false,
+          validationMessage: `Device name "${newDevice.name}" already exists. Please choose a different name.`,
+          validationError: true,
+        }));
+        return;
+      }
+
+      // Check for duplicate IP address (if provided)
+      if (newDevice.ip) {
         const duplicateIP = devices.find(
           (device) => device.ip === newDevice.ip
         );
@@ -521,86 +532,104 @@ export default function KoloriApp() {
           }));
           return;
         }
+      }
 
-        // Show connecting screen
-        setNewDevice((prev) => ({
-          ...prev,
-          validating: true,
-          validationMessage: "Connecting to device...",
-          validationError: false,
-        }));
-
-        // First check basic HTTP connectivity
-        setNewDevice((prev) => ({
-          ...prev,
-          validationMessage: "Checking if device is accessible...",
-        }));
-
-        // Validate device URL
-        const validation = await validateDeviceUrl(
-          newDevice.ip,
-          newDevice.protocol
+      // Check for duplicate mDNS name (if provided)
+      if (newDevice.mdns) {
+        const duplicateMdns = devices.find(
+          (device) => device.mdns === newDevice.mdns
         );
-
-        if (validation.success) {
-          // Show success message briefly before adding device
-          setNewDevice((prev) => ({
-            ...prev,
-            validationMessage: "WLED device confirmed! Adding to devices...",
-          }));
-
-          // Short delay to show success message
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          const device = {
-            id: Date.now(),
-            name: newDevice.name,
-            ip: newDevice.ip,
-            protocol: newDevice.protocol,
-            isConnected: true, // Set to true since validation passed
-            autoBrightness: true,
-            maxBrightness: 80,
-            activePreset: null,
-            isPlaying: false,
-            wledInfo: validation.data || null,
-          };
-          const updatedDevices = [...devices, device];
-          setDevices(updatedDevices);
-
-          // If this is the first device, make it active
-          if (devices.length === 0) {
-            setActiveDeviceId(device.id);
-          }
-
-          setNewDevice({
-            name: "",
-            ip: "",
-            protocol: "http",
-            description: "",
-            validating: false,
-            validationMessage: "",
-          });
-          setShowDeviceForm(false);
-        } else {
-          // Show validation error but keep form open
+        if (duplicateMdns) {
           setNewDevice((prev) => ({
             ...prev,
             validating: false,
-            validationMessage: validation.message,
+            validationMessage: `mDNS name ${newDevice.mdns} is already in use by device "${duplicateMdns.name}".`,
             validationError: true,
           }));
+          return;
         }
-      } catch (error) {
-        // Handle any unexpected errors
+      }
+
+      // Show connecting screen
+      setNewDevice((prev) => ({
+        ...prev,
+        validating: true,
+        validationMessage: "Testing device connectivity...",
+        validationError: false,
+      }));
+
+      // Test device connectivity with both IP and mDNS
+      const validation = await validateDevice(
+        newDevice.ip,
+        newDevice.mdns,
+        newDevice.protocol
+      );
+
+      if (validation.success) {
+        // Show success message briefly before adding device
+        setNewDevice((prev) => ({
+          ...prev,
+          validationMessage: `WLED device confirmed via ${validation.bestAddress}! Adding to devices...`,
+        }));
+
+        // Short delay to show success message
+        await new Promise((resolve) => setTimeout(resolve, 800));
+
+        const device = {
+          id: Date.now(),
+          name: newDevice.name,
+          ip: newDevice.ip || validation.bestAddress, // Use best address if no IP provided
+          mdns: newDevice.mdns,
+          bestAddress: validation.bestAddress, // Store the working address
+          protocol: newDevice.protocol,
+          description: newDevice.description,
+          isConnected: true,
+          autoBrightness: true,
+          maxBrightness: 80,
+          activePreset: null,
+          isPlaying: false,
+          wledInfo: validation.deviceInfo || null,
+          responseTime: validation.responseTime,
+        };
+        
+        const updatedDevices = [...devices, device];
+        setDevices(updatedDevices);
+
+        // If this is the first device, make it active
+        if (devices.length === 0) {
+          setActiveDeviceId(device.id);
+        }
+
+        setNewDevice({
+          name: "",
+          ip: "",
+          mdns: "",
+          protocol: "http",
+          description: "",
+          validating: false,
+          validationMessage: "",
+        });
+        setShowDeviceForm(false);
+        
+        logger.log('✅ Device added successfully:', device.name, 'via', device.bestAddress);
+      } else {
+        // Show validation error but keep form open
         setNewDevice((prev) => ({
           ...prev,
           validating: false,
-          validationMessage:
-            "Unexpected error occurred during device validation",
+          validationMessage: validation.message,
           validationError: true,
         }));
-        logger.error("Device addition error:", error);
       }
+    } catch (error) {
+      // Handle any unexpected errors
+      setNewDevice((prev) => ({
+        ...prev,
+        validating: false,
+        validationMessage: "Unexpected error occurred during device validation",
+        validationError: true,
+      }));
+      logger.error("💥 Device addition error:", error);
     }
   };
 
@@ -665,7 +694,7 @@ export default function KoloriApp() {
 
       // Call WLED API to activate preset
       const result = await activateWledPreset(
-        activeDevice.ip,
+        getDeviceAddress(activeDevice),
         seasonalPreset.name,
         activeDevice.protocol || "http"
       );
@@ -692,14 +721,14 @@ export default function KoloriApp() {
       let result;
       if (customEffect.presetId) {
         result = await activateWledPresetById(
-          activeDevice.ip,
+          getDeviceAddress(activeDevice),
           customEffect.presetId,
           activeDevice.protocol || "http"
         );
       } else {
         // Fallback for effects created before preset integration
         result = await activateWledEffect(
-          activeDevice.ip,
+          getDeviceAddress(activeDevice),
           customEffect.effectId,
           customEffect.paletteId,
           activeDevice.protocol || "http"
@@ -867,7 +896,7 @@ export default function KoloriApp() {
 
     try {
       const result = await activateWledPresetById(
-        activeDevice.ip,
+        getDeviceAddress(activeDevice),
         playlistToActivate.presetId,
         activeDevice.protocol || "http"
       );
@@ -1017,7 +1046,7 @@ export default function KoloriApp() {
     }
 
     const result = await turnWledOn(
-      activeDevice.ip,
+      getDeviceAddress(activeDevice),
       activeDevice.protocol || "http"
     );
     if (result.success) {
@@ -1042,7 +1071,7 @@ export default function KoloriApp() {
     }
 
     const result = await turnWledOff(
-      activeDevice.ip,
+      getDeviceAddress(activeDevice),
       activeDevice.protocol || "http"
     );
     if (result.success) {
@@ -1080,15 +1109,18 @@ export default function KoloriApp() {
 
   // Handle user agreement
   const handleAcceptAgreement = () => {
+    logger.log('✅ User agreement accepted');
     const agreementData = {
       accepted: true,
       timestamp: new Date().toISOString(),
       version: "1.0",
     };
     setUserAgreementAccepted(agreementData);
+    saveToStorage(USER_AGREEMENT_STORAGE_KEY, agreementData);
   };
 
   const handleRejectAgreement = () => {
+    logger.log('❌ User agreement rejected');
     // Clear any stored data and show rejection message
     localStorage.removeItem(USER_AGREEMENT_STORAGE_KEY);
     localStorage.removeItem(DEVICES_STORAGE_KEY);
@@ -1096,6 +1128,12 @@ export default function KoloriApp() {
 
     alert("You must accept the terms to use Kolori. The page will now close.");
     window.close();
+  };
+
+  const handleAcceptMixedContent = () => {
+    logger.log('🔒 Mixed content protection accepted');
+    setMixedContentAccepted(true);
+    saveToStorage("kolori_mixed_content_accepted", true);
   };
 
   // Helper functions for custom effects management
@@ -1153,7 +1191,7 @@ export default function KoloriApp() {
 
     try {
       const result = await getWledPresets(
-        activeDevice.ip,
+        getDeviceAddress(activeDevice),
         activeDevice.protocol || "http"
       );
 
@@ -1222,6 +1260,16 @@ export default function KoloriApp() {
         isDark={isDark}
         onAccept={handleAcceptAgreement}
         onReject={handleRejectAgreement}
+      />
+    );
+  }
+
+  // Show mixed content protection info after EULA
+  if (!mixedContentAccepted) {
+    return (
+      <MixedContentProtection
+        isDark={isDark}
+        onAccept={handleAcceptMixedContent}
       />
     );
   }

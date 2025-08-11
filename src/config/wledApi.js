@@ -2,8 +2,114 @@
 import { logger } from '../utils/logger.js';
 
 // Helper function to build WLED URLs with protocol support
-const buildWledUrl = (deviceIp, protocol = "http", path) => {
-  return `${protocol}://${deviceIp}${path}`;
+const buildWledUrl = (deviceAddress, protocol = "http", path) => {
+  // Handle mDNS names by appending .local if needed
+  if (deviceAddress && !deviceAddress.includes(':')) {
+    // Check if it's an IP address (contains 3 dots in IP format)
+    const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const isIP = ipPattern.test(deviceAddress);
+    
+    // If it's not an IP and doesn't already end with .local, add .local
+    if (!isIP && !deviceAddress.endsWith('.local')) {
+      deviceAddress = `${deviceAddress}.local`;
+    }
+  }
+  return `${protocol}://${deviceAddress}${path}`;
+};
+
+// Test connectivity for a device address (IP or mDNS)
+export const testDeviceConnectivity = async (deviceAddress, protocol = "http") => {
+  try {
+    const startTime = Date.now();
+    const url = buildWledUrl(deviceAddress, protocol, '/json/info');
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(3000)
+    });
+    
+    const responseTime = Date.now() - startTime;
+    
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        address: deviceAddress,
+        responseTime,
+        deviceInfo: data,
+        message: `Connected in ${responseTime}ms`
+      };
+    } else {
+      return {
+        success: false,
+        address: deviceAddress,
+        responseTime,
+        message: `HTTP Error: ${response.status}`
+      };
+    }
+    
+  } catch (error) {
+    return {
+      success: false,
+      address: deviceAddress,
+      message: error.name === 'TimeoutError' ? 'Connection timeout' : `Connection failed: ${error.message}`
+    };
+  }
+};
+
+// Test both IP and mDNS addresses and return the best option
+export const findBestDeviceAddress = async (ip, mdns, protocol = "http") => {
+  const tests = [];
+  
+  // Add IP test if provided
+  if (ip && ip.trim()) {
+    tests.push(testDeviceConnectivity(ip.trim(), protocol));
+  }
+  
+  // Add mDNS test if provided
+  if (mdns && mdns.trim()) {
+    tests.push(testDeviceConnectivity(mdns.trim(), protocol));
+  }
+  
+  if (tests.length === 0) {
+    return {
+      success: false,
+      message: 'No IP address or mDNS name provided'
+    };
+  }
+  
+  try {
+    // Run all tests in parallel
+    const results = await Promise.all(tests);
+    const successfulResults = results.filter(result => result.success);
+    
+    if (successfulResults.length === 0) {
+      return {
+        success: false,
+        message: 'All connection attempts failed',
+        details: results.map(r => `${r.address}: ${r.message}`).join(', ')
+      };
+    }
+    
+    // Sort by response time (fastest first)
+    successfulResults.sort((a, b) => a.responseTime - b.responseTime);
+    const bestResult = successfulResults[0];
+    
+    return {
+      success: true,
+      bestAddress: bestResult.address,
+      responseTime: bestResult.responseTime,
+      deviceInfo: bestResult.deviceInfo,
+      message: `Best connection: ${bestResult.address} (${bestResult.responseTime}ms)`,
+      allResults: results
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: `Connectivity test failed: ${error.message}`
+    };
+  }
 };
 
 // Simple preset mapping - maps preset names to WLED preset numbers
@@ -14,13 +120,13 @@ export const PRESET_MAPPING = {
 };
 
 // Simple function to activate presets by name
-export const activateWledPreset = async (deviceIp, presetName, protocol = "http") => {
+export const activateWledPreset = async (deviceAddress, presetName, protocol = "http") => {
   const wledPresetNumber = PRESET_MAPPING[presetName];
   if (!wledPresetNumber) {
     return { success: false, message: `No preset mapping found for: ${presetName}` };
   }
   
-  const url = buildWledUrl(deviceIp, protocol, `/win&PL=${wledPresetNumber}`);
+  const url = buildWledUrl(deviceAddress, protocol, `/win&PL=${wledPresetNumber}`);
   
   try {
     const response = await fetch(url, {
@@ -33,6 +139,15 @@ export const activateWledPreset = async (deviceIp, presetName, protocol = "http"
       : { success: false, message: `HTTP Error: ${response.status}` };
       
   } catch (error) {
+    // Check for mixed content errors
+    if (error.message.includes('mixed content') || 
+        (location.protocol === 'https:' && protocol === 'http')) {
+      return {
+        success: false,
+        message: 'Mixed content blocked: Cannot access HTTP device from HTTPS page. Try accessing this page via HTTP instead.'
+      };
+    }
+    
     return { 
       success: false, 
       message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
@@ -41,8 +156,8 @@ export const activateWledPreset = async (deviceIp, presetName, protocol = "http"
 };
 
 // Function to activate custom effects (effect + palette combination)
-export const activateWledEffect = async (deviceIp, effectId, paletteId, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, `/win&FX=${effectId}&FP=${paletteId}`);
+export const activateWledEffect = async (deviceAddress, effectId, paletteId, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, `/win&FX=${effectId}&FP=${paletteId}`);
   
   try {
     const response = await fetch(url, {
@@ -63,8 +178,8 @@ export const activateWledEffect = async (deviceIp, effectId, paletteId, protocol
 };
 
 // Function to get WLED device info including presets
-export const getWledInfo = async (deviceIp, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, '/json/info');
+export const getWledInfo = async (deviceAddress, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/info');
   
   try {
     const response = await fetch(url, {
@@ -88,8 +203,8 @@ export const getWledInfo = async (deviceIp, protocol = "http") => {
 };
 
 // Function to get available effects from WLED device
-export const getWledEffects = async (deviceIp, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, '/json/effects');
+export const getWledEffects = async (deviceAddress, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/effects');
   
   try {
     const response = await fetch(url, {
@@ -120,8 +235,8 @@ export const getWledEffects = async (deviceIp, protocol = "http") => {
 };
 
 // Function to get available palettes from WLED device
-export const getWledPalettes = async (deviceIp, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, '/json/palettes');
+export const getWledPalettes = async (deviceAddress, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/palettes');
   
   try {
     const response = await fetch(url, {
@@ -152,8 +267,8 @@ export const getWledPalettes = async (deviceIp, protocol = "http") => {
 };
 
 // Function to get WLED device presets
-export const getWledPresets = async (deviceIp, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, '/presets.json');
+export const getWledPresets = async (deviceAddress, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/presets.json');
   
   try {
     const response = await fetch(url, {
@@ -253,8 +368,8 @@ const generatePresetGradient = (paletteId) => {
 };
 
 // Function to check if WLED device is online (heartbeat)
-export const checkWledHeartbeat = async (deviceIp, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, '/json/info');
+export const checkWledHeartbeat = async (deviceAddress, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/info');
   
   try {
     const response = await fetch(url, {
@@ -278,8 +393,8 @@ export const checkWledHeartbeat = async (deviceIp, protocol = "http") => {
 };
 
 // Function to get current WLED state
-export const getWledState = async (deviceIp) => {
-  const url = `http://${deviceIp}/json/state`;
+export const getWledState = async (deviceAddress, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/state');
   
   try {
     const response = await fetch(url, {
@@ -303,9 +418,9 @@ export const getWledState = async (deviceIp) => {
 };
 
 // Function to create a WLED preset
-export const createWledPreset = async (deviceIp, effectId, paletteId, presetName, presetId = null, protocol = "http") => {
+export const createWledPreset = async (deviceAddress, effectId, paletteId, presetName, presetId = null, protocol = "http") => {
   // First, set the current effect and palette
-  const setEffectUrl = buildWledUrl(deviceIp, protocol, `/win&FX=${effectId}&FP=${paletteId}`);
+  const setEffectUrl = buildWledUrl(deviceAddress, protocol, `/win&FX=${effectId}&FP=${paletteId}`);
   
   try {
     const setEffectResponse = await fetch(setEffectUrl, {
@@ -345,7 +460,7 @@ export const createWledPreset = async (deviceIp, effectId, paletteId, presetName
       }]
     };
     
-    const createPresetResponse = await fetch(buildWledUrl(deviceIp, protocol, '/json/state'), {
+    const createPresetResponse = await fetch(buildWledUrl(deviceAddress, protocol, '/json/state'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -373,8 +488,8 @@ export const createWledPreset = async (deviceIp, effectId, paletteId, presetName
 };
 
 // Function to delete a WLED preset
-export const deleteWledPreset = async (deviceIp, presetId, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, '/json/state');
+export const deleteWledPreset = async (deviceAddress, presetId, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/state');
   
   try {
     const response = await fetch(url, {
@@ -401,8 +516,8 @@ export const deleteWledPreset = async (deviceIp, presetId, protocol = "http") =>
 };
 
 // Function to activate preset by ID
-export const activateWledPresetById = async (deviceIp, presetId, protocol = "http") => {
-  const url = buildWledUrl(deviceIp, protocol, `/win&PL=${presetId}`);
+export const activateWledPresetById = async (deviceAddress, presetId, protocol = "http") => {
+  const url = buildWledUrl(deviceAddress, protocol, `/win&PL=${presetId}`);
   
   try {
     const response = await fetch(url, {
@@ -469,10 +584,10 @@ export const deleteWledPlaylist = async (deviceIp, presetIds) => {
 };
 
 // Function to turn WLED lights on globally
-export const turnWledOn = async (deviceIp, protocol = "http") => {
+export const turnWledOn = async (deviceAddress, protocol = "http") => {
   // Try JSON API first (more reliable), fallback to HTTP API
-  const jsonUrl = buildWledUrl(deviceIp, protocol, '/json/state');
-  const httpUrl = buildWledUrl(deviceIp, protocol, '/win&T=1');
+  const jsonUrl = buildWledUrl(deviceAddress, protocol, '/json/state');
+  const httpUrl = buildWledUrl(deviceAddress, protocol, '/win&T=1');
   
   
   try {
@@ -512,10 +627,10 @@ export const turnWledOn = async (deviceIp, protocol = "http") => {
 };
 
 // Function to turn WLED lights off globally
-export const turnWledOff = async (deviceIp, protocol = "http") => {
+export const turnWledOff = async (deviceAddress, protocol = "http") => {
   // Try JSON API first (more reliable), fallback to HTTP API
-  const jsonUrl = buildWledUrl(deviceIp, protocol, '/json/state');
-  const httpUrl = buildWledUrl(deviceIp, protocol, '/win&T=0');
+  const jsonUrl = buildWledUrl(deviceAddress, protocol, '/json/state');
+  const httpUrl = buildWledUrl(deviceAddress, protocol, '/win&T=0');
   
   
   try {

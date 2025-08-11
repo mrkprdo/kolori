@@ -16,6 +16,26 @@ export default function DeviceForm({
     return ipPattern.test(ip);
   };
 
+  // mDNS name validation function  
+  const isValidMdns = (mdns) => {
+    if (!mdns) return true; // Optional field
+    // Allow hostnames with dots (e.g., wled-device.local, subdomain.domain.local)
+    // Basic validation: letters, numbers, hyphens, dots, no consecutive dots or hyphens
+    const mdnsPattern = /^[a-zA-Z0-9]([a-zA-Z0-9\-\.]{0,250}[a-zA-Z0-9])?$/;
+    // Check for invalid patterns like consecutive dots or hyphens
+    const hasConsecutiveDots = /\.\./.test(mdns);
+    const hasConsecutiveHyphens = /--/.test(mdns);
+    const startsOrEndsWithDotOrHyphen = /^[\.\-]|[\.\-]$/.test(mdns);
+    
+    return mdnsPattern.test(mdns) && !hasConsecutiveDots && !hasConsecutiveHyphens && !startsOrEndsWithDotOrHyphen;
+  };
+
+  // Check if at least one connection method is provided
+  const hasValidConnection = () => {
+    return (newDevice.ip && isValidIP(newDevice.ip)) || 
+           (newDevice.mdns && isValidMdns(newDevice.mdns));
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div
@@ -64,7 +84,7 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              IP Address <span className="text-red-500">*</span>
+              IP Address
             </label>
             <input
               type="text"
@@ -88,6 +108,47 @@ export default function DeviceForm({
                 Please enter a valid IP address (e.g., 192.168.1.100)
               </div>
             )}
+          </div>
+
+          <div>
+            <label
+              className={`block text-sm mb-1 ${
+                isDark ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              mDNS Name
+            </label>
+            <input
+              type="text"
+              value={newDevice.mdns || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                onDeviceChange({ ...newDevice, mdns: value });
+              }}
+              placeholder="wled-device or device.local"
+              className={`w-full px-3 py-2 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                newDevice.mdns && !isValidMdns(newDevice.mdns)
+                  ? "border-red-500 focus:ring-red-500"
+                  : isDark
+                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                    : "bg-white border-gray-300 placeholder-gray-500"
+              }`}
+            />
+            {newDevice.mdns && !isValidMdns(newDevice.mdns) && (
+              <div className="text-xs mt-1 text-red-500">
+                Please enter a valid mDNS name (letters, numbers, hyphens, dots allowed)
+              </div>
+            )}
+            <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+              Alternative to IP address. Examples: wled-device, device.local, subdomain.domain.local
+            </div>
+          </div>
+
+          <div className={`p-3 rounded-lg ${isDark ? "bg-blue-900/20 border border-blue-800" : "bg-blue-50 border border-blue-200"}`}>
+            <div className={`text-sm ${isDark ? "text-blue-400" : "text-blue-600"}`}>
+              <strong>Connection Options:</strong> Provide either an IP address OR mDNS name (or both). 
+              The app will automatically test which one works and use the most reliable option.
+            </div>
           </div>
 
           <div>
@@ -188,7 +249,7 @@ export default function DeviceForm({
           </button>
           <button
             onClick={onAddDevice}
-            disabled={!newDevice.name || !newDevice.ip || !isValidIP(newDevice.ip) || newDevice.validating}
+            disabled={!newDevice.name || !hasValidConnection() || newDevice.validating}
             className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {newDevice.validating && <Loader2 size={16} className="animate-spin" />}

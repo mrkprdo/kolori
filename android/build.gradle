@@ -22,6 +22,12 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Force Java 21 for all subprojects (including Capacitor libraries)
+    tasks.withType(JavaCompile) {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
 }
 
 task clean(type: Delete) {

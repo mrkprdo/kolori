@@ -6,10 +6,180 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Kolori - Modern LED control app for WLED devices with beautiful presets and scheduling" />
     <meta name="theme-color" content="#3B82F6" />
-    <title>Kolori - WLED UI</title>
+    
+    <!-- Allow mixed content for local device communication -->
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' http://* https://* ws://* wss://*; default-src 'self' 'unsafe-inline' 'unsafe-eval' http://* https://*">
+    
+    <title>Kolori - WLED Control Interface</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      
+      .iframe-container {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        background: white;
+      }
+      
+      #kolori-app {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+      }
+      
+      .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 18px;
+        z-index: 1000;
+        transition: opacity 0.5s ease-out;
+        flex-direction: column;
+        gap: 20px;
+      }
+      
+      .loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top: 4px solid white;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        text-align: center;
+      }
+      
+      .loading-subtitle {
+        font-size: 14px;
+        opacity: 0.8;
+        margin-top: 8px;
+      }
+      
+      
+      .error-state {
+        color: #ff6b6b;
+        text-align: center;
+        flex-direction: column;
+      }
+      
+      .retry-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .retry-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div class="iframe-container">
+      <!-- Loading overlay -->
+      <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">
+          <div>Loading Kolori...</div>
+          <div class="loading-subtitle">Initializing WLED control interface</div>
+        </div>
+      </div>
+      
+      
+      <!-- Main app iframe with comprehensive permissions -->
+      <iframe
+        id="kolori-app"
+        src="/app.html"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-modals allow-popups allow-presentation allow-top-navigation-by-user-activation allow-downloads"
+        allow="cross-origin-isolated; mixed-content 'self' http://*; connect-src http://* https://* ws://* wss://*"
+        loading="eager"
+        title="Kolori WLED Control Interface"
+        referrerpolicy="no-referrer-when-downgrade"
+      ></iframe>
+    </div>
+
+    <script>
+      // Enhanced iframe handling
+      const iframe = document.getElementById('kolori-app');
+      const loading = document.getElementById('loading');
+      let loadTimeout;
+      
+      // Set a timeout for loading
+      loadTimeout = setTimeout(() => {
+        if (!loading.classList.contains('hidden')) {
+          showError('Loading timeout. Please check your connection.');
+        }
+      }, 10000);
+      
+      iframe.onload = function() {
+        clearTimeout(loadTimeout);
+        setTimeout(() => {
+          loading.classList.add('hidden');
+        }, 800);
+      };
+      
+      // Enhanced error handling
+      iframe.onerror = function() {
+        clearTimeout(loadTimeout);
+        showError('Failed to load the app. Please refresh the page.');
+      };
+      
+      function showError(message) {
+        loading.innerHTML = `
+          <div class="error-state">
+            <div style="font-size: 24px; margin-bottom: 10px;">⚠️</div>
+            <div>${message}</div>
+            <button class="retry-button" onclick="location.reload()">
+              Reload App
+            </button>
+          </div>
+        `;
+        loading.classList.remove('hidden');
+      }
+      
+      // Handle messages from iframe
+      window.addEventListener('message', function(event) {
+        if (event.data.type === 'MIXED_CONTENT_ERROR') {
+          console.warn('Mixed content blocked:', event.data.url);
+          // Could show a notification to the user about mixed content
+        }
+      });
+      
+      // Detect if running over HTTPS
+      if (location.protocol === 'https:') {
+        console.log('🔒 HTTPS detected - Mixed content protection is active');
+      }
+    </script>
   </body>
 </html>
