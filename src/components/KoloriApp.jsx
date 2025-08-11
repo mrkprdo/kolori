@@ -884,6 +884,50 @@ export default function KoloriApp() {
     console.log("Removed playlist locally:", playlist.name);
   };
 
+  const applyPlaylist = async (playlistId) => {
+    const playlistToActivate = savedPlaylists.find(p => p.id === playlistId);
+
+    if (!playlistToActivate) {
+      console.error("Playlist not found:", playlistId);
+      showNotification("error", "Playlist Error", "Selected playlist not found.");
+      return;
+    }
+
+    if (!activeDevice?.isConnected) {
+      showNotification(
+        "error",
+        "Device Offline",
+        `${activeDevice?.name || 'Device'} is disconnected. Please check your device connection.`
+      );
+      return;
+    }
+
+    if (playlistToActivate.presetId === undefined || playlistToActivate.presetId === null) {
+      console.error("Playlist has no associated preset ID:", playlistToActivate);
+      showNotification("error", "Playlist Error", "Selected playlist cannot be activated (missing preset ID).");
+      return;
+    }
+
+    try {
+      console.log(`Activating playlist "${playlistToActivate.name}" (Preset ID: ${playlistToActivate.presetId})`);
+      const result = await activateWledPresetById(
+        activeDevice.ip,
+        playlistToActivate.presetId,
+        activeDevice.protocol || "http"
+      );
+
+      if (result.success) {
+        updateDevice(activeDeviceId, { activePreset: playlistToActivate.presetId, isPlaying: true });
+        showNotification("success", "Playlist Activated", `"${playlistToActivate.name}" is now playing.`);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("❌ Failed to activate playlist:", error.message);
+      showNotification("error", "Activation Failed", `Could not activate playlist: ${error.message}`);
+    }
+  };
+
   const savePlaylist = async (playlistName) => {
     if (currentPlaylist.length === 0) {
       console.log("Cannot save empty playlist");
@@ -1346,6 +1390,7 @@ export default function KoloriApp() {
           savedPlaylists={savedPlaylists}
           onPlaylistEdit={editPlaylist}
           onPlaylistRemove={removePlaylist}
+          onPlaylistSelect={applyPlaylist} // New prop
           filterTerm={filterTerm}
           setFilterTerm={setFilterTerm}
         />

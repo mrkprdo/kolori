@@ -406,6 +406,7 @@ function PresetGrid({
   savedPlaylists,
   onPlaylistEdit,
   onPlaylistRemove,
+  onPlaylistSelect, // New prop
 }) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(() => {
     const saved = localStorage.getItem("kolori_seasonal_collapsed");
@@ -1138,8 +1139,7 @@ function PresetGrid({
                     playlist={playlist}
                     isActive={playlist.isActive}
                     onClick={(playlistId) => {
-                      // Handle playlist selection/activation
-                      console.log("Playlist selected:", playlistId);
+                      onPlaylistSelect(playlistId);
                     }}
                     onRemove={onPlaylistRemove}
                     onEdit={onPlaylistEdit}
