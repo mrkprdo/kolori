@@ -65,7 +65,7 @@ export default function KoloriApp() {
   const [scheduleMode, setScheduleMode] = useState(() =>
     loadFromStorage(SCHEDULE_MODE_STORAGE_KEY, "all-day")
   );
-  const [scheduleEnabled, setScheduleEnabled] = useState(true);
+  
   const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
@@ -205,7 +205,7 @@ export default function KoloriApp() {
 
   // Schedule monitoring - check every minute to enforce schedule
   useEffect(() => {
-    if (!scheduleEnabled || scheduleMode === "all-day") return;
+    if (scheduleMode === "all-day") return;
 
     // Initial check
     checkAndApplySchedule();
@@ -216,7 +216,7 @@ export default function KoloriApp() {
     return () => {
       clearInterval(scheduleInterval);
     };
-  }, [scheduleMode, scheduleEnabled, activeDevice?.id, activeDevice?.isConnected]);
+  }, [scheduleMode, activeDevice?.id, activeDevice?.isConnected]);
 
   // Device validation function
   const validateDeviceUrl = async (ip, protocol = "http") => {
@@ -750,7 +750,7 @@ export default function KoloriApp() {
     console.log(`🕐 Current hour: ${currentHour}`);
     console.log(`📅 Schedule mode: ${scheduleMode}`);
     console.log(`💡 Should lights be on: ${shouldBeOn}`);
-    console.log(`🔧 Schedule enabled: ${scheduleEnabled}`);
+    
     console.log(`📱 Active device: ${activeDevice?.name || 'none'}`);
     console.log(`🌐 Device connected: ${activeDevice?.isConnected || false}`);
     
@@ -793,7 +793,7 @@ export default function KoloriApp() {
     console.log(`📅 Schedule Check: Starting check...`);
     console.log(`📅 Active Device: ${activeDevice?.name || 'none'}`);
     console.log(`📅 Device Connected: ${activeDevice?.isConnected || false}`);
-    console.log(`📅 Schedule Enabled: ${scheduleEnabled}`);
+    
     console.log(`📅 Schedule Mode: ${scheduleMode}`);
     
     if (!activeDevice) {
@@ -806,10 +806,7 @@ export default function KoloriApp() {
       return;
     }
     
-    if (!scheduleEnabled) {
-      console.log(`📅 Schedule Check: Schedule disabled - skipping`);
-      return;
-    }
+    
 
     const shouldBeOn = shouldLightsBeOn();
     const currentTime = new Date().toISOString();
@@ -938,8 +935,7 @@ export default function KoloriApp() {
           isDark={isDark}
           scheduleMode={scheduleMode}
           onScheduleChange={setSchedule}
-          scheduleEnabled={scheduleEnabled}
-          onScheduleEnabledChange={setScheduleEnabled}
+
           onManualTurnOn={manualTurnOn}
           onManualTurnOff={manualTurnOff}
           onTestScheduleLogic={testScheduleLogic}
@@ -1042,8 +1038,7 @@ export default function KoloriApp() {
           isDark={isDark}
           scheduleMode={scheduleMode}
           onScheduleChange={setSchedule}
-          scheduleEnabled={scheduleEnabled}
-          onScheduleEnabledChange={setScheduleEnabled}
+
           onManualTurnOn={manualTurnOn}
           onManualTurnOff={manualTurnOff}
           onTestScheduleLogic={testScheduleLogic}

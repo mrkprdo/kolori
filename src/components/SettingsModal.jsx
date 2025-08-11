@@ -22,8 +22,6 @@ export default function SettingsModal({
   isDark,
   scheduleMode,
   onScheduleChange,
-  scheduleEnabled,
-  onScheduleEnabledChange,
   onManualTurnOn,
   onManualTurnOff,
   onTestScheduleLogic,
@@ -243,24 +241,15 @@ export default function SettingsModal({
                 <h3 className="font-semibold">Schedule</h3>
               </div>
               <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={scheduleEnabled}
-                    onChange={(e) => onScheduleEnabledChange(e.target.checked)}
-                    className="rounded"
-                  />
-                  Enabled
-                </label>
+                
                 <select
                   value={scheduleMode}
                   onChange={(e) => onScheduleChange(e.target.value)}
-                  disabled={!scheduleEnabled}
                   className={`px-3 py-2 rounded-lg text-sm font-medium border ${
                     isDark
                       ? "bg-gray-800 border-gray-600 text-white"
                       : "bg-white border-gray-300"
-                  } ${!scheduleEnabled ? "opacity-50" : ""}`}
+                  }`}
                 >
                   <option value="all-day">🕐 All Day</option>
                   <option value="day">☀️ Day 7am-7pm</option>
