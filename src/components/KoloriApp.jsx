@@ -14,9 +14,7 @@ import {
   activateWledPreset,
   activateWledPresetById,
   activateWledEffect,
-  createWledPlaylist,
-  startWledPlaylist,
-  stopWledPlaylist,
+  deleteWledPlaylistViaWebSocket,
   checkWledHeartbeat,
   turnWledOn,
   turnWledOff,
@@ -775,66 +773,157 @@ export default function KoloriApp() {
     console.log("Editing playlist:", playlist.name);
   };
 
-  const removePlaylist = (playlistId) => {
+  const removePlaylist = async (playlistId) => {
+    const playlist = savedPlaylists.find(p => p.id === playlistId);
+    if (!playlist) {
+      console.error("Playlist not found:", playlistId);
+      return;
+    }
+
+    if (!activeDevice?.isConnected) {
+      console.log("No active device connected");
+      showNotification(
+        "error",
+        "Device Offline",
+        "Connect to a WLED device to delete playlists from the device."
+      );
+      // Still allow local removal even if device is offline
+      setSavedPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+      return;
+    }
+
+    try {
+      // Delete from WLED device via WebSocket if it has a preset ID
+      if (playlist.presetId) {
+        const result = await deleteWledPlaylistViaWebSocket(
+          playlist.presetId,
+          playlist.name
+        );
+        
+        if (result.success) {
+          console.log("✅ Playlist deleted from WLED device:", playlist.name);
+          showNotification(
+            "success",
+            "Playlist Deleted",
+            `"${playlist.name}" has been removed from your WLED device.`
+          );
+        } else {
+          console.warn("⚠️ Failed to delete from device, removing locally:", result.message);
+          showNotification(
+            "warning",
+            "Partial Deletion",
+            `"${playlist.name}" removed locally but may still exist on WLED device.`
+          );
+        }
+      } else {
+        console.log("No preset ID, removing locally only:", playlist.name);
+      }
+    } catch (error) {
+      console.error("❌ Error deleting playlist from device:", error.message);
+      showNotification(
+        "warning",
+        "Deletion Error",
+        `Error removing "${playlist.name}" from device, but removed locally.`
+      );
+    }
+
+    // Always remove from local state
     setSavedPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
-    console.log("Removed playlist:", playlistId);
+    console.log("Removed playlist locally:", playlist.name);
   };
 
   const savePlaylist = async (playlistName) => {
     if (currentPlaylist.length === 0) {
       console.log("Cannot save empty playlist");
+      showNotification(
+        "error",
+        "Empty Playlist",
+        "Add some custom effects to your playlist before saving."
+      );
       return;
     }
 
-    if (!activeDevice) {
-      console.log("No active device");
+    if (!activeDevice?.isConnected) {
+      console.log("No active device connected");
+      showNotification(
+        "error",
+        "Device Offline",
+        "Connect to a WLED device before saving playlists."
+      );
       return;
     }
 
     const finalPlaylistName = playlistName || `Playlist_${Date.now()}`;
 
+    // Map current playlist items to WebSocket format
     const playlistItems = currentPlaylist.map((item) => ({
       name: item.name,
-      effectId: item.effectId || 0,
-      paletteId: item.paletteId || 0,
+      presetId: item.presetId, // Required for WebSocket playlist
       duration: item.duration || 30,
-      gradient: item.gradient, // Preserve gradient for playlist cards
+      gradient: item.gradient,
     }));
 
-    const result = await createWledPlaylist(
-      activeDevice.ip,
-      playlistItems,
-      finalPlaylistName
-    );
-
-    if (result.success) {
-      const newSavedPlaylist = {
-        id: Date.now(),
-        name: finalPlaylistName,
-        items: playlistItems,
-        presets: result.presets,
-        firstPresetId: result.firstPresetId,
-        lastPresetId: result.lastPresetId,
-        isActive: true,
-      };
-
-      setSavedPlaylists((prev) => [
-        ...prev.map((p) => ({ ...p, isActive: false })),
-        newSavedPlaylist,
-      ]);
-
-      console.log("Playlist saved successfully:", finalPlaylistName);
+    // Validate that all items have preset IDs (required for WebSocket playlist)
+    const missingPresetIds = playlistItems.filter(item => !item.presetId);
+    if (missingPresetIds.length > 0) {
+      console.error("Some playlist items missing preset IDs:", missingPresetIds);
       showNotification(
-        "success",
-        "Playlist Saved!",
-        `"${finalPlaylistName}" has been saved to your WLED device.`
+        "error",
+        "Invalid Playlist",
+        "All playlist items must be saved custom effects with preset IDs."
       );
-    } else {
-      console.error("Failed to save playlist:", result.message);
+      return;
+    }
+
+    // Use ONLY WebSocket for playlist creation - no HTTP fallback
+    try {
+      // Import WebSocket function dynamically
+      const { savePlaylistViaWebSocket } = await import('../utils/wledWebSocket.js');
+      
+      // Generate playlist preset ID
+      const timestamp = Date.now();
+      const randomComponent = Math.floor(Math.random() * 100);
+      const playlistPresetId = 50 + ((timestamp + randomComponent) % 200);
+      
+      const success = savePlaylistViaWebSocket(
+        playlistPresetId,
+        finalPlaylistName,
+        playlistItems,
+        {
+          transition: 7,  // 0.7 seconds transition
+          repeat: 0       // Infinite repeat
+        }
+      );
+
+      if (success) {
+        const newSavedPlaylist = {
+          id: Date.now(),
+          name: finalPlaylistName,
+          items: playlistItems,
+          presetId: playlistPresetId,
+          method: 'websocket-only'
+        };
+
+        setSavedPlaylists((prev) => [...prev, newSavedPlaylist]);
+        
+        // Clear current playlist after saving
+        setCurrentPlaylist([]);
+
+        console.log("✅ Playlist saved via WebSocket only:", finalPlaylistName);
+        showNotification(
+          "success",
+          "Playlist Saved!",
+          `"${finalPlaylistName}" has been saved to your WLED device via WebSocket.`
+        );
+      } else {
+        throw new Error('WebSocket playlist save failed');
+      }
+    } catch (error) {
+      console.error("❌ Failed to save playlist via WebSocket:", error.message);
       showNotification(
         "error",
         "Save Failed",
-        `Could not save playlist: ${result.message}`
+        `Could not save playlist via WebSocket: ${error.message || 'WebSocket not connected'}`
       );
     }
   };
@@ -1033,7 +1122,6 @@ export default function KoloriApp() {
           activePreset={activePreset}
           onPresetSelect={applyPreset}
           isDark={isDark}
-          isPlaying={isPlaying}
           currentPlaylist={currentPlaylist}
           onShowPlaylist={() => setShowPlaylist(true)}
           activeDevice={activeDevice}
@@ -1048,8 +1136,6 @@ export default function KoloriApp() {
           isOpen={showPlaylist}
           onClose={() => setShowPlaylist(false)}
           currentPlaylist={currentPlaylist}
-          isPlaying={isPlaying}
-          onTogglePlaylist={togglePlaylist}
           onAddToPlaylist={addToPlaylist}
           onRemoveFromPlaylist={removeFromPlaylist}
           onReorderPlaylist={reorderPlaylist}

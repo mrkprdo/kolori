@@ -86,6 +86,70 @@ export const getWledInfo = async (deviceIp, protocol = "http") => {
   }
 };
 
+// Function to get available effects from WLED device
+export const getWledEffects = async (deviceIp, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, '/json/effects');
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!response.ok) {
+      return { success: false, message: `HTTP Error: ${response.status}` };
+    }
+    
+    const effects = await response.json();
+    // Effects come as an array of strings, we need to map them to objects with IDs
+    const effectsWithIds = effects.map((name, index) => ({
+      id: index,
+      name: name,
+      effectId: index
+    }));
+    
+    return { success: true, effects: effectsWithIds };
+      
+  } catch (error) {
+    return { 
+      success: false, 
+      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Function to get available palettes from WLED device
+export const getWledPalettes = async (deviceIp, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, '/json/palettes');
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!response.ok) {
+      return { success: false, message: `HTTP Error: ${response.status}` };
+    }
+    
+    const palettes = await response.json();
+    // Palettes come as an array of strings, we need to map them to objects with IDs
+    const palettesWithIds = palettes.map((name, index) => ({
+      id: index,
+      name: name,
+      paletteId: index
+    }));
+    
+    return { success: true, palettes: palettesWithIds };
+      
+  } catch (error) {
+    return { 
+      success: false, 
+      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
 // Function to check if WLED device is online (heartbeat)
 export const checkWledHeartbeat = async (deviceIp, protocol = "http") => {
   const url = buildWledUrl(deviceIp, protocol, '/json/info');
@@ -256,147 +320,50 @@ export const activateWledPresetById = async (deviceIp, presetId, protocol = "htt
   }
 };
 
-// Function to create a playlist by setting up preset cycling
+// DEPRECATED: Old HTTP-based playlist creation - use createWledPlaylistViaWebSocket instead
+// This function is kept for compatibility but should not be used
 export const createWledPlaylist = async (deviceIp, playlistItems, playlistName) => {
-  try {
-    // First, create presets for each playlist item
-    const createdPresets = [];
-    
-    for (let i = 0; i < playlistItems.length; i++) {
-      const item = playlistItems[i];
-      const presetResult = await createWledPreset(
-        deviceIp, 
-        item.effectId, 
-        item.paletteId, 
-        `${playlistName}_${i + 1}`,
-        null // Let it find an available slot
-      );
-      
-      if (!presetResult.success) {
-        return { success: false, message: `Failed to create preset for ${item.name}: ${presetResult.message}` };
-      }
-      
-      createdPresets.push({
-        ...item,
-        presetId: presetResult.presetId
-      });
-    }
-    
-    // Set up playlist cycling using the created presets
-    const firstPresetId = createdPresets[0].presetId;
-    const lastPresetId = createdPresets[createdPresets.length - 1].presetId;
-    
-    const setupUrl = `http://${deviceIp}/win&P1=${firstPresetId}&P2=${lastPresetId}&PL=${firstPresetId}`;
-    
-    const response = await fetch(setupUrl, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    if (!response.ok) {
-      return { success: false, message: `Failed to setup playlist: ${response.status}` };
-    }
-    
-    return { 
-      success: true, 
-      message: 'Playlist created successfully',
-      presets: createdPresets,
-      firstPresetId,
-      lastPresetId
-    };
-      
-  } catch (error) {
-    return { 
-      success: false, 
-      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
-    };
-  }
+  console.warn('DEPRECATED: Use createWledPlaylistViaWebSocket instead of HTTP-based createWledPlaylist');
+  return { 
+    success: false, 
+    message: 'HTTP playlist creation is deprecated. Use WebSocket-based playlist creation instead.'
+  };
 };
 
-// Function to start/play a playlist
+// DEPRECATED: Old HTTP-based playlist start - use WebSocket commands instead
 export const startWledPlaylist = async (deviceIp, firstPresetId, lastPresetId) => {
-  const url = `http://${deviceIp}/win&P1=${firstPresetId}&P2=${lastPresetId}&PL=${firstPresetId}`;
-  
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    return response.ok 
-      ? { success: true, message: 'Playlist started' }
-      : { success: false, message: `HTTP Error: ${response.status}` };
-      
-  } catch (error) {
-    return { 
-      success: false, 
-      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
-    };
-  }
+  console.warn('DEPRECATED: Use WebSocket playPlaylistViaWebSocket instead of HTTP-based startWledPlaylist');
+  return { 
+    success: false, 
+    message: 'HTTP playlist control is deprecated. Use WebSocket-based playlist control instead.'
+  };
 };
 
-// Function to advance to next preset in playlist
+// DEPRECATED: Use WebSocket commands instead
 export const nextWledPlaylistItem = async (deviceIp) => {
-  const url = `http://${deviceIp}/win&PL=~`;
-  
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    return response.ok 
-      ? { success: true, message: 'Advanced to next preset' }
-      : { success: false, message: `HTTP Error: ${response.status}` };
-      
-  } catch (error) {
-    return { 
-      success: false, 
-      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
-    };
-  }
+  console.warn('DEPRECATED: Use WebSocket commands instead of HTTP-based nextWledPlaylistItem');
+  return { 
+    success: false, 
+    message: 'HTTP playlist control is deprecated. Use WebSocket-based commands instead.'
+  };
 };
 
-// Function to stop playlist (turn off preset cycling)
+// DEPRECATED: Use WebSocket commands instead
 export const stopWledPlaylist = async (deviceIp) => {
-  const url = `http://${deviceIp}/win&P1=0&P2=0`;
-  
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    return response.ok 
-      ? { success: true, message: 'Playlist stopped' }
-      : { success: false, message: `HTTP Error: ${response.status}` };
-      
-  } catch (error) {
-    return { 
-      success: false, 
-      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
-    };
-  }
+  console.warn('DEPRECATED: Use WebSocket commands instead of HTTP-based stopWledPlaylist');
+  return { 
+    success: false, 
+    message: 'HTTP playlist control is deprecated. Use WebSocket-based commands instead.'
+  };
 };
 
-// Function to delete a playlist (remove all its presets)
+// DEPRECATED: Use WebSocket deletePresetViaWebSocket instead
 export const deleteWledPlaylist = async (deviceIp, presetIds) => {
-  try {
-    for (const presetId of presetIds) {
-      const deleteResult = await deleteWledPreset(deviceIp, presetId);
-      if (!deleteResult.success) {
-        return { success: false, message: `Failed to delete preset ${presetId}: ${deleteResult.message}` };
-      }
-    }
-    
-    return { success: true, message: 'Playlist deleted successfully' };
-      
-  } catch (error) {
-    return { 
-      success: false, 
-      message: `Request failed: ${error.message}`
-    };
-  }
+  console.warn('DEPRECATED: Use WebSocket deletePresetViaWebSocket instead of HTTP-based deleteWledPlaylist');
+  return { 
+    success: false, 
+    message: 'HTTP playlist deletion is deprecated. Use WebSocket-based preset deletion instead.'
+  };
 };
 
 // Function to turn WLED lights on globally
@@ -493,6 +460,160 @@ export const turnWledOff = async (deviceIp, protocol = "http") => {
     return { 
       success: false, 
       message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Create WLED preset via WebSocket (faster, real-time)
+export const createWledPresetViaWebSocket = async (effectId, paletteId, presetName, presetId = null, options = {}) => {
+  try {
+    // Dynamically import WebSocket functions to avoid circular imports
+    const { savePresetViaWebSocket, sendWebSocketCommand } = await import('../utils/wledWebSocket.js');
+    
+    // First, set the effect and palette
+    const effectCommand = {
+      seg: [{
+        id: 0,
+        fx: effectId,
+        pal: paletteId
+      }]
+    };
+    
+    const effectSet = sendWebSocketCommand(effectCommand);
+    if (!effectSet) {
+      return { success: false, message: 'Failed to set effect via WebSocket' };
+    }
+    
+    // Wait a moment for the effect to be applied
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Generate a unique preset ID if not provided
+    let targetPresetId = presetId;
+    if (!targetPresetId) {
+      const timestamp = Date.now();
+      const randomComponent = Math.floor(Math.random() * 100);
+      targetPresetId = 50 + ((timestamp + randomComponent) % 200);
+    }
+    
+    // Save the preset with the specified options
+    const saveOptions = {
+      includeBrightness: options.includeBrightness !== false,
+      includeSegmentBrightness: options.includeSegmentBrightness !== false,
+      includeSegmentColors: options.includeSegmentColors || false,
+      ...options
+    };
+    
+    const saved = savePresetViaWebSocket(targetPresetId, presetName, saveOptions);
+    if (!saved) {
+      return { success: false, message: 'Failed to save preset via WebSocket' };
+    }
+    
+    return {
+      success: true,
+      message: 'Preset created via WebSocket',
+      presetId: targetPresetId,
+      method: 'websocket'
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: `WebSocket preset creation failed: ${error.message}`
+    };
+  }
+};
+
+// Create WLED playlist via WebSocket (faster, real-time)
+export const createWledPlaylistViaWebSocket = async (playlistItems, playlistName, options = {}) => {
+  try {
+    // Dynamically import WebSocket functions to avoid circular imports
+    const { savePlaylistViaWebSocket } = await import('../utils/wledWebSocket.js');
+    
+    if (!playlistItems || playlistItems.length === 0) {
+      return { success: false, message: 'Playlist cannot be empty' };
+    }
+    
+    // Ensure all playlist items have preset IDs
+    for (const item of playlistItems) {
+      if (!item.presetId) {
+        return { 
+          success: false, 
+          message: `Playlist item "${item.name}" missing preset ID. Create custom effects first.`
+        };
+      }
+    }
+    
+    // Generate a unique preset ID for the playlist
+    const timestamp = Date.now();
+    const randomComponent = Math.floor(Math.random() * 100);
+    const playlistPresetId = options.presetId || (50 + ((timestamp + randomComponent) % 200));
+    
+    // Default options
+    const playlistOptions = {
+      transition: 7, // 0.7 seconds transition
+      repeat: 0, // Infinite repeat
+      ...options
+    };
+    
+    // Save the playlist via WebSocket
+    const saved = savePlaylistViaWebSocket(
+      playlistPresetId, 
+      playlistName, 
+      playlistItems, 
+      playlistOptions
+    );
+    
+    if (!saved) {
+      return { success: false, message: 'Failed to save playlist via WebSocket' };
+    }
+    
+    return {
+      success: true,
+      message: 'Playlist created via WebSocket',
+      presetId: playlistPresetId,
+      playlistItems: playlistItems.length,
+      method: 'websocket'
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: `WebSocket playlist creation failed: ${error.message}`
+    };
+  }
+};
+
+// Delete WLED playlist via WebSocket (faster, real-time)
+export const deleteWledPlaylistViaWebSocket = async (presetId, playlistName = '') => {
+  try {
+    // Dynamically import WebSocket functions to avoid circular imports
+    const { deletePlaylistViaWebSocket } = await import('../utils/wledWebSocket.js');
+    
+    if (!presetId || presetId < 1 || presetId > 250) {
+      return { 
+        success: false, 
+        message: 'Invalid preset ID. Must be between 1 and 250.'
+      };
+    }
+    
+    // Delete the playlist via WebSocket
+    const deleted = deletePlaylistViaWebSocket(presetId);
+    
+    if (!deleted) {
+      return { success: false, message: 'Failed to delete playlist via WebSocket' };
+    }
+    
+    return {
+      success: true,
+      message: `Playlist "${playlistName}" deleted via WebSocket`,
+      presetId: presetId,
+      method: 'websocket'
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: `WebSocket playlist deletion failed: ${error.message}`
     };
   }
 };

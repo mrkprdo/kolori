@@ -1,13 +1,11 @@
 import React, { useState } from "react";
-import { Music, Play, Square, Plus, Trash2, GripVertical } from "lucide-react";
+import { Music, Plus, Trash2, GripVertical, Save } from "lucide-react";
 import SavePlaylistModal from "./SavePlaylistModal";
 
 export default function PlaylistModal({
   isOpen,
   onClose,
   currentPlaylist,
-  isPlaying,
-  onTogglePlaylist,
   onAddToPlaylist,
   onRemoveFromPlaylist,
   onReorderPlaylist,
@@ -81,7 +79,7 @@ export default function PlaylistModal({
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Play size={20} />
+              <Music size={20} />
               <h2
                 className={`text-lg font-semibold ${
                   isDark ? "text-white" : ""
@@ -160,35 +158,21 @@ export default function PlaylistModal({
                 </div>
               ))}
 
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={onTogglePlaylist}
-                  className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
-                    isPlaying
-                      ? "bg-red-500 text-white"
-                      : "bg-blue-500 text-white"
-                  }`}
-                >
-                  {isPlaying ? <Square size={16} /> : <Play size={16} />}
-                  {isPlaying ? "Stop" : "Play"}
-                </button>
+              <div className="flex justify-center mt-4">
                 <button
                   onClick={() => setShowSaveModal(true)}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    isDark
-                      ? "bg-green-900 text-green-200"
-                      : "bg-green-50 text-green-700"
-                  }`}
+                  className="px-6 py-3 rounded-lg font-medium flex items-center gap-2 bg-blue-500 text-white hover:bg-blue-600 transition-colors"
                 >
+                  <Save size={16} />
                   Save Playlist
                 </button>
               </div>
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <Play size={48} className="mx-auto mb-4 opacity-50" />
-              <div>No presets in playlist</div>
-              <div className="text-sm">Add presets from the main screen</div>
+              <Music size={48} className="mx-auto mb-4 opacity-50" />
+              <div>No effects in playlist</div>
+              <div className="text-sm">Add custom effects below to build your playlist</div>
             </div>
           )}
 

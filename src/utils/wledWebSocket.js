@@ -135,4 +135,219 @@ const setWebSocketCallbacks = (callbacks) => {
   onErrorCallback = callbacks.onError;
 };
 
-export { connectWebSocket, disconnectWebSocket, sendWebSocketCommand, setWebSocketCallbacks };
+// Save preset via WebSocket using WLED JSON API format
+const savePresetViaWebSocket = (presetId, presetName, options = {}) => {
+  if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot save preset.");
+    return false;
+  }
+
+  if (!presetId || presetId < 1 || presetId > 250) {
+    console.error("Invalid preset ID. Must be between 1 and 250.");
+    return false;
+  }
+
+  // Build preset save command based on WLED JSON API
+  const presetCommand = {
+    ib: options.includeBrightness !== false, // Include brightness (default: true)
+    sb: options.includeSegmentBrightness !== false, // Include segment brightness (default: true) 
+    sc: options.includeSegmentColors || false, // Include segment colors (default: false)
+    psave: presetId, // Preset slot to save to (1-250)
+    n: presetName || `Preset ${presetId}`, // Preset name
+    v: true, // Visible/valid preset (default: true)
+    time: Math.floor(Date.now() / 1000) // Unix timestamp
+  };
+
+  // Add any additional options
+  if (options.quick) {
+    presetCommand.ql = options.quickLoad || presetName; // Quick load label
+  }
+
+  try {
+    const commandString = JSON.stringify(presetCommand);
+    console.log("Saving preset via WebSocket:", commandString);
+    wledSocket.send(commandString);
+    return true;
+  } catch (error) {
+    console.error("Failed to save preset via WebSocket:", error);
+    return false;
+  }
+};
+
+// Load/activate preset via WebSocket
+const loadPresetViaWebSocket = (presetId) => {
+  if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot load preset.");
+    return false;
+  }
+
+  if (!presetId || presetId < 1 || presetId > 250) {
+    console.error("Invalid preset ID. Must be between 1 and 250.");
+    return false;
+  }
+
+  const loadCommand = {
+    ps: presetId // Load preset by ID
+  };
+
+  try {
+    const commandString = JSON.stringify(loadCommand);
+    console.log("Loading preset via WebSocket:", commandString);
+    wledSocket.send(commandString);
+    return true;
+  } catch (error) {
+    console.error("Failed to load preset via WebSocket:", error);
+    return false;
+  }
+};
+
+// Delete preset via WebSocket
+const deletePresetViaWebSocket = (presetId) => {
+  if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot delete preset.");
+    return false;
+  }
+
+  if (!presetId || presetId < 1 || presetId > 250) {
+    console.error("Invalid preset ID. Must be between 1 and 250.");
+    return false;
+  }
+
+  const deleteCommand = {
+    pdel: presetId // Delete preset by ID
+  };
+
+  try {
+    const commandString = JSON.stringify(deleteCommand);
+    console.log("Deleting preset via WebSocket:", commandString);
+    wledSocket.send(commandString);
+    return true;
+  } catch (error) {
+    console.error("Failed to delete preset via WebSocket:", error);
+    return false;
+  }
+};
+
+// Save playlist via WebSocket using exact WLED JSON API format
+const savePlaylistViaWebSocket = (presetId, playlistName, playlistItems, options = {}) => {
+  if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot save playlist.");
+    return false;
+  }
+
+  if (!presetId || presetId < 1 || presetId > 250) {
+    console.error("Invalid preset ID. Must be between 1 and 250.");
+    return false;
+  }
+
+  if (!playlistItems || !Array.isArray(playlistItems) || playlistItems.length === 0) {
+    console.error("Invalid playlist items. Must be a non-empty array.");
+    return false;
+  }
+
+  // Extract preset IDs and durations from playlist items
+  const presetIds = playlistItems.map(item => item.presetId || item.id);
+  const durations = playlistItems.map(item => {
+    // Convert seconds to tenths of seconds (WLED format)
+    const seconds = item.duration || 30; // Default 30 seconds
+    return seconds * 10; // Convert to tenths
+  });
+  
+  // Default transition time in tenths of seconds (0.7 seconds = 7 tenths)
+  const transitions = playlistItems.map(() => options.transition || 7);
+
+  // Build playlist save command using exact WLED JSON API format
+  const playlistCommand = {
+    playlist: {
+      ps: presetIds, // Array of preset IDs
+      dur: durations, // Array of durations in tenths of seconds
+      transition: transitions, // Array of transition times in tenths of seconds
+      repeat: options.repeat || 0, // 0 = infinite repeat, or number of times to repeat
+      r: true // Enable playlist repeat/cycling
+    },
+    on: true, // Turn on lights
+    o: true, // Save on state
+    psave: presetId, // Preset slot to save playlist to
+    n: playlistName || `Playlist ${presetId}`, // Playlist name
+    v: true, // Preset is visible/valid
+    time: Math.floor(Date.now() / 1000) // Unix timestamp
+  };
+
+  try {
+    const commandString = JSON.stringify(playlistCommand);
+    console.log("Saving playlist via WebSocket:", commandString);
+    wledSocket.send(commandString);
+    return true;
+  } catch (error) {
+    console.error("Failed to save playlist via WebSocket:", error);
+    return false;
+  }
+};
+
+// Start/play playlist via WebSocket
+const playPlaylistViaWebSocket = (presetId) => {
+  if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot play playlist.");
+    return false;
+  }
+
+  if (!presetId || presetId < 1 || presetId > 250) {
+    console.error("Invalid preset ID. Must be between 1 and 250.");
+    return false;
+  }
+
+  const playCommand = {
+    ps: presetId, // Load and start playlist
+    on: true // Turn on lights
+  };
+
+  try {
+    const commandString = JSON.stringify(playCommand);
+    console.log("Playing playlist via WebSocket:", commandString);
+    wledSocket.send(commandString);
+    return true;
+  } catch (error) {
+    console.error("Failed to play playlist via WebSocket:", error);
+    return false;
+  }
+};
+
+// Delete playlist via WebSocket (deletes the preset containing the playlist)
+const deletePlaylistViaWebSocket = (presetId) => {
+  if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot delete playlist.");
+    return false;
+  }
+
+  if (!presetId || presetId < 1 || presetId > 250) {
+    console.error("Invalid preset ID. Must be between 1 and 250.");
+    return false;
+  }
+
+  const deleteCommand = {
+    pdel: presetId // Delete preset (and its playlist) by ID
+  };
+
+  try {
+    const commandString = JSON.stringify(deleteCommand);
+    console.log("Deleting playlist via WebSocket:", commandString);
+    wledSocket.send(commandString);
+    return true;
+  } catch (error) {
+    console.error("Failed to delete playlist via WebSocket:", error);
+    return false;
+  }
+};
+
+export { 
+  connectWebSocket, 
+  disconnectWebSocket, 
+  sendWebSocketCommand, 
+  setWebSocketCallbacks,
+  savePresetViaWebSocket,
+  loadPresetViaWebSocket,
+  deletePresetViaWebSocket,
+  savePlaylistViaWebSocket,
+  playPlaylistViaWebSocket,
+  deletePlaylistViaWebSocket
+};

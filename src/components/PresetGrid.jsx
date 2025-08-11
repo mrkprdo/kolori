@@ -9,11 +9,12 @@ import {
   Plus,
   Trash2,
   MoreVertical,
+  RefreshCw,
 } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
 import DisconnectedOverlay from "./DisconnectedOverlay";
 import { SEASONAL_PRESETS } from "../constants/presets";
-import { createWledPreset, deleteWledPreset, activateWledEffect, checkWledHeartbeat } from "../config/wledApi";
+import { createWledPreset, deleteWledPreset, activateWledEffect, checkWledHeartbeat, getWledEffects, getWledPalettes, createWledPresetViaWebSocket, deleteWledPlaylistViaWebSocket } from "../config/wledApi";
 import { WLED_PALETTES_DATA } from "../constants/palettes.js";
 
 // Custom Effects will be managed dynamically
@@ -74,10 +75,9 @@ function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark 
       >
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative p-4 text-white">
-          <div className="h-8 mb-2"></div>
-          <div className="font-medium text-sm drop-shadow-md">{effect.name}</div>
-          <div className="text-xs opacity-75 mt-1">
-            {effect.effectName} • {effect.paletteName}
+          <div className="font-medium text-sm drop-shadow-md mb-1">{effect.name}</div>
+          <div className="text-xs opacity-75">
+            {effect.effectName} - {effect.paletteName}
           </div>
         </div>
       </button>
@@ -218,28 +218,21 @@ function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark })
     <div className="relative">
       <button
         onClick={() => onClick(playlist.id)}
-        className={`w-full rounded-xl shadow-sm border-2 transition-all overflow-hidden relative h-24 ${
+        className={`w-full rounded-xl shadow-sm border-2 transition-all overflow-hidden relative ${
           isActive
             ? "border-white shadow-lg ring-2 ring-blue-500"
             : "border-white/20 hover:border-white/40"
         }`}
         style={{ background: generatePlaylistGradient() }}
       >
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative z-10 p-3 h-full flex flex-col justify-between">
-          <div className="text-left">
-            <div className="text-white font-semibold text-sm mb-1 truncate">
-              {playlist.name}
-            </div>
-            <div className="text-white/80 text-xs">
-              {playlist.items?.length || 0} effects
-            </div>
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative p-4 text-white">
+          <div className="font-medium text-sm drop-shadow-md mb-1">
+            {playlist.name}
           </div>
-          {isActive && (
-            <div className="absolute top-2 right-2">
-              <Play size={16} className="text-white" />
-            </div>
-          )}
+          <div className="text-xs opacity-75">
+            {playlist.items?.length || 0} effects
+          </div>
         </div>
       </button>
       
@@ -268,15 +261,6 @@ function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark })
             <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
               Options
             </h3>
-            <button
-              onClick={handleEditClick}
-              className={`w-full text-left px-3 py-2 rounded transition-colors flex items-center gap-2 ${
-                isDark ? "hover:bg-gray-700 text-gray-300" : "hover:bg-gray-200 text-gray-700"
-              }`}
-            >
-              <Plus size={16} />
-              Modify
-            </button>
             <button
               onClick={handleDeleteClick}
               className="w-full text-left px-3 py-2 rounded text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2"
@@ -330,7 +314,6 @@ function PresetGrid({
   activePreset,
   onPresetSelect,
   isDark,
-  isPlaying,
   currentPlaylist,
   onShowPlaylist,
   activeDevice,
@@ -372,6 +355,9 @@ function PresetGrid({
   const [isTestingEffect, setIsTestingEffect] = useState(false);
   const [editingEffect, setEditingEffect] = useState(null);
   const [isRetryingConnection, setIsRetryingConnection] = useState(false);
+  const [wledEffects, setWledEffects] = useState([]);
+  const [wledPalettes, setWledPalettes] = useState([]);
+  const [isLoadingEffects, setIsLoadingEffects] = useState(false);
 
   // localStorage key for custom effects
   const CUSTOM_EFFECTS_STORAGE_KEY = "kolori_custom_effects";
@@ -406,47 +392,68 @@ function PresetGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount to sync initial state
 
-  // Mock WLED effects - in real implementation, these would be fetched from WLED device
-  const WLED_EFFECTS = [
-    { id: 0, name: "Solid" },
-    { id: 1, name: "Blink" },
-    { id: 2, name: "Breathe" },
-    { id: 3, name: "Wipe" },
-    { id: 4, name: "Wipe Random" },
-    { id: 5, name: "Random Colors" },
-    { id: 6, name: "Sweep" },
-    { id: 7, name: "Dynamic" },
-    { id: 8, name: "Colorloop" },
-    { id: 9, name: "Rainbow" },
-    { id: 10, name: "Scan" },
-    { id: 11, name: "Theater Chase" },
-    { id: 12, name: "Fade" },
-    { id: 13, name: "Smooth" },
-  ];
+  // Fetch effects and palettes from WLED device
+  const fetchWledData = async () => {
+    if (!activeDevice?.ip || !activeDevice.isConnected) {
+      return;
+    }
 
-  // Mock WLED palettes - in real implementation, these would be fetched from WLED device
-  const WLED_PALETTES = [
-    { id: 0, name: "Default" },
-    { id: 1, name: "Random Cycle" },
-    { id: 2, name: "Primary Color" },
-    { id: 3, name: "Based on Primary" },
-    { id: 4, name: "Set Colors" },
-    { id: 5, name: "Based on Set" },
-    { id: 6, name: "Party" },
-    { id: 7, name: "Cloud" },
-    { id: 8, name: "Lava" },
-    { id: 9, name: "Ocean" },
-    { id: 10, name: "Forest" },
-    { id: 11, name: "Rainbow" },
-    { id: 12, name: "Rainbow Bands" },
-    { id: 13, name: "Sunset" },
-    { id: 14, name: "Rivendell" },
-  ];
+    setIsLoadingEffects(true);
+    try {
+      const [effectsResult, palettesResult] = await Promise.all([
+        getWledEffects(activeDevice.ip, activeDevice.protocol || "http"),
+        getWledPalettes(activeDevice.ip, activeDevice.protocol || "http")
+      ]);
+
+      if (effectsResult.success) {
+        setWledEffects(effectsResult.effects);
+      } else {
+        console.error('Failed to fetch WLED effects:', effectsResult.message);
+        // Fallback to basic effects if API fails
+        setWledEffects([
+          { id: 0, name: "Solid", effectId: 0 },
+          { id: 1, name: "Rainbow", effectId: 9 },
+          { id: 2, name: "Theater Chase", effectId: 11 }
+        ]);
+      }
+
+      if (palettesResult.success) {
+        setWledPalettes(palettesResult.palettes);
+      } else {
+        console.error('Failed to fetch WLED palettes:', palettesResult.message);
+        // Fallback to basic palettes if API fails
+        setWledPalettes([
+          { id: 0, name: "Default", paletteId: 0 },
+          { id: 1, name: "Rainbow", paletteId: 11 },
+          { id: 2, name: "Party", paletteId: 6 }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching WLED data:', error);
+      // Set fallback data on error
+      setWledEffects([
+        { id: 0, name: "Solid", effectId: 0 },
+        { id: 1, name: "Rainbow", effectId: 9 },
+        { id: 2, name: "Theater Chase", effectId: 11 }
+      ]);
+      setWledPalettes([
+        { id: 0, name: "Default", paletteId: 0 },
+        { id: 1, name: "Rainbow", paletteId: 11 },
+        { id: 2, name: "Party", paletteId: 6 }
+      ]);
+    } finally {
+      setIsLoadingEffects(false);
+    }
+  };
+
+  // Load effects and palettes when device changes or becomes connected
+  useEffect(() => {
+    fetchWledData();
+  }, [activeDevice?.id, activeDevice?.ip, activeDevice?.isConnected]);
 
   const allPresets = [...SEASONAL_PRESETS, ...customEffects];
   const activePresetData = allPresets.find((p) => p.id === activePreset);
-  const hasActiveContent =
-    activePresetData || (isPlaying && currentPlaylist.length > 0);
+  const hasActiveContent = activePresetData;
 
   const generateGradient = (paletteName) => {
     const paletteData = WLED_PALETTES_DATA[paletteName];
@@ -476,8 +483,8 @@ function PresetGrid({
     setIsCreatingEffect(true);
 
     try {
-      const effectData = WLED_EFFECTS.find(e => e.id.toString() === selectedEffect);
-      const paletteData = WLED_PALETTES.find(p => p.id.toString() === selectedPalette);
+      const effectData = wledEffects.find(e => e.effectId.toString() === selectedEffect);
+      const paletteData = wledPalettes.find(p => p.paletteId.toString() === selectedPalette);
 
       if (editingEffect) {
         // Update existing effect
@@ -487,9 +494,9 @@ function PresetGrid({
                 ...e,
                 name: effectName,
                 effectId: parseInt(selectedEffect),
-                effectName: effectData.name,
+                effectName: effectData?.name || 'Unknown Effect',
                 paletteId: parseInt(selectedPalette),
-                paletteName: paletteData.name,
+                paletteName: paletteData?.name || 'Unknown Palette',
                 gradient: generateGradient(paletteData.name),
               }
             : e
@@ -500,15 +507,41 @@ function PresetGrid({
           onCustomEffectUpdate(updatedEffects);
         }
       } else {
-        // Create new effect
-        const result = await createWledPreset(
-          activeDevice.ip,
-          parseInt(selectedEffect),
-          parseInt(selectedPalette),
-          effectName,
-          null, // presetId
-          activeDevice.protocol || "http"
-        );
+        // Create new effect - try WebSocket first, fallback to HTTP
+        let result;
+        
+        // Try WebSocket method first (faster)
+        try {
+          result = await createWledPresetViaWebSocket(
+            parseInt(selectedEffect),
+            parseInt(selectedPalette),
+            effectName,
+            null, // Let it auto-generate ID
+            {
+              includeBrightness: true,
+              includeSegmentBrightness: true,
+              includeSegmentColors: false
+            }
+          );
+          
+          if (result.success) {
+            console.log('✅ Preset created via WebSocket');
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (wsError) {
+          console.log('⚠️ WebSocket preset creation failed, falling back to HTTP:', wsError.message);
+          
+          // Fallback to HTTP method
+          result = await createWledPreset(
+            activeDevice.ip,
+            parseInt(selectedEffect),
+            parseInt(selectedPalette),
+            effectName,
+            null, // presetId
+            activeDevice.protocol || "http"
+          );
+        }
 
         if (!result.success) {
           alert(`Failed to create preset: ${result.message}`);
@@ -519,9 +552,9 @@ function PresetGrid({
           id: Date.now(),
           name: effectName,
           effectId: parseInt(selectedEffect),
-          effectName: effectData.name,
+          effectName: effectData?.name || 'Unknown Effect',
           paletteId: parseInt(selectedPalette),
-          paletteName: paletteData.name,
+          paletteName: paletteData?.name || 'Unknown Palette',
           presetId: result.presetId,
           gradient: generateGradient(paletteData.name),
           isCustom: true
@@ -686,13 +719,13 @@ function PresetGrid({
                     ></div>
                   </>
                 )}
-                {isPlaying && currentPlaylist.length > 0 && (
+                {currentPlaylist.length > 0 && (
                   <div
                     className={`text-xs ${
-                      isDark ? "text-green-400" : "text-green-600"
+                      isDark ? "text-blue-400" : "text-blue-600"
                     }`}
                   >
-                    Playing playlist ({currentPlaylist.length} items)...
+                    Playlist ready ({currentPlaylist.length} items)
                   </div>
                 )}
               </div>
@@ -746,25 +779,56 @@ function PresetGrid({
 
       {/* Custom Effects */}
       <div>
-        <button
-          onClick={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
-          className="w-full text-left mb-3 flex items-center justify-between hover:opacity-75 transition-opacity"
-        >
-          <div className="flex items-center gap-2">
+        <div className="mb-3 flex items-center justify-between">
+          <button
+            onClick={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
+            className="flex items-center gap-2 hover:opacity-75 transition-opacity"
+          >
             <Palette size={20} />
             <h2 className="text-lg font-semibold">Custom Effects</h2>
-          </div>
-          {isCustomEffectsCollapsed ? (
-            <ChevronDown size={20} />
-          ) : (
-            <ChevronUp size={20} />
+            {isCustomEffectsCollapsed ? (
+              <ChevronDown size={20} />
+            ) : (
+              <ChevronUp size={20} />
+            )}
+          </button>
+          {activeDevice?.isConnected && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                fetchWledData();
+              }}
+              disabled={isLoadingEffects}
+              className={`p-1 rounded transition-colors ${isDark ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-600"} ${isLoadingEffects ? "animate-spin" : ""}`}
+              title="Refresh effects from WLED device"
+            >
+              <RefreshCw size={16} />
+            </button>
           )}
-        </button>
+        </div>
         
         {!isCustomEffectsCollapsed && (
           <div className="space-y-4">
+            {/* Loading Effects Notice */}
+            {isLoadingEffects && (
+              <div className={`p-4 border rounded-xl text-center ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-50"}`}>
+                <div className="text-sm text-gray-500">
+                  Loading effects from WLED device...
+                </div>
+              </div>
+            )}
+            
+            {/* No Device Connected Notice */}
+            {!activeDevice?.isConnected && !isLoadingEffects && (
+              <div className={`p-4 border rounded-xl text-center ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-50"}`}>
+                <div className="text-sm text-gray-500">
+                  Connect to a WLED device to load available effects
+                </div>
+              </div>
+            )}
+            
             {/* Add Effect Form */}
-            {!showEffectForm ? (
+            {!showEffectForm && activeDevice?.isConnected && !isLoadingEffects ? (
               <button
                 onClick={() => setShowEffectForm(true)}
                 className={`w-full p-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-colors ${
@@ -807,20 +871,21 @@ function PresetGrid({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                      Effect
+                      Effect {wledEffects.length > 0 && `(${wledEffects.length} available)`}
                     </label>
                     <select
                       value={selectedEffect}
                       onChange={(e) => setSelectedEffect(e.target.value)}
+                      disabled={wledEffects.length === 0}
                       className={`w-full px-3 py-2 rounded border ${
                         isDark
                           ? "bg-gray-700 border-gray-600 text-white"
                           : "bg-white border-gray-300"
                       }`}
                     >
-                      <option value="">Select Effect</option>
-                      {WLED_EFFECTS.map((effect) => (
-                        <option key={effect.id} value={effect.id}>
+                      <option value="">{wledEffects.length === 0 ? 'Loading effects...' : 'Select Effect'}</option>
+                      {wledEffects.map((effect) => (
+                        <option key={effect.effectId} value={effect.effectId}>
                           {effect.name}
                         </option>
                       ))}
@@ -829,20 +894,21 @@ function PresetGrid({
                   
                   <div>
                     <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                      Palette
+                      Palette {wledPalettes.length > 0 && `(${wledPalettes.length} available)`}
                     </label>
                     <select
                       value={selectedPalette}
                       onChange={(e) => setSelectedPalette(e.target.value)}
+                      disabled={wledPalettes.length === 0}
                       className={`w-full px-3 py-2 rounded border ${
                         isDark
                           ? "bg-gray-700 border-gray-600 text-white"
                           : "bg-white border-gray-300"
                       }`}
                     >
-                      <option value="">Select Palette</option>
-                      {WLED_PALETTES.map((palette) => (
-                        <option key={palette.id} value={palette.id}>
+                      <option value="">{wledPalettes.length === 0 ? 'Loading palettes...' : 'Select Palette'}</option>
+                      {wledPalettes.map((palette) => (
+                        <option key={palette.paletteId} value={palette.paletteId}>
                           {palette.name}
                         </option>
                       ))}
