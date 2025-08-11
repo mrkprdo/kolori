@@ -970,110 +970,112 @@ export default function KoloriApp() {
       />
 
       {/* Main Content */}
-      <PresetGrid
-        activePreset={activePreset}
-        onPresetSelect={applyPreset}
-        isDark={isDark}
-        isPlaying={isPlaying}
-        currentPlaylist={currentPlaylist}
-        onShowPlaylist={() => setShowPlaylist(true)}
-        activeDevice={activeDevice}
-        onCustomEffectUpdate={setCustomEffects}
-        savedPlaylists={savedPlaylists}
-        onPlaylistEdit={editPlaylist}
-        onPlaylistRemove={removePlaylist}
-      />
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <PresetGrid
+          activePreset={activePreset}
+          onPresetSelect={applyPreset}
+          isDark={isDark}
+          isPlaying={isPlaying}
+          currentPlaylist={currentPlaylist}
+          onShowPlaylist={() => setShowPlaylist(true)}
+          activeDevice={activeDevice}
+          onCustomEffectUpdate={setCustomEffects}
+          savedPlaylists={savedPlaylists}
+          onPlaylistEdit={editPlaylist}
+          onPlaylistRemove={removePlaylist}
+        />
 
-      {/* Modals */}
-      <PlaylistModal
-        isOpen={showPlaylist}
-        onClose={() => setShowPlaylist(false)}
-        currentPlaylist={currentPlaylist}
-        isPlaying={isPlaying}
-        onTogglePlaylist={togglePlaylist}
-        onAddToPlaylist={addToPlaylist}
-        onRemoveFromPlaylist={removeFromPlaylist}
-        onReorderPlaylist={reorderPlaylist}
-        onSavePlaylist={savePlaylist}
-        customEffects={customEffects}
-        isDark={isDark}
-      />
+        {/* Modals */}
+        <PlaylistModal
+          isOpen={showPlaylist}
+          onClose={() => setShowPlaylist(false)}
+          currentPlaylist={currentPlaylist}
+          isPlaying={isPlaying}
+          onTogglePlaylist={togglePlaylist}
+          onAddToPlaylist={addToPlaylist}
+          onRemoveFromPlaylist={removeFromPlaylist}
+          onReorderPlaylist={reorderPlaylist}
+          onSavePlaylist={savePlaylist}
+          customEffects={customEffects}
+          isDark={isDark}
+        />
 
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => {
-          setShowSettings(false);
-          setNewDevice({
-            name: "",
-            ip: "",
-            protocol: "http",
-            description: "",
-            validating: false,
-            validationMessage: "",
-            validationError: false,
-          });
-        }}
-        theme={theme}
-        onThemeChange={setTheme}
-        devices={devices}
-        activeDeviceId={activeDeviceId}
-        onSetActiveDevice={setActiveDeviceId}
-        onRemoveDevice={removeDevice}
-        showDeviceForm={showDeviceForm}
-        onShowDeviceForm={() => setShowDeviceForm(true)}
-        onHideDeviceForm={() => {
-          setShowDeviceForm(false);
-          setNewDevice({
-            name: "",
-            ip: "",
-            protocol: "http",
-            description: "",
-            validating: false,
-            validationMessage: "",
-            validationError: false,
-          });
-        }}
-        newDevice={newDevice}
-        onNewDeviceChange={setNewDevice}
-        onAddDevice={addDevice}
-        isDark={isDark}
-        scheduleMode={scheduleMode}
-        onScheduleChange={setSchedule}
-        scheduleEnabled={scheduleEnabled}
-        onScheduleEnabledChange={setScheduleEnabled}
-        onManualTurnOn={manualTurnOn}
-        onManualTurnOff={manualTurnOff}
-        onTestScheduleLogic={testScheduleLogic}
-      />
+        <SettingsModal
+          isOpen={showSettings}
+          onClose={() => {
+            setShowSettings(false);
+            setNewDevice({
+              name: "",
+              ip: "",
+              protocol: "http",
+              description: "",
+              validating: false,
+              validationMessage: "",
+              validationError: false,
+            });
+          }}
+          theme={theme}
+          onThemeChange={setTheme}
+          devices={devices}
+          activeDeviceId={activeDeviceId}
+          onSetActiveDevice={setActiveDeviceId}
+          onRemoveDevice={removeDevice}
+          showDeviceForm={showDeviceForm}
+          onShowDeviceForm={() => setShowDeviceForm(true)}
+          onHideDeviceForm={() => {
+            setShowDeviceForm(false);
+            setNewDevice({
+              name: "",
+              ip: "",
+              protocol: "http",
+              description: "",
+              validating: false,
+              validationMessage: "",
+              validationError: false,
+            });
+          }}
+          newDevice={newDevice}
+          onNewDeviceChange={setNewDevice}
+          onAddDevice={addDevice}
+          isDark={isDark}
+          scheduleMode={scheduleMode}
+          onScheduleChange={setSchedule}
+          scheduleEnabled={scheduleEnabled}
+          onScheduleEnabledChange={setScheduleEnabled}
+          onManualTurnOn={manualTurnOn}
+          onManualTurnOff={manualTurnOff}
+          onTestScheduleLogic={testScheduleLogic}
+        />
 
-      {/* Confirmation Modal for Device Deletion */}
-      <ConfirmModal
-        isOpen={showConfirmDelete}
-        onClose={() => {
-          setShowConfirmDelete(false);
-          setDeviceToDelete(null);
-        }}
-        onConfirm={confirmRemoveDevice}
-        title="Remove Device"
-        message={
-          deviceToDelete
-            ? `Are you sure you want to remove "${deviceToDelete.name}"?\n\nThis will permanently delete the device from your list and cannot be undone.`
-            : ""
-        }
-        confirmText="Remove Device"
-        cancelText="Cancel"
-        isDark={isDark}
-        isDestructive={true}
-      />
+        {/* Confirmation Modal for Device Deletion */}
+        <ConfirmModal
+          isOpen={showConfirmDelete}
+          onClose={() => {
+            setShowConfirmDelete(false);
+            setDeviceToDelete(null);
+          }}
+          onConfirm={confirmRemoveDevice}
+          title="Remove Device"
+          message={
+            deviceToDelete
+              ? `Are you sure you want to remove "${deviceToDelete.name}"?\n\nThis will permanently delete the device from your list and cannot be undone.`
+              : ""
+          }
+          confirmText="Remove Device"
+          cancelText="Cancel"
+          isDark={isDark}
+          isDestructive={true}
+        />
 
-      {/* Notification */}
-      <Notification
-        isVisible={notification.isVisible}
-        type={notification.type}
-        title={notification.title}
-        message={notification.message}
-        onClose={closeNotification}
-      />
+        {/* Notification */}
+        <Notification
+          isVisible={notification.isVisible}
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+          onClose={closeNotification}
+        />
+      </main>
     </div>
   );
 }
