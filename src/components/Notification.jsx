@@ -8,7 +8,8 @@ export default function Notification({
   message, 
   onClose,
   autoClose = true,
-  duration = 4000 
+  duration = 4000,
+  isDark
 }) {
   const [isShowing, setIsShowing] = useState(false);
 
@@ -49,11 +50,11 @@ export default function Notification({
   const getColors = () => {
     switch (type) {
       case "success":
-        return "border-green-500 bg-green-50";
+        return isDark ? "border-green-700 bg-green-900 text-green-200" : "border-green-500 bg-green-50";
       case "error":
-        return "border-red-500 bg-red-50";
+        return isDark ? "border-red-700 bg-red-900 text-red-200" : "border-red-500 bg-red-50";
       default:
-        return "border-blue-500 bg-blue-50";
+        return isDark ? "border-blue-700 bg-blue-900 text-blue-200" : "border-blue-500 bg-blue-50";
     }
   };
 
@@ -78,12 +79,12 @@ export default function Notification({
           </div>
           <div className="ml-3 flex-1">
             {title && (
-              <div className="text-sm font-medium text-gray-900 mb-1">
+              <div className={`text-sm font-medium ${isDark ? "text-white" : "text-gray-900"} mb-1`}>
                 {title}
               </div>
             )}
             {message && (
-              <div className="text-sm text-gray-700">
+              <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
                 {message}
               </div>
             )}
@@ -91,7 +92,7 @@ export default function Notification({
           <div className="ml-4 flex-shrink-0 flex">
             <button
               onClick={handleClose}
-              className="inline-flex rounded-md p-1.5 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className={`inline-flex rounded-md p-1.5 ${isDark ? "text-gray-400 hover:text-gray-300" : "text-gray-400 hover:text-gray-500"} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
             >
               <X size={16} />
             </button>

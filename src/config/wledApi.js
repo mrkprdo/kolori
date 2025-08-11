@@ -150,6 +150,110 @@ export const getWledPalettes = async (deviceIp, protocol = "http") => {
   }
 };
 
+// Function to get WLED device presets
+export const getWledPresets = async (deviceIp, protocol = "http") => {
+  const url = buildWledUrl(deviceIp, protocol, '/presets.json');
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(10000) // Longer timeout for presets
+    });
+    
+    if (!response.ok) {
+      return { success: false, message: `HTTP Error: ${response.status}` };
+    }
+    
+    const presets = await response.json();
+    console.log('Raw WLED presets.json response:', presets);
+    
+    // Parse presets object into array format
+    const parsedPresets = [];
+    const playlists = [];
+    
+    Object.entries(presets).forEach(([presetId, presetData]) => {
+      if (presetData && typeof presetData === 'object') {
+        const preset = {
+          id: `wled_${presetId}`,
+          presetId: parseInt(presetId),
+          name: presetData.n || `Preset ${presetId}`,
+          isWledPreset: true
+        };
+        
+        // Check if this is a playlist
+        if (presetData.playlist && presetData.playlist.ps) {
+          const playlist = {
+            id: `playlist_${presetId}`,
+            presetId: parseInt(presetId),
+            name: presetData.n || `Playlist ${presetId}`,
+            items: presetData.playlist.ps.map((psId, index) => ({
+              name: `Preset ${psId}`,
+              presetId: psId,
+              duration: presetData.playlist.dur ? Math.floor(presetData.playlist.dur[index] / 10) : 30, // Convert tenths to seconds
+              gradient: '#6366f1' // Default gradient
+            })),
+            isWledPlaylist: true,
+            method: 'wled-device'
+          };
+          playlists.push(playlist);
+        } else {
+          // Regular preset
+          if (presetData.seg && presetData.seg[0]) {
+            const segment = presetData.seg[0];
+            preset.effectId = segment.fx || 0;
+            preset.effectName = `Effect ${segment.fx || 0}`;
+            preset.paletteId = segment.pal || 0;
+            preset.paletteName = `Palette ${segment.pal || 0}`;
+            
+            // Generate gradient based on palette
+            preset.gradient = generatePresetGradient(segment.pal || 0);
+          } else {
+            preset.gradient = '#6366f1';
+          }
+          parsedPresets.push(preset);
+        }
+      }
+    });
+    
+    console.log('Parsed Presets:', parsedPresets);
+    console.log('Parsed Playlists:', playlists);
+    
+    return { 
+      success: true, 
+      presets: parsedPresets,
+      playlists: playlists,
+      totalCount: parsedPresets.length + playlists.length
+    };
+      
+  } catch (error) {
+    return { 
+      success: false, 
+      message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Helper function to generate gradient based on palette ID
+const generatePresetGradient = (paletteId) => {
+  // Simple gradient generation based on palette ID
+  const gradients = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Default
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // Random Cycle
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Primary Color
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', // Based on Primary
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', // Set Colors
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', // Based on Set
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)', // Party
+    'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)', // Cloud
+    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', // Lava
+    'linear-gradient(135deg, #08fdd8 0%, #6c93ff 100%)', // Ocean
+    'linear-gradient(135deg, #52c234 0%, #061700 100%)', // Forest
+    'linear-gradient(135deg, #ff0084 0%, #33001b 100%)', // Rainbow
+  ];
+  
+  return gradients[paletteId % gradients.length] || gradients[0];
+};
+
 // Function to check if WLED device is online (heartbeat)
 export const checkWledHeartbeat = async (deviceIp, protocol = "http") => {
   const url = buildWledUrl(deviceIp, protocol, '/json/info');

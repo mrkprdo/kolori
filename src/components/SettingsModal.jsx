@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X } from "lucide-react";
+import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
 
@@ -25,10 +25,12 @@ export default function SettingsModal({
   onManualTurnOn,
   onManualTurnOff,
   onTestScheduleLogic,
+  onFetchWledPresets,
 }) {
   const [showAbout, setShowAbout] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState("");
+  const [isFetchingPresets, setIsFetchingPresets] = useState(false);
 
   if (!isOpen) return null;
 
@@ -178,6 +180,20 @@ export default function SettingsModal({
                       ) : (
                         <>
                           <button
+                            onClick={() => onFetchWledPresets()}
+                            disabled={!device.isConnected}
+                            className={`p-2 rounded-lg transition-colors ${
+                              !device.isConnected
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : isDark
+                                ? "bg-purple-900 text-purple-200 hover:bg-purple-800"
+                                : "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                            }`}
+                            title="Sync WLED presets and playlists"
+                          >
+                            <RotateCw size={14} />
+                          </button>
+                          <button
                             onClick={() => openWledInterface(device)}
                             className={`p-2 rounded-lg transition-colors ${
                               isDark
@@ -232,6 +248,8 @@ export default function SettingsModal({
               ))}
             </div>
           </div>
+
+          
 
           {/* Schedule Settings */}
           <div className="space-y-4">

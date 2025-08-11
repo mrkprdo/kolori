@@ -14,7 +14,16 @@ import {
 import ConfirmModal from "./ConfirmModal";
 import DisconnectedOverlay from "./DisconnectedOverlay";
 import { SEASONAL_PRESETS } from "../constants/presets";
-import { createWledPreset, deleteWledPreset, activateWledEffect, checkWledHeartbeat, getWledEffects, getWledPalettes, createWledPresetViaWebSocket, deleteWledPlaylistViaWebSocket } from "../config/wledApi";
+import {
+  createWledPreset,
+  deleteWledPreset,
+  activateWledEffect,
+  checkWledHeartbeat,
+  getWledEffects,
+  getWledPalettes,
+  createWledPresetViaWebSocket,
+  deleteWledPlaylistViaWebSocket,
+} from "../config/wledApi";
 import { WLED_PALETTES_DATA } from "../constants/palettes.js";
 
 // Custom Effects will be managed dynamically
@@ -43,7 +52,14 @@ function PresetCard({ preset, isActive, onClick, showIcon = false }) {
   );
 }
 
-function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark }) {
+function CustomEffectCard({
+  effect,
+  isActive,
+  onClick,
+  onRemove,
+  onEdit,
+  isDark,
+}) {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -75,7 +91,9 @@ function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark 
       >
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative p-4 text-white">
-          <div className="font-medium text-sm drop-shadow-md mb-1">{effect.name}</div>
+          <div className="font-medium text-sm drop-shadow-md mb-1">
+            {effect.name}
+          </div>
           <div className="text-xs opacity-75">
             {effect.effectName} - {effect.paletteName}
           </div>
@@ -87,7 +105,9 @@ function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark 
           setShowOptionsModal(true);
         }}
         className={`absolute -top-2 -right-2 p-1 rounded-full transition-colors ${
-          isDark ? "bg-gray-800 hover:bg-gray-700 text-gray-400" : "bg-white hover:bg-gray-100 text-gray-600"
+          isDark
+            ? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+            : "bg-white hover:bg-gray-100 text-gray-600"
         }`}
         title="More options"
       >
@@ -96,14 +116,23 @@ function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark 
 
       {/* Options Modal */}
       {showOptionsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowOptionsModal(false)}>
-          <div 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowOptionsModal(false)}
+        >
+          <div
             className={`p-4 rounded-lg shadow-lg min-w-48 ${
-              isDark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+              isDark
+                ? "bg-gray-800 border border-gray-700"
+                : "bg-white border border-gray-200"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+            <h3
+              className={`font-medium mb-3 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
               Options
             </h3>
             <button
@@ -126,24 +155,40 @@ function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark 
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)}>
-          <div 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
             className={`p-6 rounded-lg shadow-lg max-w-sm w-full mx-4 ${
-              isDark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+              isDark
+                ? "bg-gray-800 border border-gray-700"
+                : "bg-white border border-gray-200"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+            <h3
+              className={`font-medium mb-3 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
               Delete Effect
             </h3>
-            <p className={`mb-4 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-              Are you sure you want to delete "{effect.name}"? This action cannot be undone.
+            <p
+              className={`mb-4 text-sm ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
+              Are you sure you want to delete "{effect.name}"? This action
+              cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className={`px-4 py-2 rounded transition-colors ${
-                  isDark ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  isDark
+                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
                 Cancel
@@ -162,7 +207,14 @@ function CustomEffectCard({ effect, isActive, onClick, onRemove, onEdit, isDark 
   );
 }
 
-function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark }) {
+function PlaylistCard({
+  playlist,
+  isActive,
+  onClick,
+  onRemove,
+  onEdit,
+  isDark,
+}) {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -184,27 +236,31 @@ function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark })
   // Generate gradient from first 3 items in the playlist
   const generatePlaylistGradient = () => {
     const items = playlist.items || [];
-    
+
     // Extract colors from gradients of first 3 effects
-    const extractedColors = items.slice(0, 3).map(item => {
-      const gradient = item.gradient || '#6366f1';
-      
+    const extractedColors = items.slice(0, 3).map((item) => {
+      const gradient = item.gradient || "#6366f1";
+
       // If it's already a simple color, use it
-      if (gradient.startsWith('#') || gradient.startsWith('rgb')) {
+      if (gradient.startsWith("#") || gradient.startsWith("rgb")) {
         return gradient;
       }
-      
+
       // If it's a gradient, extract the first color
-      const colorMatch = gradient.match(/(?:rgb\(\d+,\s*\d+,\s*\d+\)|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})/);
-      return colorMatch ? colorMatch[0] : '#6366f1';
+      const colorMatch = gradient.match(
+        /(?:rgb\(\d+,\s*\d+,\s*\d+\)|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})/
+      );
+      return colorMatch ? colorMatch[0] : "#6366f1";
     });
-    
+
     // Fill with default colors if we don't have enough effects
     while (extractedColors.length < 3) {
-      const defaultColors = ['#6366f1', '#8b5cf6', '#ec4899'];
-      extractedColors.push(defaultColors[extractedColors.length % defaultColors.length]);
+      const defaultColors = ["#6366f1", "#8b5cf6", "#ec4899"];
+      extractedColors.push(
+        defaultColors[extractedColors.length % defaultColors.length]
+      );
     }
-    
+
     if (extractedColors.length === 1) {
       return `linear-gradient(135deg, ${extractedColors[0]}, ${extractedColors[0]})`;
     } else if (extractedColors.length === 2) {
@@ -235,14 +291,16 @@ function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark })
           </div>
         </div>
       </button>
-      
+
       <button
         onClick={(e) => {
           e.stopPropagation();
           setShowOptionsModal(true);
         }}
         className={`absolute -top-2 -right-2 p-1 rounded-full transition-colors ${
-          isDark ? "bg-gray-800 hover:bg-gray-700 text-gray-400" : "bg-white hover:bg-gray-100 text-gray-600"
+          isDark
+            ? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+            : "bg-white hover:bg-gray-100 text-gray-600"
         }`}
         title="More options"
       >
@@ -251,14 +309,23 @@ function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark })
 
       {/* Options Modal */}
       {showOptionsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowOptionsModal(false)}>
-          <div 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowOptionsModal(false)}
+        >
+          <div
             className={`p-4 rounded-lg shadow-lg min-w-48 ${
-              isDark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+              isDark
+                ? "bg-gray-800 border border-gray-700"
+                : "bg-white border border-gray-200"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+            <h3
+              className={`font-medium mb-3 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
               Options
             </h3>
             <button
@@ -274,24 +341,40 @@ function PlaylistCard({ playlist, isActive, onClick, onRemove, onEdit, isDark })
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)}>
-          <div 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
             className={`p-6 rounded-lg shadow-lg max-w-sm w-full mx-4 ${
-              isDark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+              isDark
+                ? "bg-gray-800 border border-gray-700"
+                : "bg-white border border-gray-200"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className={`font-medium mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+            <h3
+              className={`font-medium mb-3 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
               Delete Playlist
             </h3>
-            <p className={`mb-4 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-              Are you sure you want to delete "{playlist.name}"? This action cannot be undone.
+            <p
+              className={`mb-4 text-sm ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
+              Are you sure you want to delete "{playlist.name}"? This action
+              cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className={`px-4 py-2 rounded transition-colors ${
-                  isDark ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  isDark
+                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
                 Cancel
@@ -317,7 +400,9 @@ function PresetGrid({
   currentPlaylist,
   onShowPlaylist,
   activeDevice,
-  onCustomEffectUpdate,
+  customEffects = [], // Add default value
+  onAddCustomEffect,
+  onRemoveCustomEffect,
   savedPlaylists,
   onPlaylistEdit,
   onPlaylistRemove,
@@ -326,10 +411,12 @@ function PresetGrid({
     const saved = localStorage.getItem("kolori_seasonal_collapsed");
     return saved !== null ? JSON.parse(saved) : true;
   });
-  const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(() => {
-    const saved = localStorage.getItem("kolori_custom_effects_collapsed");
-    return saved !== null ? JSON.parse(saved) : true;
-  });
+  const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(
+    () => {
+      const saved = localStorage.getItem("kolori_custom_effects_collapsed");
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+  );
 
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(() => {
     const saved = localStorage.getItem("kolori_playlists_collapsed");
@@ -337,15 +424,24 @@ function PresetGrid({
   });
 
   useEffect(() => {
-    localStorage.setItem("kolori_seasonal_collapsed", JSON.stringify(isSeasonalCollapsed));
+    localStorage.setItem(
+      "kolori_seasonal_collapsed",
+      JSON.stringify(isSeasonalCollapsed)
+    );
   }, [isSeasonalCollapsed]);
 
   useEffect(() => {
-    localStorage.setItem("kolori_custom_effects_collapsed", JSON.stringify(isCustomEffectsCollapsed));
+    localStorage.setItem(
+      "kolori_custom_effects_collapsed",
+      JSON.stringify(isCustomEffectsCollapsed)
+    );
   }, [isCustomEffectsCollapsed]);
 
   useEffect(() => {
-    localStorage.setItem("kolori_playlists_collapsed", JSON.stringify(isPlaylistsCollapsed));
+    localStorage.setItem(
+      "kolori_playlists_collapsed",
+      JSON.stringify(isPlaylistsCollapsed)
+    );
   }, [isPlaylistsCollapsed]);
   const [showEffectForm, setShowEffectForm] = useState(false);
   const [selectedEffect, setSelectedEffect] = useState("");
@@ -359,39 +455,6 @@ function PresetGrid({
   const [wledPalettes, setWledPalettes] = useState([]);
   const [isLoadingEffects, setIsLoadingEffects] = useState(false);
 
-  // localStorage key for custom effects
-  const CUSTOM_EFFECTS_STORAGE_KEY = "kolori_custom_effects";
-
-  // Helper functions for localStorage
-  const loadCustomEffectsFromStorage = () => {
-    try {
-      const stored = localStorage.getItem(CUSTOM_EFFECTS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.warn("Failed to load custom effects from localStorage:", error);
-      return [];
-    }
-  };
-
-  const saveCustomEffectsToStorage = (effects) => {
-    try {
-      localStorage.setItem(CUSTOM_EFFECTS_STORAGE_KEY, JSON.stringify(effects));
-    } catch (error) {
-      console.warn("Failed to save custom effects to localStorage:", error);
-    }
-  };
-
-  // Initialize custom effects from localStorage
-  const [customEffects, setCustomEffects] = useState(() => loadCustomEffectsFromStorage());
-
-  // Sync with parent component on mount to pass initial custom effects from localStorage
-  useEffect(() => {
-    if (onCustomEffectUpdate && customEffects.length > 0) {
-      onCustomEffectUpdate(customEffects);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount to sync initial state
-
   // Fetch effects and palettes from WLED device
   const fetchWledData = async () => {
     if (!activeDevice?.ip || !activeDevice.isConnected) {
@@ -402,44 +465,44 @@ function PresetGrid({
     try {
       const [effectsResult, palettesResult] = await Promise.all([
         getWledEffects(activeDevice.ip, activeDevice.protocol || "http"),
-        getWledPalettes(activeDevice.ip, activeDevice.protocol || "http")
+        getWledPalettes(activeDevice.ip, activeDevice.protocol || "http"),
       ]);
 
       if (effectsResult.success) {
         setWledEffects(effectsResult.effects);
       } else {
-        console.error('Failed to fetch WLED effects:', effectsResult.message);
+        console.error("Failed to fetch WLED effects:", effectsResult.message);
         // Fallback to basic effects if API fails
         setWledEffects([
           { id: 0, name: "Solid", effectId: 0 },
           { id: 1, name: "Rainbow", effectId: 9 },
-          { id: 2, name: "Theater Chase", effectId: 11 }
+          { id: 2, name: "Theater Chase", effectId: 11 },
         ]);
       }
 
       if (palettesResult.success) {
         setWledPalettes(palettesResult.palettes);
       } else {
-        console.error('Failed to fetch WLED palettes:', palettesResult.message);
+        console.error("Failed to fetch WLED palettes:", palettesResult.message);
         // Fallback to basic palettes if API fails
         setWledPalettes([
           { id: 0, name: "Default", paletteId: 0 },
           { id: 1, name: "Rainbow", paletteId: 11 },
-          { id: 2, name: "Party", paletteId: 6 }
+          { id: 2, name: "Party", paletteId: 6 },
         ]);
       }
     } catch (error) {
-      console.error('Error fetching WLED data:', error);
+      console.error("Error fetching WLED data:", error);
       // Set fallback data on error
       setWledEffects([
         { id: 0, name: "Solid", effectId: 0 },
         { id: 1, name: "Rainbow", effectId: 9 },
-        { id: 2, name: "Theater Chase", effectId: 11 }
+        { id: 2, name: "Theater Chase", effectId: 11 },
       ]);
       setWledPalettes([
         { id: 0, name: "Default", paletteId: 0 },
         { id: 1, name: "Rainbow", paletteId: 11 },
-        { id: 2, name: "Party", paletteId: 6 }
+        { id: 2, name: "Party", paletteId: 6 },
       ]);
     } finally {
       setIsLoadingEffects(false);
@@ -471,32 +534,40 @@ function PresetGrid({
   const addCustomEffect = async () => {
     if (!effectName || !selectedEffect || !selectedPalette) return;
     if (!activeDevice?.ip) {
-      alert('No active WLED device connected. Please add and connect a device first.');
+      alert(
+        "No active WLED device connected. Please add and connect a device first."
+      );
       return;
     }
 
     if (!activeDevice.isConnected) {
-      alert(`${activeDevice.name} is disconnected. Please check your device connection before creating effects.`);
+      alert(
+        `${activeDevice.name} is disconnected. Please check your device connection before creating effects.`
+      );
       return;
     }
 
     setIsCreatingEffect(true);
 
     try {
-      const effectData = wledEffects.find(e => e.effectId.toString() === selectedEffect);
-      const paletteData = wledPalettes.find(p => p.paletteId.toString() === selectedPalette);
+      const effectData = wledEffects.find(
+        (e) => e.effectId.toString() === selectedEffect
+      );
+      const paletteData = wledPalettes.find(
+        (p) => p.paletteId.toString() === selectedPalette
+      );
 
       if (editingEffect) {
         // Update existing effect
-        const updatedEffects = customEffects.map(e =>
+        const updatedEffects = customEffects.map((e) =>
           e.id === editingEffect.id
             ? {
                 ...e,
                 name: effectName,
                 effectId: parseInt(selectedEffect),
-                effectName: effectData?.name || 'Unknown Effect',
+                effectName: effectData?.name || "Unknown Effect",
                 paletteId: parseInt(selectedPalette),
-                paletteName: paletteData?.name || 'Unknown Palette',
+                paletteName: paletteData?.name || "Unknown Palette",
                 gradient: generateGradient(paletteData.name),
               }
             : e
@@ -509,7 +580,7 @@ function PresetGrid({
       } else {
         // Create new effect - try WebSocket first, fallback to HTTP
         let result;
-        
+
         // Try WebSocket method first (faster)
         try {
           result = await createWledPresetViaWebSocket(
@@ -520,18 +591,21 @@ function PresetGrid({
             {
               includeBrightness: true,
               includeSegmentBrightness: true,
-              includeSegmentColors: false
+              includeSegmentColors: false,
             }
           );
-          
+
           if (result.success) {
-            console.log('✅ Preset created via WebSocket');
+            console.log("✅ Preset created via WebSocket");
           } else {
             throw new Error(result.message);
           }
         } catch (wsError) {
-          console.log('⚠️ WebSocket preset creation failed, falling back to HTTP:', wsError.message);
-          
+          console.log(
+            "⚠️ WebSocket preset creation failed, falling back to HTTP:",
+            wsError.message
+          );
+
           // Fallback to HTTP method
           result = await createWledPreset(
             activeDevice.ip,
@@ -552,21 +626,15 @@ function PresetGrid({
           id: Date.now(),
           name: effectName,
           effectId: parseInt(selectedEffect),
-          effectName: effectData?.name || 'Unknown Effect',
+          effectName: effectData?.name || "Unknown Effect",
           paletteId: parseInt(selectedPalette),
-          paletteName: paletteData?.name || 'Unknown Palette',
+          paletteName: paletteData?.name || "Unknown Palette",
           presetId: result.presetId,
           gradient: generateGradient(paletteData.name),
-          isCustom: true
+          isCustom: true,
         };
 
-        const updatedEffects = [...customEffects, newEffect];
-        setCustomEffects(updatedEffects);
-        saveCustomEffectsToStorage(updatedEffects);
-
-        if (onCustomEffectUpdate) {
-          onCustomEffectUpdate(updatedEffects);
-        }
+        onAddCustomEffect(newEffect);
 
         onPresetSelect(newEffect.id);
       }
@@ -576,7 +644,6 @@ function PresetGrid({
       setSelectedPalette("");
       setShowEffectForm(false);
       setEditingEffect(null);
-
     } catch (error) {
       alert(`Error creating preset: ${error.message}`);
     } finally {
@@ -594,17 +661,21 @@ function PresetGrid({
 
   const testEffect = async () => {
     if (!selectedEffect || !selectedPalette) {
-      alert('Please select both an effect and palette before testing.');
+      alert("Please select both an effect and palette before testing.");
       return;
     }
-    
+
     if (!activeDevice?.ip) {
-      alert('No active WLED device connected. Please add and connect a device first.');
+      alert(
+        "No active WLED device connected. Please add and connect a device first."
+      );
       return;
     }
 
     if (!activeDevice.isConnected) {
-      alert(`${activeDevice.name} is disconnected. Please check your device connection before testing effects.`);
+      alert(
+        `${activeDevice.name} is disconnected. Please check your device connection before testing effects.`
+      );
       return;
     }
 
@@ -629,50 +700,46 @@ function PresetGrid({
   };
 
   const removeCustomEffect = async (effectId) => {
-    const effect = customEffects.find(e => e.id === effectId);
+    const effect = customEffects.find((e) => e.id === effectId);
     if (!effect) return;
-    
+
     try {
       // Delete preset from WLED device if it has a preset ID
       if (effect.presetId && activeDevice?.ip) {
-        const result = await deleteWledPreset(activeDevice.ip, effect.presetId, activeDevice.protocol || "http");
+        const result = await deleteWledPreset(
+          activeDevice.ip,
+          effect.presetId,
+          activeDevice.protocol || "http"
+        );
         if (!result.success) {
           console.warn(`Failed to delete WLED preset: ${result.message}`);
         }
       }
-      
-      const updatedEffects = customEffects.filter(e => e.id !== effectId);
-      setCustomEffects(updatedEffects);
-      saveCustomEffectsToStorage(updatedEffects);
-      
-      // Notify parent component if callback provided
-      if (onCustomEffectUpdate) {
-        onCustomEffectUpdate(updatedEffects);
-      }
-      
+
+      onRemoveCustomEffect(effectId);
     } catch (error) {
-      console.error('Error removing custom effect:', error);
+      console.error("Error removing custom effect:", error);
       // Still remove from local state even if WLED deletion failed
-      const updatedEffects = customEffects.filter(e => e.id !== effectId);
-      setCustomEffects(updatedEffects);
-      saveCustomEffectsToStorage(updatedEffects);
-      
-      if (onCustomEffectUpdate) {
-        onCustomEffectUpdate(updatedEffects);
-      }
+      onRemoveCustomEffect(effectId);
     }
   };
 
   const retryConnection = async () => {
     if (!activeDevice?.ip) return;
-    
+
     setIsRetryingConnection(true);
-    
+
     try {
-      const result = await checkWledHeartbeat(activeDevice.ip, activeDevice.protocol || "http");
-      console.log(`Manual connection check for ${activeDevice.name}:`, result.online ? 'Online' : 'Offline');
+      const result = await checkWledHeartbeat(
+        activeDevice.ip,
+        activeDevice.protocol || "http"
+      );
+      console.log(
+        `Manual connection check for ${activeDevice.name}:`,
+        result.online ? "Online" : "Offline"
+      );
     } catch (error) {
-      console.error('Error during manual connection check:', error);
+      console.error("Error during manual connection check:", error);
     } finally {
       setIsRetryingConnection(false);
     }
@@ -681,7 +748,9 @@ function PresetGrid({
   const isDeviceDisconnected = activeDevice && !activeDevice.isConnected;
 
   return (
-    <div className={`relative p-4 space-y-6 pb-24 ${isDark ? "text-white" : ""}`}>
+    <div
+      className={`relative p-4 space-y-6 pb-24 ${isDark ? "text-white" : ""}`}
+    >
       {/* Disconnected Device Overlay */}
       <DisconnectedOverlay
         isVisible={isDeviceDisconnected}
@@ -690,7 +759,7 @@ function PresetGrid({
         isDark={isDark}
         isRetrying={isRetryingConnection}
       />
-      
+
       {/* Current Playing Section */}
       <div>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -779,56 +848,56 @@ function PresetGrid({
 
       {/* Custom Effects */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <button
-            onClick={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
-            className="flex items-center gap-2 hover:opacity-75 transition-opacity"
-          >
+        <button
+          onClick={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
+          className="w-full text-left mb-3 flex items-center justify-between hover:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-2">
             <Palette size={20} />
             <h2 className="text-lg font-semibold">Custom Effects</h2>
-            {isCustomEffectsCollapsed ? (
-              <ChevronDown size={20} />
-            ) : (
-              <ChevronUp size={20} />
-            )}
-          </button>
-          {activeDevice?.isConnected && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                fetchWledData();
-              }}
-              disabled={isLoadingEffects}
-              className={`p-1 rounded transition-colors ${isDark ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-600"} ${isLoadingEffects ? "animate-spin" : ""}`}
-              title="Refresh effects from WLED device"
-            >
-              <RefreshCw size={16} />
-            </button>
+          </div>
+          {isCustomEffectsCollapsed ? (
+            <ChevronDown size={20} />
+          ) : (
+            <ChevronUp size={20} />
           )}
-        </div>
-        
+        </button>
         {!isCustomEffectsCollapsed && (
           <div className="space-y-4">
             {/* Loading Effects Notice */}
             {isLoadingEffects && (
-              <div className={`p-4 border rounded-xl text-center ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-50"}`}>
+              <div
+                className={`p-4 border rounded-xl text-center ${
+                  isDark
+                    ? "border-gray-700 bg-gray-800"
+                    : "border-gray-300 bg-gray-50"
+                }`}
+              >
                 <div className="text-sm text-gray-500">
                   Loading effects from WLED device...
                 </div>
               </div>
             )}
-            
+
             {/* No Device Connected Notice */}
             {!activeDevice?.isConnected && !isLoadingEffects && (
-              <div className={`p-4 border rounded-xl text-center ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-50"}`}>
+              <div
+                className={`p-4 border rounded-xl text-center ${
+                  isDark
+                    ? "border-gray-700 bg-gray-800"
+                    : "border-gray-300 bg-gray-50"
+                }`}
+              >
                 <div className="text-sm text-gray-500">
                   Connect to a WLED device to load available effects
                 </div>
               </div>
             )}
-            
+
             {/* Add Effect Form */}
-            {!showEffectForm && activeDevice?.isConnected && !isLoadingEffects ? (
+            {!showEffectForm &&
+            activeDevice?.isConnected &&
+            !isLoadingEffects ? (
               <button
                 onClick={() => setShowEffectForm(true)}
                 className={`w-full p-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-colors ${
@@ -841,11 +910,19 @@ function PresetGrid({
                 <span>Add Custom Effect</span>
               </button>
             ) : (
-              <div className={`p-4 border rounded-xl space-y-3 ${
-                isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-50"
-              }`}>
+              <div
+                className={`p-4 border rounded-xl space-y-3 ${
+                  isDark
+                    ? "border-gray-700 bg-gray-800"
+                    : "border-gray-300 bg-gray-50"
+                }`}
+              >
                 <div>
-                  <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                  <label
+                    className={`block text-sm mb-1 ${
+                      isDark ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
                     Effect Name
                   </label>
                   <input
@@ -863,15 +940,25 @@ function PresetGrid({
                         : "bg-white border-gray-300 placeholder-gray-500"
                     }`}
                   />
-                  <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                  <div
+                    className={`text-xs mt-1 ${
+                      isDark ? "text-gray-500" : "text-gray-400"
+                    }`}
+                  >
                     {effectName.length}/50 characters
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                      Effect {wledEffects.length > 0 && `(${wledEffects.length} available)`}
+                    <label
+                      className={`block text-sm mb-1 ${
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      Effect{" "}
+                      {wledEffects.length > 0 &&
+                        `(${wledEffects.length} available)`}
                     </label>
                     <select
                       value={selectedEffect}
@@ -883,7 +970,11 @@ function PresetGrid({
                           : "bg-white border-gray-300"
                       }`}
                     >
-                      <option value="">{wledEffects.length === 0 ? 'Loading effects...' : 'Select Effect'}</option>
+                      <option value="">
+                        {wledEffects.length === 0
+                          ? "Loading effects..."
+                          : "Select Effect"}
+                      </option>
                       {wledEffects.map((effect) => (
                         <option key={effect.effectId} value={effect.effectId}>
                           {effect.name}
@@ -891,10 +982,16 @@ function PresetGrid({
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
-                    <label className={`block text-sm mb-1 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                      Palette {wledPalettes.length > 0 && `(${wledPalettes.length} available)`}
+                    <label
+                      className={`block text-sm mb-1 ${
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      Palette{" "}
+                      {wledPalettes.length > 0 &&
+                        `(${wledPalettes.length} available)`}
                     </label>
                     <select
                       value={selectedPalette}
@@ -906,30 +1003,50 @@ function PresetGrid({
                           : "bg-white border-gray-300"
                       }`}
                     >
-                      <option value="">{wledPalettes.length === 0 ? 'Loading palettes...' : 'Select Palette'}</option>
+                      <option value="">
+                        {wledPalettes.length === 0
+                          ? "Loading palettes..."
+                          : "Select Palette"}
+                      </option>
                       {wledPalettes.map((palette) => (
-                        <option key={palette.paletteId} value={palette.paletteId}>
+                        <option
+                          key={palette.paletteId}
+                          value={palette.paletteId}
+                        >
                           {palette.name}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <button
                     onClick={testEffect}
-                    disabled={!selectedEffect || !selectedPalette || isTestingEffect}
+                    disabled={
+                      !selectedEffect || !selectedPalette || isTestingEffect
+                    }
                     className="flex-1 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isTestingEffect ? "Testing..." : "Test"}
                   </button>
                   <button
                     onClick={addCustomEffect}
-                    disabled={!effectName || !selectedEffect || !selectedPalette || isCreatingEffect}
+                    disabled={
+                      !effectName ||
+                      !selectedEffect ||
+                      !selectedPalette ||
+                      isCreatingEffect
+                    }
                     className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isCreatingEffect ? (editingEffect ? 'Updating...' : 'Creating...') : (editingEffect ? 'Update Effect' : 'Add Effect')}
+                    {isCreatingEffect
+                      ? editingEffect
+                        ? "Updating..."
+                        : "Creating..."
+                      : editingEffect
+                      ? "Update Effect"
+                      : "Add Effect"}
                   </button>
                 </div>
                 <div className="flex gap-2 mt-2">
@@ -952,9 +1069,11 @@ function PresetGrid({
                 </div>
               </div>
             )}
+
             
+
             {/* Custom Effects Grid */}
-            {customEffects.length > 0 && (
+            {customEffects.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
                 {customEffects.map((effect) => (
                   <CustomEffectCard
@@ -968,8 +1087,11 @@ function PresetGrid({
                   />
                 ))}
               </div>
+            ) : (
+              <div className={`p-4 border rounded-xl text-center ${isDark ? "border-gray-700 bg-gray-800 text-gray-400" : "border-gray-300 bg-gray-50 text-gray-500"}`}>
+                No custom effects found.
+              </div>
             )}
-
           </div>
         )}
       </div>
@@ -990,7 +1112,7 @@ function PresetGrid({
             <ChevronUp size={20} />
           )}
         </button>
-        
+
         {!isPlaylistsCollapsed && (
           <div className="space-y-4">
             {/* Create Playlist Button */}
@@ -998,7 +1120,9 @@ function PresetGrid({
               <button
                 onClick={onShowPlaylist}
                 className={`w-full p-3 rounded-xl flex items-center justify-center gap-2 font-medium ${
-                  isDark ? "bg-blue-900 text-blue-200" : "bg-blue-50 text-blue-700"
+                  isDark
+                    ? "bg-blue-900 text-blue-200"
+                    : "bg-blue-50 text-blue-700"
                 }`}
               >
                 <Play size={18} />
@@ -1015,7 +1139,7 @@ function PresetGrid({
                     isActive={playlist.isActive}
                     onClick={(playlistId) => {
                       // Handle playlist selection/activation
-                      console.log('Playlist selected:', playlistId);
+                      console.log("Playlist selected:", playlistId);
                     }}
                     onRemove={onPlaylistRemove}
                     onEdit={onPlaylistEdit}
@@ -1028,7 +1152,9 @@ function PresetGrid({
                 <div className="text-center py-8 text-gray-500">
                   <Play size={48} className="mx-auto mb-4 opacity-50" />
                   <div>No playlists saved yet</div>
-                  <div className="text-sm">Create custom effects first to build playlists</div>
+                  <div className="text-sm">
+                    Create custom effects first to build playlists
+                  </div>
                 </div>
               )
             )}
