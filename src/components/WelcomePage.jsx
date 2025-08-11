@@ -1,4 +1,3 @@
-import React from "react";
 import { Plus, Wifi, Palette } from "lucide-react";
 
 export default function WelcomePage({ isDark, onAddDevice }) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
 
 export default function Notification({ 

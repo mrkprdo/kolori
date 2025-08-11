@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
@@ -30,7 +30,6 @@ export default function SettingsModal({
   const [showAbout, setShowAbout] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState("");
-  const [isFetchingPresets, setIsFetchingPresets] = useState(false);
 
   if (!isOpen) return null;
 

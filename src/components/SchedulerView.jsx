@@ -1,4 +1,3 @@
-import React from "react";
 import { Sun, Moon, Sunrise, MinusCircle } from "lucide-react";
 
 export default function SchedulerView({

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Shield, AlertTriangle, CheckCircle, XCircle, Scroll } from "lucide-react";
 
 export default function UserAgreement({ isDark, onAccept, onReject }) {

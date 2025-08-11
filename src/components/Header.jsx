@@ -1,5 +1,5 @@
-import React from "react";
 import { Settings, Wifi, WifiOff, Sun, Moon, Sunrise } from "lucide-react";
+import { logger } from "../utils/logger";
 
 export default function Header({
   deviceName,
@@ -40,7 +40,12 @@ export default function Header({
             {devices.length > 1 && (
               <select
                 value={activeDeviceId}
-                onChange={(e) => setActiveDeviceId(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const deviceId = parseInt(e.target.value);
+                  const device = devices.find(d => d.id === deviceId);
+                  logger.log('🔄 Device switched to:', device?.name);
+                  setActiveDeviceId(deviceId);
+                }}
                 className={`text-xs px-2 py-1 rounded border ${
                   isDark
                     ? "bg-gray-800 border-gray-600 text-white"
@@ -82,7 +87,10 @@ export default function Header({
             ></div>
           </div>
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => {
+              logger.log('⚙️ Settings opened');
+              setShowSettings(true);
+            }}
             className={`p-2 rounded-full opacity-50 hover:opacity-100 transition-opacity ${
               isDark ? "hover:bg-gray-800" : "hover:bg-gray-100"
             }`}

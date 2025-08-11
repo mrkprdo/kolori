@@ -1,4 +1,3 @@
-import React from "react";
 import { X, Github, Palette } from "lucide-react";
 
 export default function AboutModal({ isOpen, onClose, isDark }) {

@@ -1,4 +1,5 @@
 // Simplified WLED API - Focus on preset activation only
+import { logger } from '../utils/logger.js';
 
 // Helper function to build WLED URLs with protocol support
 const buildWledUrl = (deviceIp, protocol = "http", path) => {
@@ -165,7 +166,6 @@ export const getWledPresets = async (deviceIp, protocol = "http") => {
     }
     
     const presets = await response.json();
-    console.log('Raw WLED presets.json response:', presets);
     
     // Parse presets object into array format
     const parsedPresets = [];
@@ -215,8 +215,6 @@ export const getWledPresets = async (deviceIp, protocol = "http") => {
       }
     });
     
-    console.log('Parsed Presets:', parsedPresets);
-    console.log('Parsed Playlists:', playlists);
     
     return { 
       success: true, 
@@ -427,7 +425,7 @@ export const activateWledPresetById = async (deviceIp, presetId, protocol = "htt
 // DEPRECATED: Old HTTP-based playlist creation - use createWledPlaylistViaWebSocket instead
 // This function is kept for compatibility but should not be used
 export const createWledPlaylist = async (deviceIp, playlistItems, playlistName) => {
-  console.warn('DEPRECATED: Use createWledPlaylistViaWebSocket instead of HTTP-based createWledPlaylist');
+  logger.warn('DEPRECATED: Use createWledPlaylistViaWebSocket instead of HTTP-based createWledPlaylist');
   return { 
     success: false, 
     message: 'HTTP playlist creation is deprecated. Use WebSocket-based playlist creation instead.'
@@ -436,7 +434,7 @@ export const createWledPlaylist = async (deviceIp, playlistItems, playlistName) 
 
 // DEPRECATED: Old HTTP-based playlist start - use WebSocket commands instead
 export const startWledPlaylist = async (deviceIp, firstPresetId, lastPresetId) => {
-  console.warn('DEPRECATED: Use WebSocket playPlaylistViaWebSocket instead of HTTP-based startWledPlaylist');
+  logger.warn('DEPRECATED: Use WebSocket playPlaylistViaWebSocket instead of HTTP-based startWledPlaylist');
   return { 
     success: false, 
     message: 'HTTP playlist control is deprecated. Use WebSocket-based playlist control instead.'
@@ -445,7 +443,7 @@ export const startWledPlaylist = async (deviceIp, firstPresetId, lastPresetId) =
 
 // DEPRECATED: Use WebSocket commands instead
 export const nextWledPlaylistItem = async (deviceIp) => {
-  console.warn('DEPRECATED: Use WebSocket commands instead of HTTP-based nextWledPlaylistItem');
+  logger.warn('DEPRECATED: Use WebSocket commands instead of HTTP-based nextWledPlaylistItem');
   return { 
     success: false, 
     message: 'HTTP playlist control is deprecated. Use WebSocket-based commands instead.'
@@ -454,7 +452,7 @@ export const nextWledPlaylistItem = async (deviceIp) => {
 
 // DEPRECATED: Use WebSocket commands instead
 export const stopWledPlaylist = async (deviceIp) => {
-  console.warn('DEPRECATED: Use WebSocket commands instead of HTTP-based stopWledPlaylist');
+  logger.warn('DEPRECATED: Use WebSocket commands instead of HTTP-based stopWledPlaylist');
   return { 
     success: false, 
     message: 'HTTP playlist control is deprecated. Use WebSocket-based commands instead.'
@@ -463,7 +461,7 @@ export const stopWledPlaylist = async (deviceIp) => {
 
 // DEPRECATED: Use WebSocket deletePresetViaWebSocket instead
 export const deleteWledPlaylist = async (deviceIp, presetIds) => {
-  console.warn('DEPRECATED: Use WebSocket deletePresetViaWebSocket instead of HTTP-based deleteWledPlaylist');
+  logger.warn('DEPRECATED: Use WebSocket deletePresetViaWebSocket instead of HTTP-based deleteWledPlaylist');
   return { 
     success: false, 
     message: 'HTTP playlist deletion is deprecated. Use WebSocket-based preset deletion instead.'
@@ -476,9 +474,6 @@ export const turnWledOn = async (deviceIp, protocol = "http") => {
   const jsonUrl = buildWledUrl(deviceIp, protocol, '/json/state');
   const httpUrl = buildWledUrl(deviceIp, protocol, '/win&T=1');
   
-  console.log(`🔛 WLED API: Turning lights ON`);
-  console.log(`🔛 JSON API: ${jsonUrl}`);
-  console.log(`🔛 HTTP API Fallback: ${httpUrl}`);
   
   try {
     // Try JSON API first
@@ -492,11 +487,9 @@ export const turnWledOn = async (deviceIp, protocol = "http") => {
     });
     
     if (jsonResponse.ok) {
-      console.log(`🔛 JSON API Success: ${jsonResponse.status} ${jsonResponse.statusText}`);
       return { success: true, message: 'Lights turned on (JSON API)' };
     }
     
-    console.log(`🔛 JSON API Failed: ${jsonResponse.status}, trying HTTP API...`);
     
     // Fallback to HTTP API
     const httpResponse = await fetch(httpUrl, {
@@ -504,14 +497,13 @@ export const turnWledOn = async (deviceIp, protocol = "http") => {
       signal: AbortSignal.timeout(5000)
     });
     
-    console.log(`🔛 HTTP API Response: ${httpResponse.status} ${httpResponse.statusText}`);
     
     return httpResponse.ok 
       ? { success: true, message: 'Lights turned on (HTTP API)' }
       : { success: false, message: `Both APIs failed. JSON: ${jsonResponse.status}, HTTP: ${httpResponse.status}` };
       
   } catch (error) {
-    console.error(`🔛 WLED API Error:`, error);
+    logger.error(`🔛 WLED API Error:`, error);
     return { 
       success: false, 
       message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`
@@ -525,9 +517,6 @@ export const turnWledOff = async (deviceIp, protocol = "http") => {
   const jsonUrl = buildWledUrl(deviceIp, protocol, '/json/state');
   const httpUrl = buildWledUrl(deviceIp, protocol, '/win&T=0');
   
-  console.log(`🔴 WLED API: Turning lights OFF`);
-  console.log(`🔴 JSON API: ${jsonUrl}`);
-  console.log(`🔴 HTTP API Fallback: ${httpUrl}`);
   
   try {
     // Try JSON API first
@@ -541,11 +530,9 @@ export const turnWledOff = async (deviceIp, protocol = "http") => {
     });
     
     if (jsonResponse.ok) {
-      console.log(`🔴 JSON API Success: ${jsonResponse.status} ${jsonResponse.statusText}`);
       return { success: true, message: 'Lights turned off (JSON API)' };
     }
     
-    console.log(`🔴 JSON API Failed: ${jsonResponse.status}, trying HTTP API...`);
     
     // Fallback to HTTP API
     const httpResponse = await fetch(httpUrl, {
@@ -553,14 +540,13 @@ export const turnWledOff = async (deviceIp, protocol = "http") => {
       signal: AbortSignal.timeout(5000)
     });
     
-    console.log(`🔴 HTTP API Response: ${httpResponse.status} ${httpResponse.statusText}`);
     
     return httpResponse.ok 
       ? { success: true, message: 'Lights turned off (HTTP API)' }
       : { success: false, message: `Both APIs failed. JSON: ${jsonResponse.status}, HTTP: ${httpResponse.status}` };
       
   } catch (error) {
-    console.error(`🔴 WLED API Error:`, error);
+    logger.error(`🔴 WLED API Error:`, error);
     return { 
       success: false, 
       message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`

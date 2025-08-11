@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { logger } from "../utils/logger";
 import {
   Calendar,
   Palette,
@@ -473,7 +474,7 @@ function PresetGrid({
       if (effectsResult.success) {
         setWledEffects(effectsResult.effects);
       } else {
-        console.error("Failed to fetch WLED effects:", effectsResult.message);
+        logger.error("Failed to fetch WLED effects:", effectsResult.message);
         // Fallback to basic effects if API fails
         setWledEffects([
           { id: 0, name: "Solid", effectId: 0 },
@@ -485,7 +486,7 @@ function PresetGrid({
       if (palettesResult.success) {
         setWledPalettes(palettesResult.palettes);
       } else {
-        console.error("Failed to fetch WLED palettes:", palettesResult.message);
+        logger.error("Failed to fetch WLED palettes:", palettesResult.message);
         // Fallback to basic palettes if API fails
         setWledPalettes([
           { id: 0, name: "Default", paletteId: 0 },
@@ -494,7 +495,7 @@ function PresetGrid({
         ]);
       }
     } catch (error) {
-      console.error("Error fetching WLED data:", error);
+      logger.error("Error fetching WLED data:", error);
       // Set fallback data on error
       setWledEffects([
         { id: 0, name: "Solid", effectId: 0 },
@@ -598,15 +599,12 @@ function PresetGrid({
           );
 
           if (result.success) {
-            console.log("✅ Preset created via WebSocket");
+            // Preset created successfully via WebSocket
           } else {
             throw new Error(result.message);
           }
         } catch (wsError) {
-          console.log(
-            "⚠️ WebSocket preset creation failed, falling back to HTTP:",
-            wsError.message
-          );
+          // WebSocket preset creation failed, falling back to HTTP
 
           // Fallback to HTTP method
           result = await createWledPreset(
@@ -662,6 +660,8 @@ function PresetGrid({
   };
 
   const testEffect = async () => {
+    logger.log('🧪 Testing effect:', selectedEffect, 'with palette:', selectedPalette);
+    
     if (!selectedEffect || !selectedPalette) {
       alert("Please select both an effect and palette before testing.");
       return;
@@ -714,13 +714,13 @@ function PresetGrid({
           activeDevice.protocol || "http"
         );
         if (!result.success) {
-          console.warn(`Failed to delete WLED preset: ${result.message}`);
+          logger.warn(`Failed to delete WLED preset: ${result.message}`);
         }
       }
 
       onRemoveCustomEffect(effectId);
     } catch (error) {
-      console.error("Error removing custom effect:", error);
+      logger.error("Error removing custom effect:", error);
       // Still remove from local state even if WLED deletion failed
       onRemoveCustomEffect(effectId);
     }
@@ -736,12 +736,9 @@ function PresetGrid({
         activeDevice.ip,
         activeDevice.protocol || "http"
       );
-      console.log(
-        `Manual connection check for ${activeDevice.name}:`,
-        result.online ? "Online" : "Offline"
-      );
+      // Manual connection check completed
     } catch (error) {
-      console.error("Error during manual connection check:", error);
+      logger.error("Error during manual connection check:", error);
     } finally {
       setIsRetryingConnection(false);
     }

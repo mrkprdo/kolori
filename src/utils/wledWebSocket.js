@@ -1,4 +1,5 @@
 // src/utils/wledWebSocket.js
+import logger from './logger.js';
 let wledSocket = null;
 let reconnectTimeout = null;
 let onMessageCallback = null;
@@ -13,7 +14,6 @@ const connectWebSocket = (ip, protocol = 'ws') => {
   // Clean up any existing connection first
   if (wledSocket) {
     if (wledSocket.readyState === WebSocket.OPEN || wledSocket.readyState === WebSocket.CONNECTING) {
-      console.log("Closing existing WebSocket connection before creating new one.");
       isManualDisconnect = true;
       wledSocket.close();
     }
@@ -30,18 +30,16 @@ const connectWebSocket = (ip, protocol = 'ws') => {
   isManualDisconnect = false;
 
   const wsUrl = `${protocol}://${ip}/ws`;
-  console.log(`Attempting to connect to WLED WebSocket: ${wsUrl}`);
 
   try {
     wledSocket = new WebSocket(wsUrl);
   } catch (error) {
-    console.error("Failed to create WebSocket:", error);
+    logger.error("Failed to create WebSocket:", error);
     if (onErrorCallback) onErrorCallback(error);
     return;
   }
 
   wledSocket.onopen = (event) => {
-    console.log("Successfully connected to WLED WebSocket.");
     isManualDisconnect = false;
     if (onOpenCallback) onOpenCallback(event);
     if (reconnectTimeout) {
@@ -63,17 +61,15 @@ const connectWebSocket = (ip, protocol = 'ws') => {
         if (onMessageCallback) onMessageCallback(jsonData);
       }
     } catch (error) {
-      console.error("Error processing WebSocket message:", error);
+      logger.error("Error processing WebSocket message:", error);
     }
   };
 
   wledSocket.onclose = (event) => {
-    console.log("WLED WebSocket connection closed.", event.code, event.reason);
     if (onCloseCallback) onCloseCallback(event);
     
     // Only attempt reconnection if it wasn't a manual disconnect
     if (!isManualDisconnect && !reconnectTimeout) {
-      console.log("Attempting to reconnect to WLED WebSocket in 5 seconds...");
       reconnectTimeout = setTimeout(() => {
         if (currentIp && currentProtocol) {
           connectWebSocket(currentIp, currentProtocol);
@@ -88,13 +84,12 @@ const connectWebSocket = (ip, protocol = 'ws') => {
   };
 
   wledSocket.onerror = (error) => {
-    console.error("WebSocket Error: ", error);
+    logger.error("WebSocket Error: ", error);
     if (onErrorCallback) onErrorCallback(error);
   };
 };
 
 const disconnectWebSocket = () => {
-  console.log("Manually disconnecting WLED WebSocket.");
   
   // Set flag to prevent reconnection
   isManualDisconnect = true;
@@ -122,16 +117,15 @@ const sendWebSocketCommand = (command) => {
   if (wledSocket && wledSocket.readyState === WebSocket.OPEN) {
     try {
       const commandString = JSON.stringify(command);
-      console.log("Sending WebSocket command:", commandString);
       wledSocket.send(commandString);
       return true;
     } catch (error) {
-      console.error("Failed to send WebSocket command:", error);
+      logger.error("Failed to send WebSocket command:", error);
       return false;
     }
   } else {
-    console.warn("WebSocket not open. Command not sent:", command);
-    console.warn("WebSocket state:", wledSocket ? wledSocket.readyState : "null");
+    logger.warn("WebSocket not open. Command not sent:", command);
+    logger.warn("WebSocket state:", wledSocket ? wledSocket.readyState : "null");
     return false;
   }
 };
@@ -146,12 +140,12 @@ const setWebSocketCallbacks = (callbacks) => {
 // Save preset via WebSocket using WLED JSON API format
 const savePresetViaWebSocket = (presetId, presetName, options = {}) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket not open. Cannot save preset.");
+    logger.warn("WebSocket not open. Cannot save preset.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    console.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error("Invalid preset ID. Must be between 1 and 250.");
     return false;
   }
 
@@ -173,11 +167,10 @@ const savePresetViaWebSocket = (presetId, presetName, options = {}) => {
 
   try {
     const commandString = JSON.stringify(presetCommand);
-    console.log("Saving preset via WebSocket:", commandString);
     wledSocket.send(commandString);
     return true;
   } catch (error) {
-    console.error("Failed to save preset via WebSocket:", error);
+    logger.error("Failed to save preset via WebSocket:", error);
     return false;
   }
 };
@@ -185,12 +178,12 @@ const savePresetViaWebSocket = (presetId, presetName, options = {}) => {
 // Load/activate preset via WebSocket
 const loadPresetViaWebSocket = (presetId) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket not open. Cannot load preset.");
+    logger.warn("WebSocket not open. Cannot load preset.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    console.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error("Invalid preset ID. Must be between 1 and 250.");
     return false;
   }
 
@@ -200,11 +193,10 @@ const loadPresetViaWebSocket = (presetId) => {
 
   try {
     const commandString = JSON.stringify(loadCommand);
-    console.log("Loading preset via WebSocket:", commandString);
     wledSocket.send(commandString);
     return true;
   } catch (error) {
-    console.error("Failed to load preset via WebSocket:", error);
+    logger.error("Failed to load preset via WebSocket:", error);
     return false;
   }
 };
@@ -212,12 +204,12 @@ const loadPresetViaWebSocket = (presetId) => {
 // Delete preset via WebSocket
 const deletePresetViaWebSocket = (presetId) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket not open. Cannot delete preset.");
+    logger.warn("WebSocket not open. Cannot delete preset.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    console.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error("Invalid preset ID. Must be between 1 and 250.");
     return false;
   }
 
@@ -227,11 +219,10 @@ const deletePresetViaWebSocket = (presetId) => {
 
   try {
     const commandString = JSON.stringify(deleteCommand);
-    console.log("Deleting preset via WebSocket:", commandString);
     wledSocket.send(commandString);
     return true;
   } catch (error) {
-    console.error("Failed to delete preset via WebSocket:", error);
+    logger.error("Failed to delete preset via WebSocket:", error);
     return false;
   }
 };
@@ -239,17 +230,17 @@ const deletePresetViaWebSocket = (presetId) => {
 // Save playlist via WebSocket using exact WLED JSON API format
 const savePlaylistViaWebSocket = (presetId, playlistName, playlistItems, options = {}) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket not open. Cannot save playlist.");
+    logger.warn("WebSocket not open. Cannot save playlist.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    console.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error("Invalid preset ID. Must be between 1 and 250.");
     return false;
   }
 
   if (!playlistItems || !Array.isArray(playlistItems) || playlistItems.length === 0) {
-    console.error("Invalid playlist items. Must be a non-empty array.");
+    logger.error("Invalid playlist items. Must be a non-empty array.");
     return false;
   }
 
@@ -283,11 +274,10 @@ const savePlaylistViaWebSocket = (presetId, playlistName, playlistItems, options
 
   try {
     const commandString = JSON.stringify(playlistCommand);
-    console.log("Saving playlist via WebSocket:", commandString);
     wledSocket.send(commandString);
     return true;
   } catch (error) {
-    console.error("Failed to save playlist via WebSocket:", error);
+    logger.error("Failed to save playlist via WebSocket:", error);
     return false;
   }
 };
@@ -295,12 +285,12 @@ const savePlaylistViaWebSocket = (presetId, playlistName, playlistItems, options
 // Start/play playlist via WebSocket
 const playPlaylistViaWebSocket = (presetId) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket not open. Cannot play playlist.");
+    logger.warn("WebSocket not open. Cannot play playlist.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    console.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error("Invalid preset ID. Must be between 1 and 250.");
     return false;
   }
 
@@ -311,11 +301,10 @@ const playPlaylistViaWebSocket = (presetId) => {
 
   try {
     const commandString = JSON.stringify(playCommand);
-    console.log("Playing playlist via WebSocket:", commandString);
     wledSocket.send(commandString);
     return true;
   } catch (error) {
-    console.error("Failed to play playlist via WebSocket:", error);
+    logger.error("Failed to play playlist via WebSocket:", error);
     return false;
   }
 };
@@ -323,12 +312,12 @@ const playPlaylistViaWebSocket = (presetId) => {
 // Delete playlist via WebSocket (deletes the preset containing the playlist)
 const deletePlaylistViaWebSocket = (presetId) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket not open. Cannot delete playlist.");
+    logger.warn("WebSocket not open. Cannot delete playlist.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    console.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error("Invalid preset ID. Must be between 1 and 250.");
     return false;
   }
 
@@ -338,11 +327,10 @@ const deletePlaylistViaWebSocket = (presetId) => {
 
   try {
     const commandString = JSON.stringify(deleteCommand);
-    console.log("Deleting playlist via WebSocket:", commandString);
     wledSocket.send(commandString);
     return true;
   } catch (error) {
-    console.error("Failed to delete playlist via WebSocket:", error);
+    logger.error("Failed to delete playlist via WebSocket:", error);
     return false;
   }
 };

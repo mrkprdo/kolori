@@ -1,4 +1,3 @@
-import React from "react";
 import { WifiOff, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function DisconnectedOverlay({ 

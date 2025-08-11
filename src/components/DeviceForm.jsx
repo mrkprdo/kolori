@@ -1,4 +1,3 @@
-import React from "react";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export default function DeviceForm({
