@@ -9,6 +9,7 @@ import {
   Settings,
   Plus,
   Trash2,
+  Pencil,
   MoreVertical,
   RefreshCw,
 } from "lucide-react";
@@ -140,7 +141,7 @@ function CustomEffectCard({
               onClick={handleEditClick}
               className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 transition-colors flex items-center gap-2"
             >
-              <Trash2 size={16} />
+              <Pencil size={16} />
               Modify
             </button>
             <button
@@ -575,7 +576,6 @@ function PresetGrid({
               }
             : e
         );
-        setCustomEffects(updatedEffects);
         saveCustomEffectsToStorage(updatedEffects);
         if (onCustomEffectUpdate) {
           onCustomEffectUpdate(updatedEffects);
