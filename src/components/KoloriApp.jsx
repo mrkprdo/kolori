@@ -106,25 +106,30 @@ export default function KoloriApp() {
 
   // One-time startup log and mixed content detection
   useEffect(() => {
-    logger.log('🎉 KoloriApp initialized in development mode');
-    
+    logger.log("🎉 KoloriApp initialized in development mode");
+
     // Detect if we're in an iframe and running over HTTPS
-    if (window.self !== window.top && location.protocol === 'https:') {
-      logger.log('🔒 Running in iframe with HTTPS - mixed content protection active');
+    if (window.self !== window.top && location.protocol === "https:") {
+      logger.log(
+        "🔒 Running in iframe with HTTPS - mixed content protection active"
+      );
     }
-    
+
     // Set up global error handler for mixed content issues
-    window.addEventListener('error', (event) => {
-      if (event.message && event.message.includes('mixed content')) {
-        logger.error('Mixed content error detected:', event.message);
-        
+    window.addEventListener("error", (event) => {
+      if (event.message && event.message.includes("mixed content")) {
+        logger.error("Mixed content error detected:", event.message);
+
         // Notify parent frame if we're in an iframe
         if (window.parent !== window.self) {
-          window.parent.postMessage({
-            type: 'MIXED_CONTENT_ERROR',
-            url: event.filename || 'unknown',
-            message: event.message
-          }, '*');
+          window.parent.postMessage(
+            {
+              type: "MIXED_CONTENT_ERROR",
+              url: event.filename || "unknown",
+              message: event.message,
+            },
+            "*"
+          );
         }
       }
     });
@@ -133,7 +138,7 @@ export default function KoloriApp() {
   // Computed values
   const activeDevice =
     devices.find((d) => d.id === activeDeviceId) || devices[0];
-  
+
   const isConnected = activeDevice?.isConnected || false;
   const deviceName = activeDevice?.name || "No Device";
   const activePreset = activeDevice?.activePreset || null;
@@ -145,7 +150,10 @@ export default function KoloriApp() {
 
   // Configure status bar for mobile
   useEffect(() => {
-    logger.log('🚀 KoloriApp: Configuring status bar for theme:', isDark ? 'dark' : 'light');
+    logger.log(
+      "🚀 KoloriApp: Configuring status bar for theme:",
+      isDark ? "dark" : "light"
+    );
     const configureStatusBar = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
@@ -254,7 +262,11 @@ export default function KoloriApp() {
   useEffect(() => {
     let wsConnectTimer = null;
 
-    if (activeDevice && getDeviceAddress(activeDevice) && activeDevice.isConnected) {
+    if (
+      activeDevice &&
+      getDeviceAddress(activeDevice) &&
+      activeDevice.isConnected
+    ) {
       setWebSocketCallbacks({
         onOpen: () => {
           // Update device connection status to reflect WebSocket connection
@@ -278,9 +290,9 @@ export default function KoloriApp() {
 
             for (let i = 0; i < byteArray.length; i += bytesPerLed) {
               colors.push({
-                r: byteArray[i],
-                g: byteArray[i + 1],
-                b: byteArray[i + 2],
+                g: byteArray[i],
+                b: byteArray[i + 1],
+                r: byteArray[i + 2],
                 w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
               });
             }
@@ -372,7 +384,6 @@ export default function KoloriApp() {
   };
 
   const checkAndApplySchedule = async () => {
-
     if (!activeDevice) {
       return;
     }
@@ -383,7 +394,6 @@ export default function KoloriApp() {
 
     const shouldBeOn = shouldLightsBeOn();
     const currentTime = new Date().toISOString();
-
 
     // Only apply if this is a new schedule decision (avoid spam)
     if (
@@ -443,32 +453,38 @@ export default function KoloriApp() {
   const validateDevice = async (ip, mdns, protocol = "http") => {
     try {
       // Import the connectivity testing function
-      const { findBestDeviceAddress } = await import('../config/wledApi.js');
-      
-      logger.log('🔍 Testing device connectivity:', { ip, mdns, protocol });
-      
+      const { findBestDeviceAddress } = await import("../config/wledApi.js");
+
+      logger.log("🔍 Testing device connectivity:", { ip, mdns, protocol });
+
       // Test both IP and mDNS addresses
       const result = await findBestDeviceAddress(ip, mdns, protocol);
-      
+
       if (result.success) {
-        logger.log('✅ Device found:', result.bestAddress, result.deviceInfo?.name);
+        logger.log(
+          "✅ Device found:",
+          result.bestAddress,
+          result.deviceInfo?.name
+        );
         return {
           success: true,
           bestAddress: result.bestAddress,
           responseTime: result.responseTime,
           deviceInfo: result.deviceInfo,
-          message: `WLED device found: ${result.deviceInfo?.name || "Unknown"} via ${result.bestAddress} (${result.responseTime}ms)`,
-          allResults: result.allResults
+          message: `WLED device found: ${
+            result.deviceInfo?.name || "Unknown"
+          } via ${result.bestAddress} (${result.responseTime}ms)`,
+          allResults: result.allResults,
         };
       } else {
-        logger.log('❌ Device validation failed:', result.message);
+        logger.log("❌ Device validation failed:", result.message);
         return {
           success: false,
           message: result.details || result.message,
         };
       }
     } catch (error) {
-      logger.error('💥 Device validation error:', error);
+      logger.error("💥 Device validation error:", error);
       return {
         success: false,
         message: `Validation failed: ${error.message}`,
@@ -489,15 +505,23 @@ export default function KoloriApp() {
     return device.bestAddress || device.ip;
   };
 
-  // Device management functions  
+  // Device management functions
   const addDevice = async () => {
-    logger.log('➕ Adding new device:', newDevice.name, 'IP:', newDevice.ip, 'mDNS:', newDevice.mdns);
-    
+    logger.log(
+      "➕ Adding new device:",
+      newDevice.name,
+      "IP:",
+      newDevice.ip,
+      "mDNS:",
+      newDevice.mdns
+    );
+
     // Validate that we have name and at least one connection method
     if (!newDevice.name || (!newDevice.ip && !newDevice.mdns)) {
       setNewDevice((prev) => ({
         ...prev,
-        validationMessage: "Please provide a device name and at least an IP address or mDNS name.",
+        validationMessage:
+          "Please provide a device name and at least an IP address or mDNS name.",
         validationError: true,
       }));
       return;
@@ -591,7 +615,7 @@ export default function KoloriApp() {
           wledInfo: validation.deviceInfo || null,
           responseTime: validation.responseTime,
         };
-        
+
         const updatedDevices = [...devices, device];
         setDevices(updatedDevices);
 
@@ -610,8 +634,13 @@ export default function KoloriApp() {
           validationMessage: "",
         });
         setShowDeviceForm(false);
-        
-        logger.log('✅ Device added successfully:', device.name, 'via', device.bestAddress);
+
+        logger.log(
+          "✅ Device added successfully:",
+          device.name,
+          "via",
+          device.bestAddress
+        );
       } else {
         // Show validation error but keep form open
         setNewDevice((prev) => ({
@@ -637,7 +666,7 @@ export default function KoloriApp() {
     const deviceToRemove = devices.find((d) => d.id === deviceId);
     if (!deviceToRemove) return;
 
-    logger.log('🗑️ Initiating device removal:', deviceToRemove.name);
+    logger.log("🗑️ Initiating device removal:", deviceToRemove.name);
     // Show confirmation modal instead of browser confirm
     setDeviceToDelete(deviceToRemove);
     setShowConfirmDelete(true);
@@ -645,8 +674,8 @@ export default function KoloriApp() {
 
   const confirmRemoveDevice = () => {
     if (!deviceToDelete) return;
-    
-    logger.log('✅ Device removal confirmed:', deviceToDelete.name);
+
+    logger.log("✅ Device removal confirmed:", deviceToDelete.name);
 
     const updatedDevices = devices.filter((d) => d.id !== deviceToDelete.id);
     setDevices(updatedDevices);
@@ -658,23 +687,27 @@ export default function KoloriApp() {
       );
     }
 
-
     // Clean up state
     setDeviceToDelete(null);
   };
 
   // Preset and playlist functions
   const applyPreset = async (presetId) => {
-    logger.log('🎨 Applying preset:', presetId, 'to device:', activeDevice?.name);
-    
+    logger.log(
+      "🎨 Applying preset:",
+      presetId,
+      "to device:",
+      activeDevice?.name
+    );
+
     // Check if active device is connected
     if (!activeDevice) {
-      logger.warn('No active device selected');
+      logger.warn("No active device selected");
       return;
     }
 
     if (!activeDevice.isConnected) {
-      logger.warn('Device not connected:', activeDevice.name);
+      logger.warn("Device not connected:", activeDevice.name);
       showNotification(
         "error",
         "Device Offline",
@@ -690,7 +723,6 @@ export default function KoloriApp() {
       if (!activeDevice) {
         return;
       }
-
 
       // Call WLED API to activate preset
       const result = await activateWledPreset(
@@ -715,7 +747,6 @@ export default function KoloriApp() {
       if (!activeDevice) {
         return;
       }
-
 
       // Use preset ID if available, otherwise fall back to effect/palette activation
       let result;
@@ -748,9 +779,8 @@ export default function KoloriApp() {
     updateDevice(activeDeviceId, { activePreset: presetId });
   };
 
-
   const addToPlaylist = (preset) => {
-    logger.log('➕ Adding to playlist:', preset.name);
+    logger.log("➕ Adding to playlist:", preset.name);
     const playlistItem = {
       ...preset,
       duration: 30,
@@ -761,7 +791,7 @@ export default function KoloriApp() {
 
   const removeFromPlaylist = (index) => {
     const item = currentPlaylist[index];
-    logger.log('➖ Removing from playlist:', item?.name || `item ${index}`);
+    logger.log("➖ Removing from playlist:", item?.name || `item ${index}`);
     setCurrentPlaylist(currentPlaylist.filter((_, i) => i !== index));
   };
 
@@ -770,19 +800,33 @@ export default function KoloriApp() {
   };
 
   const showNotification = (type, title, message) => {
-    logger.log('📢 Notification:', type, title, message);
+    logger.log("📢 Notification:", type, title, message);
+    
+    // Clear any existing notification first
     setNotification({
-      isVisible: true,
-      type,
-      title,
-      message,
+      isVisible: false,
+      type: "success",
+      title: "",
+      message: "",
     });
+    
+    // Show new notification after a brief delay to ensure clean state
+    setTimeout(() => {
+      setNotification({
+        isVisible: true,
+        type,
+        title,
+        message,
+      });
+    }, 100);
   };
 
   const closeNotification = () => {
     setNotification({
-      ...notification,
       isVisible: false,
+      type: "success",
+      title: "",
+      message: "",
     });
   };
 
@@ -797,7 +841,6 @@ export default function KoloriApp() {
 
     // Remove the playlist from saved playlists while editing
     setSavedPlaylists((prev) => prev.filter((p) => p.id !== playlist.id));
-
   };
 
   const removePlaylist = async (playlistId) => {
@@ -882,10 +925,7 @@ export default function KoloriApp() {
       playlistToActivate.presetId === undefined ||
       playlistToActivate.presetId === null
     ) {
-      logger.error(
-        "Playlist has no associated preset ID:",
-        playlistToActivate
-      );
+      logger.error("Playlist has no associated preset ID:", playlistToActivate);
       showNotification(
         "error",
         "Playlist Error",
@@ -957,10 +997,7 @@ export default function KoloriApp() {
     // Validate that all items have preset IDs (required for WebSocket playlist)
     const missingPresetIds = playlistItems.filter((item) => !item.presetId);
     if (missingPresetIds.length > 0) {
-      logger.error(
-        "Some playlist items missing preset IDs:",
-        missingPresetIds
-      );
+      logger.error("Some playlist items missing preset IDs:", missingPresetIds);
       showNotification(
         "error",
         "Invalid Playlist",
@@ -1109,7 +1146,7 @@ export default function KoloriApp() {
 
   // Handle user agreement
   const handleAcceptAgreement = () => {
-    logger.log('✅ User agreement accepted');
+    logger.log("✅ User agreement accepted");
     const agreementData = {
       accepted: true,
       timestamp: new Date().toISOString(),
@@ -1120,7 +1157,7 @@ export default function KoloriApp() {
   };
 
   const handleRejectAgreement = () => {
-    logger.log('❌ User agreement rejected');
+    logger.log("❌ User agreement rejected");
     // Clear any stored data and show rejection message
     localStorage.removeItem(USER_AGREEMENT_STORAGE_KEY);
     localStorage.removeItem(DEVICES_STORAGE_KEY);
@@ -1131,7 +1168,7 @@ export default function KoloriApp() {
   };
 
   const handleAcceptMixedContent = () => {
-    logger.log('🔒 Mixed content protection accepted');
+    logger.log("🔒 Mixed content protection accepted");
     setMixedContentAccepted(true);
     saveToStorage("kolori_mixed_content_accepted", true);
   };
@@ -1222,7 +1259,6 @@ export default function KoloriApp() {
         });
         setSavedPlaylists(fetchedPlaylists);
         saveToStorage(PLAYLISTS_STORAGE_KEY, fetchedPlaylists);
-
 
         if (fetchedPresets.length > 0 || fetchedPlaylists.length > 0) {
           const totalItems =

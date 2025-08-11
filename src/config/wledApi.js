@@ -1,5 +1,6 @@
 // Simplified WLED API - Focus on preset activation only
 import { logger } from '../utils/logger.js';
+import { WLED_PALETTES_DATA } from '../constants/palettes.js';
 
 // Helper function to build WLED URLs with protocol support
 const buildWledUrl = (deviceAddress, protocol = "http", path) => {
@@ -348,23 +349,19 @@ export const getWledPresets = async (deviceAddress, protocol = "http") => {
 
 // Helper function to generate gradient based on palette ID
 const generatePresetGradient = (paletteId) => {
-  // Simple gradient generation based on palette ID
-  const gradients = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Default
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // Random Cycle
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Primary Color
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', // Based on Primary
-    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', // Set Colors
-    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', // Based on Set
-    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)', // Party
-    'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)', // Cloud
-    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', // Lava
-    'linear-gradient(135deg, #08fdd8 0%, #6c93ff 100%)', // Ocean
-    'linear-gradient(135deg, #52c234 0%, #061700 100%)', // Forest
-    'linear-gradient(135deg, #ff0084 0%, #33001b 100%)', // Rainbow
-  ];
+  // Create array of palette names in order (matching WLED palette IDs)
+  const paletteNames = Object.keys(WLED_PALETTES_DATA);
+  const paletteName = paletteNames[paletteId] || paletteNames[0]; // Fallback to first palette
   
-  return gradients[paletteId % gradients.length] || gradients[0];
+  // Get palette color data
+  const paletteData = WLED_PALETTES_DATA[paletteName];
+  if (!paletteData || paletteData.length === 0) {
+    return `linear-gradient(135deg, #888, #555)`;
+  }
+
+  // Convert color data to RGB strings - format is [position, r, g, b]
+  const colorStops = paletteData.map((color) => `rgb(${color[1]}, ${color[2]}, ${color[3]})`).join(", ");
+  return `linear-gradient(135deg, ${colorStops})`;
 };
 
 // Function to check if WLED device is online (heartbeat)

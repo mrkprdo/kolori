@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
 
 export default function Notification({ 
@@ -12,27 +12,69 @@ export default function Notification({
   isDark
 }) {
   const [isShowing, setIsShowing] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const timerRef = useRef(null);
+  const animationTimerRef = useRef(null);
 
   const handleClose = useCallback(() => {
+    if (isClosing) return; // Prevent multiple close calls
+    
+    setIsClosing(true);
     setIsShowing(false);
-    setTimeout(() => {
+    
+    // Clear any existing timers
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    // Wait for animation to complete before calling onClose
+    animationTimerRef.current = setTimeout(() => {
       onClose();
-    }, 300); // Wait for animation to complete
-  }, [onClose]);
+      setIsClosing(false);
+    }, 300);
+  }, [onClose, isClosing]);
 
   useEffect(() => {
-    if (isVisible) {
+    // Clear all timers on cleanup or when visibility changes
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isVisible && !isClosing) {
       setIsShowing(true);
       
       if (autoClose) {
-        const timer = setTimeout(() => {
+        // Clear any existing timer before setting new one
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+        
+        timerRef.current = setTimeout(() => {
           handleClose();
         }, duration);
-
-        return () => clearTimeout(timer);
+      }
+    } else if (!isVisible) {
+      // Reset state when notification is hidden externally
+      setIsShowing(false);
+      setIsClosing(false);
+      
+      // Clear any existing timers
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
     }
-  }, [isVisible, autoClose, duration, handleClose]);
+  }, [isVisible, autoClose, duration, handleClose, isClosing]);
 
   if (!isVisible) return null;
 

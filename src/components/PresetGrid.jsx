@@ -660,8 +660,13 @@ function PresetGrid({
   };
 
   const testEffect = async () => {
-    logger.log('🧪 Testing effect:', selectedEffect, 'with palette:', selectedPalette);
-    
+    logger.log(
+      "🧪 Testing effect:",
+      selectedEffect,
+      "with palette:",
+      selectedPalette
+    );
+
     if (!selectedEffect || !selectedPalette) {
       alert("Please select both an effect and palette before testing.");
       return;
@@ -779,21 +784,46 @@ function PresetGrid({
                   <div className="font-medium text-sm mb-1">
                     Active: {activePresetData.name}
                   </div>
-                  {/* Live LED Data */}
+                  {/* Live LED Data - Small LED Pills */}
                   {liveLedData.length > 0 && (
-                    <div className="mt-4">
-                      <div className="flex flex-wrap rounded-md overflow-hidden">
+                    <div className="mt-3">
+                      <div className="flex flex-wrap gap-0.5 items-end">
                         {liveLedData.map((color, index) => (
                           <div
                             key={index}
+                            className="relative"
                             style={{
-                              backgroundColor: `rgb(${color.b}, ${color.g}, ${color.r})`,
-                              width: "8px", // Adjust size as needed
-                              height: "11px", // Adjust size as needed
+                              width: "6px",
+                              height: "11px",
+                              backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+                              borderRadius: "2px",
+                              boxShadow: `0 0 4px rgba(${color.r}, ${color.g}, ${color.b}, 0.6)`,
+                              border: "0.2px solid rgba(255, 255, 255, 0.2)",
                             }}
-                            title={`RGB: ${color.b}, ${color.g}, ${color.r}`}
-                          ></div>
+                            title={`LED ${index + 1}: RGB(${color.r}, ${
+                              color.g
+                            }, ${color.b})`}
+                          >
+                            {/* LED highlight effect */}
+                            <div
+                              className="absolute top-0.5 left-0.5 rounded-full"
+                              style={{
+                                width: "2px",
+                                height: "4px",
+                                backgroundColor: "rgba(255, 255, 255, 0.4)",
+                                borderRadius: "1px",
+                              }}
+                            />
+                          </div>
                         ))}
+                      </div>
+                      <div
+                        className={`text-xs mt-1 ${
+                          isDark ? "text-gray-500" : "text-gray-400"
+                        }`}
+                      >
+                        {liveLedData.length} LED
+                        {liveLedData.length !== 1 ? "s" : ""} live
                       </div>
                     </div>
                   )}
