@@ -1,3 +1,4 @@
+import { connectWebSocket, disconnectWebSocket, setWebSocketCallbacks } from '../utils/wledWebSocket';
 import React, { useState, useEffect, useRef } from "react";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { Capacitor } from "@capacitor/core";
@@ -202,6 +203,152 @@ export default function KoloriApp() {
       clearInterval(heartbeatInterval);
     };
   }, [devices.length]); // Only re-run when number of devices changes
+
+  // Device management helper function - moved here to avoid hoisting issues
+  const updateDevice = (deviceId, updates) => {
+    setDevices(
+      devices.map((d) => (d.id === deviceId ? { ...d, ...updates } : d))
+    );
+  };
+
+  // WebSocket state and effects
+  useEffect(() => {
+    let wsConnectTimer = null;
+
+    if (activeDevice && activeDevice.ip && activeDevice.isConnected) {
+      setWebSocketCallbacks({
+        onOpen: () => {
+          console.log("WebSocket connected in KoloriApp.");
+          // Update device connection status to reflect WebSocket connection
+          setDevices(prevDevices => prevDevices.map(d =>
+            d.id === activeDevice.id ? { ...d, isConnected: true } : d
+          ));
+        },
+        onMessage: (data) => {
+          // Update active device state based on WebSocket message
+          setDevices(prevDevices => prevDevices.map(d =>
+            d.id === activeDevice.id ? { ...d, wledInfo: data, isConnected: true } : d
+          ));
+          // Update device state based on incoming WLED state
+          if (data.state) {
+            updateDevice(activeDevice.id, {
+              activePreset: data.state.ps || null,
+              isPlaying: data.state.pl > -1,
+            });
+          }
+        },
+        onClose: (event) => {
+          console.log("WebSocket disconnected in KoloriApp.", event);
+          // Only mark as disconnected if it wasn't a manual close
+          if (event.code !== 1000) {
+            setDevices(prevDevices => prevDevices.map(d =>
+              d.id === activeDevice.id ? { ...d, isConnected: false } : d
+            ));
+          }
+        },
+        onError: (error) => {
+          console.error("WebSocket error in KoloriApp:", error);
+          // Mark device as disconnected on error
+          setDevices(prevDevices => prevDevices.map(d =>
+            d.id === activeDevice.id ? { ...d, isConnected: false } : d
+          ));
+          showNotification('error', 'Connection Lost', `WebSocket connection to ${activeDevice.name} failed.`);
+        }
+      });
+
+      // Connect with a short delay to ensure callbacks are set
+      wsConnectTimer = setTimeout(() => {
+        const wsProtocol = activeDevice.protocol === 'https' ? 'wss' : 'ws';
+        console.log(`Connecting to WebSocket: ${wsProtocol}://${activeDevice.ip}/ws`);
+        connectWebSocket(activeDevice.ip, wsProtocol);
+      }, 1000);
+    }
+
+    return () => {
+      if (wsConnectTimer) {
+        clearTimeout(wsConnectTimer);
+      }
+      disconnectWebSocket();
+    };
+  }, [activeDevice?.id, activeDevice?.ip, activeDevice?.protocol]);
+
+  // Schedule helper functions - moved here to avoid hoisting issues
+  const shouldLightsBeOn = () => {
+    if (scheduleMode === "all-day") {
+      return true; // Always on
+    }
+
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    if (scheduleMode === "day") {
+      // Day mode: 7am to 7pm (7:00 - 19:00)
+      return currentHour >= 7 && currentHour < 19;
+    } else if (scheduleMode === "night") {
+      // Night mode: 7pm to 7am (19:00 - 07:00)
+      return currentHour >= 19 || currentHour < 7;
+    }
+
+    return true; // Default to on if unknown mode
+  };
+
+  const checkAndApplySchedule = async () => {
+    console.log(`📅 Schedule Check: Starting check...`);
+    console.log(`📅 Active Device: ${activeDevice?.name || 'none'}`);
+    console.log(`📅 Device Connected: ${activeDevice?.isConnected || false}`);
+    
+    console.log(`📅 Schedule Mode: ${scheduleMode}`);
+    
+    if (!activeDevice) {
+      console.log(`📅 Schedule Check: No active device - skipping`);
+      return;
+    }
+    
+    if (!activeDevice.isConnected) {
+      console.log(`📅 Schedule Check: Device disconnected - skipping`);
+      return;
+    }
+    
+    const shouldBeOn = shouldLightsBeOn();
+    const currentTime = new Date().toISOString();
+    const currentHour = new Date().getHours();
+
+    console.log(`📅 Current Time: ${currentTime}`);
+    console.log(`📅 Current Hour: ${currentHour}`);
+    console.log(`📅 Should Lights Be On: ${shouldBeOn}`);
+
+    // Only apply if this is a new schedule decision (avoid spam)
+    if (lastScheduleCheck && 
+        Math.abs(new Date() - new Date(lastScheduleCheck)) < 60000) {
+      console.log(`📅 Schedule Check: Checked recently - skipping (last: ${lastScheduleCheck})`);
+      return;
+    }
+
+    setLastScheduleCheck(currentTime);
+    console.log(`📅 Schedule Check: Applying schedule action...`);
+
+    try {
+      if (shouldBeOn) {
+        console.log(`📅 Schedule Action: Calling turnWledOn for ${activeDevice.ip}`);
+        const result = await turnWledOn(activeDevice.ip, activeDevice.protocol || "http");
+        if (result.success) {
+          console.log(`✅ Schedule: Turned lights ON (${scheduleMode} mode) - ${result.message}`);
+        } else {
+          console.error(`❌ Schedule: Failed to turn lights ON - ${result.message}`);
+        }
+      } else {
+        console.log(`📅 Schedule Action: Calling turnWledOff for ${activeDevice.ip}`);
+        const result = await turnWledOff(activeDevice.ip, activeDevice.protocol || "http");
+        if (result.success) {
+          console.log(`✅ Schedule: Turned lights OFF (${scheduleMode} mode) - ${result.message}`);
+        } else {
+          console.error(`❌ Schedule: Failed to turn lights OFF - ${result.message}`);
+        }
+      }
+    } catch (error) {
+      console.error("📅 Schedule enforcement error:", error);
+    }
+  };
 
   // Schedule monitoring - check every minute to enforce schedule
   useEffect(() => {
@@ -436,12 +583,6 @@ export default function KoloriApp() {
 
     // Clean up state
     setDeviceToDelete(null);
-  };
-
-  const updateDevice = (deviceId, updates) => {
-    setDevices(
-      devices.map((d) => (d.id === deviceId ? { ...d, ...updates } : d))
-    );
   };
 
   // Preset and playlist functions
@@ -768,86 +909,6 @@ export default function KoloriApp() {
     checkAndApplySchedule();
   };
 
-  // Function to determine if lights should be on based on current time and schedule
-  const shouldLightsBeOn = () => {
-    if (scheduleMode === "all-day") {
-      return true; // Always on
-    }
-
-    const now = new Date();
-    const currentHour = now.getHours();
-
-    if (scheduleMode === "day") {
-      // Day mode: 7am to 7pm (7:00 - 19:00)
-      return currentHour >= 7 && currentHour < 19;
-    } else if (scheduleMode === "night") {
-      // Night mode: 7pm to 7am (19:00 - 07:00)
-      return currentHour >= 19 || currentHour < 7;
-    }
-
-    return true; // Default to on if unknown mode
-  };
-
-  // Function to check and apply schedule
-  const checkAndApplySchedule = async () => {
-    console.log(`📅 Schedule Check: Starting check...`);
-    console.log(`📅 Active Device: ${activeDevice?.name || 'none'}`);
-    console.log(`📅 Device Connected: ${activeDevice?.isConnected || false}`);
-    
-    console.log(`📅 Schedule Mode: ${scheduleMode}`);
-    
-    if (!activeDevice) {
-      console.log(`📅 Schedule Check: No active device - skipping`);
-      return;
-    }
-    
-    if (!activeDevice.isConnected) {
-      console.log(`📅 Schedule Check: Device disconnected - skipping`);
-      return;
-    }
-    
-    
-
-    const shouldBeOn = shouldLightsBeOn();
-    const currentTime = new Date().toISOString();
-    const currentHour = new Date().getHours();
-
-    console.log(`📅 Current Time: ${currentTime}`);
-    console.log(`📅 Current Hour: ${currentHour}`);
-    console.log(`📅 Should Lights Be On: ${shouldBeOn}`);
-
-    // Only apply if this is a new schedule decision (avoid spam)
-    if (lastScheduleCheck && 
-        Math.abs(new Date() - new Date(lastScheduleCheck)) < 60000) {
-      console.log(`📅 Schedule Check: Checked recently - skipping (last: ${lastScheduleCheck})`);
-      return;
-    }
-
-    setLastScheduleCheck(currentTime);
-    console.log(`📅 Schedule Check: Applying schedule action...`);
-
-    try {
-      if (shouldBeOn) {
-        console.log(`📅 Schedule Action: Calling turnWledOn for ${activeDevice.ip}`);
-        const result = await turnWledOn(activeDevice.ip, activeDevice.protocol || "http");
-        if (result.success) {
-          console.log(`✅ Schedule: Turned lights ON (${scheduleMode} mode) - ${result.message}`);
-        } else {
-          console.error(`❌ Schedule: Failed to turn lights ON - ${result.message}`);
-        }
-      } else {
-        console.log(`📅 Schedule Action: Calling turnWledOff for ${activeDevice.ip}`);
-        const result = await turnWledOff(activeDevice.ip, activeDevice.protocol || "http");
-        if (result.success) {
-          console.log(`✅ Schedule: Turned lights OFF (${scheduleMode} mode) - ${result.message}`);
-        } else {
-          console.error(`❌ Schedule: Failed to turn lights OFF - ${result.message}`);
-        }
-      }
-    } catch (error) {
-      console.error("📅 Schedule enforcement error:", error);
-    }
-  };
 
   // Handle first device addition
   const handleAddFirstDevice = () => {
