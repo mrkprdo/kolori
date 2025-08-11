@@ -407,6 +407,7 @@ function PresetGrid({
   onPlaylistEdit,
   onPlaylistRemove,
   onPlaylistSelect, // New prop
+  liveLedData, // New prop
 }) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(() => {
     const saved = localStorage.getItem("kolori_seasonal_collapsed");
@@ -816,6 +817,26 @@ function PresetGrid({
         )}
       </div>
 
+      {/* Live LED Data */}
+      {liveLedData.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-md font-semibold mb-2">Live LED Data</h3>
+          <div className="flex flex-wrap rounded-md overflow-hidden">
+            {liveLedData.map((color, index) => (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: `rgb(${color.b}, ${color.g}, ${color.r})`,
+                  width: "10px", // Adjust size as needed
+                  height: "20px", // Adjust size as needed
+                }}
+                title={`RGB: ${color.b}, ${color.g}, ${color.r}`}
+              ></div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Seasonal Presets */}
       <div>
         <button
@@ -1071,8 +1092,6 @@ function PresetGrid({
               </div>
             )}
 
-            
-
             {/* Custom Effects Grid */}
             {customEffects.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
@@ -1089,7 +1108,13 @@ function PresetGrid({
                 ))}
               </div>
             ) : (
-              <div className={`p-4 border rounded-xl text-center ${isDark ? "border-gray-700 bg-gray-800 text-gray-400" : "border-gray-300 bg-gray-50 text-gray-500"}`}>
+              <div
+                className={`p-4 border rounded-xl text-center ${
+                  isDark
+                    ? "border-gray-700 bg-gray-800 text-gray-400"
+                    : "border-gray-300 bg-gray-50 text-gray-500"
+                }`}
+              >
                 No custom effects found.
               </div>
             )}

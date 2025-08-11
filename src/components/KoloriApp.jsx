@@ -2,6 +2,7 @@ import {
   connectWebSocket,
   disconnectWebSocket,
   setWebSocketCallbacks,
+  sendWebSocketCommand,
 } from "../utils/wledWebSocket";
 import React, { useState, useEffect, useRef } from "react";
 import { StatusBar, Style } from "@capacitor/status-bar";
@@ -90,6 +91,7 @@ export default function KoloriApp() {
     protocol: "http",
   });
   const [filterTerm, setFilterTerm] = useState("");
+  const [liveLedData, setLiveLedData] = useState([]);
 
   // Use ref to track current devices for heartbeat monitoring
   const devicesRef = useRef(devices);
@@ -233,20 +235,47 @@ export default function KoloriApp() {
           );
         },
         onMessage: (data) => {
-          // Update active device state based on WebSocket message
-          setDevices((prevDevices) =>
-            prevDevices.map((d) =>
-              d.id === activeDevice.id
-                ? { ...d, wledInfo: data, isConnected: true }
-                : d
-            )
-          );
-          // Update device state based on incoming WLED state
-          if (data.state) {
-            updateDevice(activeDevice.id, {
-              activePreset: data.state.ps || null,
-              isPlaying: data.state.pl > -1,
-            });
+          if (data instanceof ArrayBuffer) {
+            // Handle binary data (live LED data)
+            const byteArray = new Uint8Array(data);
+            const colors = [];
+            let bytesPerLed = 3; // Default to RGB
+
+            // Heuristic: if array length is divisible by 4, it might be RGBW
+            if (byteArray.length > 0 && byteArray.length % 4 === 0) {
+              bytesPerLed = 4;
+            }
+
+            for (let i = 0; i < byteArray.length; i += bytesPerLed) {
+              colors.push({
+                r: byteArray[i],
+                g: byteArray[i + 1],
+                b: byteArray[i + 2],
+                w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
+              });
+            }
+            setLiveLedData(colors);
+          } else {
+            // Handle JSON data
+            // Update active device state based on WebSocket message
+            setDevices((prevDevices) =>
+              prevDevices.map((d) =>
+                d.id === activeDevice.id
+                  ? { ...d, wledInfo: data, isConnected: true }
+                  : d
+              )
+            );
+            // Update device state based on incoming WLED state
+            if (data.state) {
+              const newActivePreset =
+                data.state.ps !== undefined && data.state.ps !== -1
+                  ? `wled_${data.state.ps}` // Format to match preset IDs
+                  : null;
+              updateDevice(activeDevice.id, {
+                activePreset: newActivePreset,
+                isPlaying: data.state.pl > -1,
+              });
+            }
           }
         },
         onClose: (event) => {
@@ -671,8 +700,9 @@ export default function KoloriApp() {
       );
 
       if (result.success) {
-        updateDevice(activeDeviceId, { activePreset: presetId });
+        updateDevice(activeDeviceId, { activePreset: seasonalPreset.id }); // Use seasonalPreset.id
         console.log(`Successfully activated preset: ${seasonalPreset.name}`);
+        sendWebSocketCommand({ lv: true }); // Send live view command
       } else {
         console.error(`Failed to activate preset: ${result.message}`);
       }
@@ -711,10 +741,11 @@ export default function KoloriApp() {
       }
 
       if (result.success) {
-        updateDevice(activeDeviceId, { activePreset: presetId });
+        updateDevice(activeDeviceId, { activePreset: customEffect.id }); // Use customEffect.id
         console.log(
           `Successfully activated custom effect: ${customEffect.name}`
         );
+        sendWebSocketCommand({ lv: true }); // Send live view command
       } else {
         console.error(`Failed to activate custom effect: ${result.message}`);
       }
@@ -885,11 +916,15 @@ export default function KoloriApp() {
   };
 
   const applyPlaylist = async (playlistId) => {
-    const playlistToActivate = savedPlaylists.find(p => p.id === playlistId);
+    const playlistToActivate = savedPlaylists.find((p) => p.id === playlistId);
 
     if (!playlistToActivate) {
       console.error("Playlist not found:", playlistId);
-      showNotification("error", "Playlist Error", "Selected playlist not found.");
+      showNotification(
+        "error",
+        "Playlist Error",
+        "Selected playlist not found."
+      );
       return;
     }
 
@@ -897,19 +932,33 @@ export default function KoloriApp() {
       showNotification(
         "error",
         "Device Offline",
-        `${activeDevice?.name || 'Device'} is disconnected. Please check your device connection.`
+        `${
+          activeDevice?.name || "Device"
+        } is disconnected. Please check your device connection.`
       );
       return;
     }
 
-    if (playlistToActivate.presetId === undefined || playlistToActivate.presetId === null) {
-      console.error("Playlist has no associated preset ID:", playlistToActivate);
-      showNotification("error", "Playlist Error", "Selected playlist cannot be activated (missing preset ID).");
+    if (
+      playlistToActivate.presetId === undefined ||
+      playlistToActivate.presetId === null
+    ) {
+      console.error(
+        "Playlist has no associated preset ID:",
+        playlistToActivate
+      );
+      showNotification(
+        "error",
+        "Playlist Error",
+        "Selected playlist cannot be activated (missing preset ID)."
+      );
       return;
     }
 
     try {
-      console.log(`Activating playlist "${playlistToActivate.name}" (Preset ID: ${playlistToActivate.presetId})`);
+      console.log(
+        `Activating playlist "${playlistToActivate.name}" (Preset ID: ${playlistToActivate.presetId})`
+      );
       const result = await activateWledPresetById(
         activeDevice.ip,
         playlistToActivate.presetId,
@@ -917,14 +966,26 @@ export default function KoloriApp() {
       );
 
       if (result.success) {
-        updateDevice(activeDeviceId, { activePreset: playlistToActivate.presetId, isPlaying: true });
-        showNotification("success", "Playlist Activated", `"${playlistToActivate.name}" is now playing.`);
+        updateDevice(activeDeviceId, {
+          activePreset: playlistToActivate.id,
+          isPlaying: true,
+        }); // Use playlistToActivate.id
+        showNotification(
+          "success",
+          "Playlist Activated",
+          `"${playlistToActivate.name}" is now playing.`
+        );
+        sendWebSocketCommand({ lv: true }); // Send live view command
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("❌ Failed to activate playlist:", error.message);
-      showNotification("error", "Activation Failed", `Could not activate playlist: ${error.message}`);
+      showNotification(
+        "error",
+        "Activation Failed",
+        `Could not activate playlist: ${error.message}`
+      );
     }
   };
 
@@ -1393,6 +1454,7 @@ export default function KoloriApp() {
           onPlaylistSelect={applyPlaylist} // New prop
           filterTerm={filterTerm}
           setFilterTerm={setFilterTerm}
+          liveLedData={liveLedData} // New prop
         />
 
         {/* Modals */}

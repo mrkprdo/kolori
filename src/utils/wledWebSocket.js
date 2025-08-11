@@ -50,12 +50,20 @@ const connectWebSocket = (ip, protocol = 'ws') => {
     }
   };
 
-  wledSocket.onmessage = (event) => {
+  wledSocket.onmessage = async (event) => {
     try {
-      const jsonData = JSON.parse(event.data);
-      if (onMessageCallback) onMessageCallback(jsonData);
+      if (event.data instanceof ArrayBuffer) {
+        if (onMessageCallback) onMessageCallback(event.data); // Pass ArrayBuffer directly
+      } else if (event.data instanceof Blob) {
+        const arrayBuffer = await event.data.arrayBuffer(); // Convert Blob to ArrayBuffer
+        if (onMessageCallback) onMessageCallback(arrayBuffer);
+      } else {
+        // Assume it's JSON data
+        const jsonData = JSON.parse(event.data);
+        if (onMessageCallback) onMessageCallback(jsonData);
+      }
     } catch (error) {
-      console.error("Error parsing WebSocket message:", error);
+      console.error("Error processing WebSocket message:", error);
     }
   };
 
