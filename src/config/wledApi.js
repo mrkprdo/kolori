@@ -486,7 +486,19 @@ export const createWledPreset = async (deviceAddress, effectId, paletteId, prese
 
 // Function to delete a WLED preset
 export const deleteWledPreset = async (deviceAddress, presetId, protocol = "http") => {
+  // Use the correct WLED JSON API endpoint for preset deletion
   const url = buildWledUrl(deviceAddress, protocol, '/json/state');
+  
+  // Validate preset ID (WLED supports 1-250)
+  if (!presetId || presetId < 1 || presetId > 250) {
+    logger.error(`Invalid preset ID: ${presetId}. Must be between 1 and 250.`);
+    return { 
+      success: false, 
+      message: `Invalid preset ID: ${presetId}. Must be between 1 and 250.` 
+    };
+  }
+  
+  logger.log(`Attempting to delete WLED preset ${presetId} via JSON API`);
   
   try {
     const response = await fetch(url, {
@@ -500,11 +512,16 @@ export const deleteWledPreset = async (deviceAddress, presetId, protocol = "http
       signal: AbortSignal.timeout(5000)
     });
     
-    return response.ok 
-      ? { success: true, message: 'Preset deleted' }
-      : { success: false, message: `HTTP Error: ${response.status}` };
+    if (response.ok) {
+      logger.log(`Successfully deleted WLED preset ${presetId}`);
+      return { success: true, message: `Preset ${presetId} deleted successfully` };
+    } else {
+      logger.warn(`Failed to delete preset ${presetId}: HTTP ${response.status}`);
+      return { success: false, message: `HTTP Error: ${response.status}` };
+    }
       
   } catch (error) {
+    logger.error(`Error deleting preset ${presetId}:`, error);
     return { 
       success: false, 
       message: error.name === 'TimeoutError' ? 'Request timeout' : `Request failed: ${error.message}`

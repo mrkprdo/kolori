@@ -1209,11 +1209,49 @@ export default function KoloriApp() {
     });
   };
 
-  const handleRemoveCustomEffect = (effectId) => {
-    setCustomEffects((prevEffects) => {
-      const updatedEffects = prevEffects.filter((e) => e.id !== effectId);
-      saveCustomEffectsToStorage(updatedEffects);
-      return updatedEffects;
+  const handleRemoveCustomEffect = async (effectId) => {
+    const effect = customEffects.find((e) => e.id === effectId);
+    if (!effect) {
+      logger.warn(`Cannot remove effect: No effect found with id ${effectId}`);
+      return;
+    }
+
+    if (!activeDevice?.isConnected) {
+      logger.warn("Device offline - removing effect locally only");
+      // Still allow local removal even if device is offline
+      setCustomEffects((prev) => {
+        const updated = prev.filter((e) => e.id !== effectId);
+        saveCustomEffectsToStorage(updated);
+        return updated;
+      });
+      return;
+    }
+
+    try {
+      // Try to delete from WLED device via WebSocket if it has a preset ID
+      if (effect.presetId) {
+        logger.log(`Attempting to delete WLED preset ${effect.presetId} via WebSocket for effect "${effect.name}"`);
+        const result = await deleteWledPlaylistViaWebSocket(
+          effect.presetId,
+          effect.name
+        );
+
+        if (result.success) {
+          logger.log(`Successfully deleted WLED preset ${effect.presetId} via WebSocket`);
+        } else {
+          logger.warn(`WebSocket deletion failed: ${result.message}`);
+        }
+      }
+    } catch (error) {
+      logger.error("Error deleting custom effect from WLED device:", error);
+    }
+
+    // Always remove from local state
+    setCustomEffects((prev) => {
+      const updated = prev.filter((e) => e.id !== effectId);
+      logger.log(`Removed custom effect "${effect.name}" from local state`);
+      saveCustomEffectsToStorage(updated);
+      return updated;
     });
   };
 

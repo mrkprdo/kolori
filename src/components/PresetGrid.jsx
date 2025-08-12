@@ -76,6 +76,7 @@ function CustomEffectCard({
   };
 
   const handleDeleteConfirm = () => {
+    logger.log(`Attempting to delete custom effect "${effect.name}" with id:`, effect.id, typeof effect.id);
     onRemove(effect.id);
     setShowDeleteConfirm(false);
   };
@@ -707,30 +708,6 @@ function PresetGrid({
     }
   };
 
-  const removeCustomEffect = async (effectId) => {
-    const effect = customEffects.find((e) => e.id === effectId);
-    if (!effect) return;
-
-    try {
-      // Delete preset from WLED device if it has a preset ID
-      if (effect.presetId && activeDevice?.ip) {
-        const result = await deleteWledPreset(
-          activeDevice.ip,
-          effect.presetId,
-          activeDevice.protocol || "http"
-        );
-        if (!result.success) {
-          logger.warn(`Failed to delete WLED preset: ${result.message}`);
-        }
-      }
-
-      onRemoveCustomEffect(effectId);
-    } catch (error) {
-      logger.error("Error removing custom effect:", error);
-      // Still remove from local state even if WLED deletion failed
-      onRemoveCustomEffect(effectId);
-    }
-  };
 
   const retryConnection = async () => {
     if (!activeDevice?.ip) return;
@@ -1100,7 +1077,7 @@ function PresetGrid({
                     effect={effect}
                     isActive={activePreset === effect.id}
                     onClick={onPresetSelect}
-                    onRemove={removeCustomEffect}
+                    onRemove={onRemoveCustomEffect}
                     onEdit={handleEditEffect}
                     isDark={isDark}
                   />

@@ -312,25 +312,28 @@ const playPlaylistViaWebSocket = (presetId) => {
 // Delete playlist via WebSocket (deletes the preset containing the playlist)
 const deletePlaylistViaWebSocket = (presetId) => {
   if (!wledSocket || wledSocket.readyState !== WebSocket.OPEN) {
-    logger.warn("WebSocket not open. Cannot delete playlist.");
+    logger.warn("WebSocket not open. Cannot delete preset.");
     return false;
   }
 
   if (!presetId || presetId < 1 || presetId > 250) {
-    logger.error("Invalid preset ID. Must be between 1 and 250.");
+    logger.error(`Invalid preset ID: ${presetId}. Must be between 1 and 250.`);
     return false;
   }
 
+  logger.log(`Attempting to delete preset ${presetId} via WebSocket`);
+
   const deleteCommand = {
-    pdel: presetId // Delete preset (and its playlist) by ID
+    pdel: presetId // Delete preset using official WLED API
   };
 
   try {
     const commandString = JSON.stringify(deleteCommand);
     wledSocket.send(commandString);
+    logger.log(`WebSocket deletion command sent for preset ${presetId}`);
     return true;
   } catch (error) {
-    logger.error("Failed to delete playlist via WebSocket:", error);
+    logger.error(`Failed to delete preset ${presetId} via WebSocket:`, error);
     return false;
   }
 };
