@@ -408,8 +408,9 @@ function PresetGrid({
   savedPlaylists,
   onPlaylistEdit,
   onPlaylistRemove,
-  onPlaylistSelect, // New prop
-  liveLedData, // New prop
+  onPlaylistSelect,
+  setShowSettings,
+  liveLedData,
 }) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(() => {
     const saved = localStorage.getItem("kolori_seasonal_collapsed");
@@ -762,6 +763,7 @@ function PresetGrid({
         onRetry={retryConnection}
         isDark={isDark}
         isRetrying={isRetryingConnection}
+        onGoToSettings={() => setShowSettings(true)}
       />
 
       {/* Live View Section */}

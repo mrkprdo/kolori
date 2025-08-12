@@ -801,7 +801,7 @@ export default function KoloriApp() {
 
   const showNotification = (type, title, message) => {
     logger.log("📢 Notification:", type, title, message);
-    
+
     // Clear any existing notification first
     setNotification({
       isVisible: false,
@@ -809,7 +809,7 @@ export default function KoloriApp() {
       title: "",
       message: "",
     });
-    
+
     // Show new notification after a brief delay to ensure clean state
     setTimeout(() => {
       setNotification({
@@ -1405,10 +1405,11 @@ export default function KoloriApp() {
           savedPlaylists={savedPlaylists}
           onPlaylistEdit={editPlaylist}
           onPlaylistRemove={removePlaylist}
-          onPlaylistSelect={applyPlaylist} // New prop
+          onPlaylistSelect={applyPlaylist}
+          setShowSettings={setShowSettings}
           filterTerm={filterTerm}
           setFilterTerm={setFilterTerm}
-          liveLedData={liveLedData} // New prop
+          liveLedData={liveLedData}
         />
 
         {/* Modals */}
