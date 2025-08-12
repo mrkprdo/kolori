@@ -1,4 +1,5 @@
 import { X, Github, Palette } from "lucide-react";
+import packageJson from "../../package.json";
 
 export default function AboutModal({ isOpen, onClose, isDark }) {
   if (!isOpen) return null;
@@ -32,7 +33,7 @@ export default function AboutModal({ isOpen, onClose, isDark }) {
                   About Kolori
                 </h2>
                 <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                  v1.0.0
+                  v{packageJson.version}
                 </p>
               </div>
             </div>
@@ -88,7 +89,6 @@ export default function AboutModal({ isOpen, onClose, isDark }) {
               isDark ? "text-gray-500" : "text-gray-400"
             }`}>
               <p>This is an open-source project. Contributions are welcome!</p>
-              <p className="mt-1">WLED is a trademark of the WLED project.</p>
             </div>
           </div>
         </div>

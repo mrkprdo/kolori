@@ -1,7 +1,7 @@
 {
   "name": "kolori",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "A modern LED control app for WLED devices with beautiful presets and scheduling",
   "scripts": {
