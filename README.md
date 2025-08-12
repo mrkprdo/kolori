@@ -56,8 +56,8 @@ Whether you're setting up ambient lighting for your home, creating dynamic displ
 
 ### Mobile App
 
-<img src="screenshots/mobile-dark.png" alt="screenshot" width="300"/>
-<img src="screenshots/mobile-light.png" alt="screenshot" width="300"/>
+<img src="screenshots/mobile-dark.jpg" alt="screenshot" width="110"/>
+<img src="screenshots/mobile-light.jpg" alt="screenshot" width="110"/>
 
 ## 🛠️ Development
 
