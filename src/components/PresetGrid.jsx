@@ -405,6 +405,7 @@ function PresetGrid({
   customEffects = [], // Add default value
   onAddCustomEffect,
   onRemoveCustomEffect,
+  onCustomEffectUpdate,
   savedPlaylists,
   onPlaylistEdit,
   onPlaylistRemove,
@@ -577,7 +578,6 @@ function PresetGrid({
               }
             : e
         );
-        saveCustomEffectsToStorage(updatedEffects);
         if (onCustomEffectUpdate) {
           onCustomEffectUpdate(updatedEffects);
         }

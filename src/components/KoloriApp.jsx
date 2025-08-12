@@ -1217,6 +1217,11 @@ export default function KoloriApp() {
     });
   };
 
+  const handleUpdateCustomEffects = (updatedEffects) => {
+    setCustomEffects(updatedEffects);
+    saveCustomEffectsToStorage(updatedEffects);
+  };
+
   // Fetch WLED presets and playlists from device
   const fetchWledPresets = async () => {
     if (!activeDevice?.isConnected) {
@@ -1398,6 +1403,7 @@ export default function KoloriApp() {
           customEffects={customEffects}
           onAddCustomEffect={handleAddCustomEffect}
           onRemoveCustomEffect={handleRemoveCustomEffect}
+          onCustomEffectUpdate={handleUpdateCustomEffects}
           savedPlaylists={savedPlaylists}
           onPlaylistEdit={editPlaylist}
           onPlaylistRemove={removePlaylist}
