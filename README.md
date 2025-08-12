@@ -51,20 +51,13 @@ Whether you're setting up ambient lighting for your home, creating dynamic displ
 
 ### Web Interface
 
-```
-[Screenshot: Main dashboard with device list and presets]
-[Screenshot: Effect creation interface]
-[Screenshot: Playlist builder]
-[Screenshot: Settings and device management]
-```
+<img src="screenshots/web-dark.png" alt="screenshot" width="300"/>
+<img src="screenshots/web-light.png" alt="screenshot" width="300"/>
 
 ### Mobile App
 
-```
-[Screenshot: Mobile interface showing responsive design]
-[Screenshot: Android app with native status bar integration]
-[Screenshot: Effect testing on mobile]
-```
+<img src="screenshots/mobile-dark.png" alt="screenshot" width="300"/>
+<img src="screenshots/mobile-light.png" alt="screenshot" width="300"/>
 
 ## 🛠️ Development
 
