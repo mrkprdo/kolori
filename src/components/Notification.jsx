@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 
 export default function Notification({ 
   isVisible, 
@@ -100,6 +101,8 @@ export default function Notification({
     }
   };
 
+  const isNativePlatform = Capacitor.isNativePlatform();
+  
   return (
     <div 
       className={`fixed z-50 transition-all duration-300 ${
@@ -108,7 +111,7 @@ export default function Notification({
           : "transform translate-x-full opacity-0"
       }`}
       style={{
-        top: 'calc(env(safe-area-inset-top) + 1rem)',
+        top: isNativePlatform ? '6rem' : 'calc(env(safe-area-inset-top) + 1rem)',
         right: 'calc(env(safe-area-inset-right) + 1rem)',
       }}
     >

@@ -1,4 +1,5 @@
 import { Settings, Wifi, WifiOff, Sun, Moon, Sunrise } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { logger } from "../utils/logger";
 
 export default function Header({
@@ -11,11 +12,16 @@ export default function Header({
   isDark,
   scheduleMode,
 }) {
+  const isNativePlatform = Capacitor.isNativePlatform();
+  
   return (
     <div
       className={`shadow-sm border-b p-4 ${
         isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
       }`}
+      style={{
+        paddingTop: isNativePlatform ? "3rem" : "1rem"
+      }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

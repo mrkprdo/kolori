@@ -157,16 +157,18 @@ export default function KoloriApp() {
     const configureStatusBar = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          // Set status bar to be transparent/overlay
-          await StatusBar.setOverlaysWebView({ overlay: true });
+          // Disable overlay to prevent overlap with content
+          await StatusBar.setOverlaysWebView({ overlay: false });
 
           // Set status bar style based on theme
           await StatusBar.setStyle({
             style: isDark ? Style.Dark : Style.Light,
           });
 
-          // Set background color to transparent
-          await StatusBar.setBackgroundColor({ color: "#00000000" });
+          // Set background color to match app theme
+          await StatusBar.setBackgroundColor({ 
+            color: isDark ? "#111827" : "#F9FAFB" 
+          });
         } catch {
           // StatusBar not available in non-mobile environments
         }
@@ -1371,12 +1373,6 @@ export default function KoloriApp() {
   return (
     <div
       className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}
-      style={{
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        paddingLeft: "env(safe-area-inset-left)",
-        paddingRight: "env(safe-area-inset-right)",
-      }}
     >
       {/* Header */}
       <Header
