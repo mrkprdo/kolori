@@ -1,0 +1,153 @@
+Privacy Policy for Kolori
+Effective Date: [Insert Date]
+Last Updated: [Insert Date]
+Introduction
+Kolori ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how our WLED controller application collects, uses, and safeguards your information when you use our mobile and web application.
+Kolori is designed with privacy in mind - it primarily operates as a local network application that connects directly to your WLED devices without requiring cloud services or external data transmission.
+Information We Collect
+Information We Do NOT Collect
+
+Personal Information: We do not collect names, email addresses, phone numbers, or any personal identifiers
+Account Information: No user accounts, profiles, or authentication is required
+Usage Analytics: We do not track how you use the app or collect behavioral data
+Location Data: We do not access or store your geographic location
+Cloud Data: No information is transmitted to external servers or cloud services
+
+Information Stored Locally on Your Device
+Application Settings and Preferences:
+
+Theme preferences (dark/light mode)
+Device connection settings (IP addresses, mDNS hostnames)
+Custom lighting effects and presets you create
+Playlist configurations and schedules
+App interface preferences
+
+Device Connection Data:
+
+WLED device IP addresses and hostnames you configure
+Connection status and device information
+Custom effect parameters and color palettes
+
+Local Storage Methods:
+
+Web browsers: Local Storage and Session Storage
+Mobile apps: Native device storage through Capacitor framework
+All data remains on your device and is never transmitted externally
+
+How We Use Information
+The locally stored information is used solely to:
+
+Remember your app preferences and settings
+Maintain connections to your WLED devices
+Save your custom lighting effects and presets
+Provide playlist and scheduling functionality
+Ensure a personalized user experience across app sessions
+
+Data Storage and Security
+Local Storage Only:
+
+All data is stored exclusively on your device
+No information is transmitted to external servers
+Data is protected by your device's built-in security measures
+
+Network Communications:
+
+Direct communication with WLED devices on your local network only
+Uses standard HTTP/WebSocket protocols for device communication
+No data passes through external servers or third-party services
+
+Data Retention:
+
+Data persists until you manually delete it or uninstall the app
+You can clear all app data through your device's application settings
+No automatic data expiration or external data deletion
+
+Third-Party Services
+We Do Not Use:
+
+Analytics services (Google Analytics, Firebase Analytics, etc.)
+Advertising networks or tracking pixels
+Cloud storage services
+Social media integrations
+Crash reporting services that transmit data externally
+
+Technology Stack:
+
+The app is built using React, Capacitor, and other open-source technologies
+No third-party services collect or process your data
+All functionality operates locally on your device
+
+Network Permissions
+Mobile App Permissions:
+
+Network Access: Required to communicate with WLED devices on your local network
+Wi-Fi State: Used for device discovery on your local network
+No Internet Permission Required: The app can function completely offline
+
+Web App:
+
+Requires network access only to communicate with WLED devices
+No external internet connections are made
+
+Children's Privacy
+Kolori does not knowingly collect personal information from anyone, including children under 13. Since we don't collect personal data, special provisions for children's privacy are not necessary. However, parental supervision is recommended for all technology use by minors.
+Changes to WLED Devices
+While Kolori itself doesn't collect data, please note that:
+
+WLED devices may have their own data collection practices
+We recommend reviewing WLED's privacy practices independently
+Kolori only sends standard lighting control commands to WLED devices
+
+Data Portability and Control
+Your Control Over Data:
+
+All settings and presets can be manually backed up by you
+Data can be cleared by uninstalling the app or clearing app data
+No account deletion process needed since no accounts are created
+
+Exporting Your Data:
+
+Custom presets and settings are stored in standard formats
+You can manually backup configurations if desired
+No automated export tools are provided
+
+Regional Privacy Rights
+Since Kolori doesn't collect personal data, most regional privacy regulations don't apply. However, we respect all users' privacy rights:
+
+GDPR (EU): No personal data collection means no GDPR obligations
+CCPA (California): No personal information sale or sharing occurs
+Other Jurisdictions: Privacy-by-design approach protects all users globally
+
+Updates to This Policy
+We may update this Privacy Policy to reflect changes in our practices or legal requirements. When we do:
+
+The "Last Updated" date will be revised
+Significant changes will be communicated through the app or our GitHub repository
+Continued use of the app constitutes acceptance of the updated policy
+
+Open Source Transparency
+Kolori is open-source software available on GitHub:
+
+Repository: https://github.com/mrkprdo/kolori
+Source Code: Publicly auditable for privacy and security practices
+Community Oversight: Open to community review and contributions
+
+Contact Information
+If you have questions about this Privacy Policy or our data practices:
+
+GitHub Issues: Create an issue in our repository
+Developer: Contact through GitHub profile @mrkprdo
+
+Since we don't collect personal data, we cannot identify specific users or their data. All privacy inquiries should be general in nature.
+Technical Details
+For Developers and Technical Users:
+
+Local Storage APIs: Uses standard browser localStorage and Capacitor native storage
+Network Protocols: HTTP/HTTPS and WebSocket for WLED communication only
+No External Domains: All network traffic stays within your local network
+Build Process: Static web app with no server-side components
+Privacy by Design: Architecture inherently protects privacy through local-only operation
+
+Legal Compliance
+This Privacy Policy is designed to comply with applicable privacy laws while reflecting our commitment to user privacy. Since we don't collect personal data, we have minimal legal obligations regarding data processing.
+Disclaimer: This privacy policy reflects our current practices. Users are encouraged to review the open-source code for the most accurate understanding of data handling practices.
