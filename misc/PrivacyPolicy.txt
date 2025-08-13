@@ -1,6 +1,6 @@
 Privacy Policy for Kolori
-Effective Date: [Insert Date]
-Last Updated: [Insert Date]
+Effective Date: August 12, 2025
+Last Updated: August 12, 2025
 Introduction
 Kolori ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how our WLED controller application collects, uses, and safeguards your information when you use our mobile and web application.
 Kolori is designed with privacy in mind - it primarily operates as a local network application that connects directly to your WLED devices without requiring cloud services or external data transmission.
