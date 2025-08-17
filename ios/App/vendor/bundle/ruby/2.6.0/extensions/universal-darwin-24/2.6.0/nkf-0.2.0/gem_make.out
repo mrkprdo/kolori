@@ -1,0 +1,16 @@
+current directory: /Users/markp/Desktop/kolori/ios/App/vendor/bundle/ruby/2.6.0/gems/nkf-0.2.0/ext/nkf
+/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby -I /System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/lib/ruby/2.6.0 -r ./siteconf20250816-2883-1k25gyq.rb extconf.rb
+creating Makefile
+
+current directory: /Users/markp/Desktop/kolori/ios/App/vendor/bundle/ruby/2.6.0/gems/nkf-0.2.0/ext/nkf
+make "DESTDIR=" clean
+
+current directory: /Users/markp/Desktop/kolori/ios/App/vendor/bundle/ruby/2.6.0/gems/nkf-0.2.0/ext/nkf
+make "DESTDIR="
+compiling nkf.c
+linking shared-object nkf.bundle
+ld: warning: search path '/AppleInternal/Library/BuildRoots/4~B5vPugBxh2PJ7i-AVM3t-bm3NwtQVij9L13Cr2E/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.7.Internal.sdk/usr/local/lib' not found
+
+current directory: /Users/markp/Desktop/kolori/ios/App/vendor/bundle/ruby/2.6.0/gems/nkf-0.2.0/ext/nkf
+make "DESTDIR=" install
+/usr/bin/install -c -m 0755 nkf.bundle ./.gem.20250816-2883-10yc2qp
