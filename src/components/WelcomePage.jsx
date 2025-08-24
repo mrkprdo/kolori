@@ -1,4 +1,4 @@
-import { Plus, Wifi, Palette } from "lucide-react";
+import { Plus, Wifi, Palette, RefreshCw } from "lucide-react";
 
 export default function WelcomePage({ isDark, onAddDevice }) {
   return (
@@ -47,6 +47,13 @@ export default function WelcomePage({ isDark, onAddDevice }) {
           >
             <Plus size={20} />
             Add Your First Device
+          </button>
+          
+          <button
+            className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-3 hover:from-green-600 hover:to-teal-600 transition-all shadow-lg"
+          >
+            <RefreshCw size={20} />
+            Scan for Devices
           </button>
           
           <p className={`text-sm ${isDark ? "text-gray-500" : "text-gray-400"}`}>
