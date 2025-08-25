@@ -43,12 +43,12 @@ function PresetCard({ preset, isActive, onClick, showIcon = false }) {
       style={{ background: preset.gradient }}
     >
       <div className="absolute inset-0 bg-black/10"></div>
-      <div className="relative p-4 text-white">
+      <div className="relative p-3 text-white aspect-square flex flex-col justify-center items-center text-center">
         {showIcon && (
-          <div className="text-3xl mb-2 drop-shadow-lg">{preset.icon}</div>
+          <div className="text-2xl mb-1 drop-shadow-lg">{preset.icon}</div>
         )}
-        {!showIcon && <div className="h-8 mb-2"></div>}
-        <div className="font-medium text-sm drop-shadow-md">{preset.name}</div>
+        {!showIcon && <div className="h-6 mb-1"></div>}
+        <div className="font-medium text-xs drop-shadow-md leading-tight">{preset.name}</div>
       </div>
     </button>
   );
@@ -93,12 +93,12 @@ function CustomEffectCard({
         style={{ background: effect.gradient }}
       >
         <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative p-4 text-white">
-          <div className="font-medium text-sm drop-shadow-md mb-1">
+        <div className="relative p-3 text-white aspect-square flex flex-col justify-center items-center text-center">
+          <div className="font-medium text-xs drop-shadow-md mb-1 leading-tight">
             {effect.name}
           </div>
-          <div className="text-xs opacity-75">
-            {effect.effectName} - {effect.paletteName}
+          <div className="text-xs opacity-75 leading-tight">
+            {effect.effectName}
           </div>
         </div>
       </button>
@@ -285,8 +285,8 @@ function PlaylistCard({
         style={{ background: generatePlaylistGradient() }}
       >
         <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative p-4 text-white">
-          <div className="font-medium text-sm drop-shadow-md mb-1">
+        <div className="relative p-3 text-white aspect-square flex flex-col justify-center items-center text-center">
+          <div className="font-medium text-xs drop-shadow-md mb-1 leading-tight">
             {playlist.name}
           </div>
           <div className="text-xs opacity-75">
@@ -830,7 +830,7 @@ function PresetGrid({
           )}
         </button>
         {!isSeasonalCollapsed && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {SEASONAL_PRESETS.map((preset) => (
               <PresetCard
                 key={preset.id}
@@ -1070,7 +1070,7 @@ function PresetGrid({
 
             {/* Custom Effects Grid */}
             {customEffects.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {customEffects.map((effect) => (
                   <CustomEffectCard
                     key={effect.id}
@@ -1133,7 +1133,7 @@ function PresetGrid({
             )}
 
             {savedPlaylists && savedPlaylists.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {savedPlaylists.map((playlist) => (
                   <PlaylistCard
                     key={playlist.id}
