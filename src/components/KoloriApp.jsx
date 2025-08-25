@@ -28,8 +28,10 @@ import {
   getWledPresets,
 } from "../config/wledApi";
 import { SEASONAL_PRESETS } from "../constants/presets";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function KoloriApp() {
+  const { t } = useTranslations();
   // LocalStorage keys
   const DEVICES_STORAGE_KEY = "kolori_devices";
   const ACTIVE_DEVICE_STORAGE_KEY = "kolori_active_device";
@@ -145,7 +147,7 @@ export default function KoloriApp() {
     devices.find((d) => d.id === activeDeviceId) || devices[0];
 
   const isConnected = activeDevice?.isConnected || false;
-  const deviceName = activeDevice?.name || "No Device";
+  const deviceName = activeDevice?.name || t("no_device");
   const activePreset = activeDevice?.activePreset || null;
   const isPlaying = activeDevice?.isPlaying || false;
   const isDark =
@@ -351,8 +353,8 @@ export default function KoloriApp() {
           );
           showNotification(
             "error",
-            "Connection Lost",
-            `WebSocket connection to ${activeDevice.name} failed.`
+            t("connection_lost_notification"),
+            t("connection_failed_notification", { deviceName: activeDevice.name })
           );
         },
       });
@@ -535,7 +537,7 @@ export default function KoloriApp() {
       setNewDevice((prev) => ({
         ...prev,
         validationMessage:
-          "Please provide a device name and at least an IP address or mDNS name.",
+          t("device_name_and_connection_required"),
         validationError: true,
       }));
       return;
@@ -550,7 +552,7 @@ export default function KoloriApp() {
         setNewDevice((prev) => ({
           ...prev,
           validating: false,
-          validationMessage: `Device name "${newDevice.name}" already exists. Please choose a different name.`,
+          validationMessage: t("device_name_exists", { deviceName: newDevice.name }),
           validationError: true,
         }));
         return;
@@ -565,7 +567,7 @@ export default function KoloriApp() {
           setNewDevice((prev) => ({
             ...prev,
             validating: false,
-            validationMessage: `IP address ${newDevice.ip} is already in use by device "${duplicateIP.name}".`,
+            validationMessage: t("ip_in_use", { ip: newDevice.ip, deviceName: duplicateIP.name }),
             validationError: true,
           }));
           return;
@@ -581,7 +583,7 @@ export default function KoloriApp() {
           setNewDevice((prev) => ({
             ...prev,
             validating: false,
-            validationMessage: `mDNS name ${newDevice.mdns} is already in use by device "${duplicateMdns.name}".`,
+            validationMessage: t("mdns_in_use", { mdns: newDevice.mdns, deviceName: duplicateMdns.name }),
             validationError: true,
           }));
           return;
@@ -592,7 +594,7 @@ export default function KoloriApp() {
       setNewDevice((prev) => ({
         ...prev,
         validating: true,
-        validationMessage: "Testing device connectivity...",
+        validationMessage: t("testing_connectivity"),
         validationError: false,
       }));
 
@@ -607,7 +609,7 @@ export default function KoloriApp() {
         // Show success message briefly before adding device
         setNewDevice((prev) => ({
           ...prev,
-          validationMessage: `WLED device confirmed via ${validation.bestAddress}! Adding to devices...`,
+          validationMessage: t("device_confirmed", { bestAddress: validation.bestAddress }),
         }));
 
         // Short delay to show success message
@@ -669,7 +671,7 @@ export default function KoloriApp() {
       setNewDevice((prev) => ({
         ...prev,
         validating: false,
-        validationMessage: "Unexpected error occurred during device validation",
+        validationMessage: t("device_validation_error_unexpected"),
         validationError: true,
       }));
       logger.error("💥 Device addition error:", error);
@@ -724,8 +726,8 @@ export default function KoloriApp() {
       logger.warn("Device not connected:", activeDevice.name);
       showNotification(
         "error",
-        "Device Offline",
-        `${activeDevice.name} is disconnected. Please check your device connection.`
+        t("device_offline_notification"),
+        t("device_offline_notification_message", { deviceName: activeDevice.name })
       );
       return;
     }
@@ -880,8 +882,8 @@ export default function KoloriApp() {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
-        "Device Offline",
-        "Connect to a WLED device to delete playlists from the device."
+        t("device_offline_notification"),
+        t("connect_to_delete_playlist")
       );
       // Still allow local removal even if device is offline
       setSavedPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
@@ -899,14 +901,14 @@ export default function KoloriApp() {
         if (result.success) {
           showNotification(
             "success",
-            "Playlist Deleted",
-            `"${playlist.name}" has been removed from your WLED device.`
+            t("notification_playlist_deleted"),
+            t("playlist_deleted_message", { playlistName: playlist.name })
           );
         } else {
           showNotification(
             "warning",
-            "Partial Deletion",
-            `"${playlist.name}" removed locally but may still exist on WLED device.`
+            t("partial_deletion"),
+            t("partial_deletion_message", { playlistName: playlist.name })
           );
         }
       } else {
@@ -915,8 +917,8 @@ export default function KoloriApp() {
       logger.error("❌ Error deleting playlist from device:", error.message);
       showNotification(
         "warning",
-        "Deletion Error",
-        `Error removing "${playlist.name}" from device, but removed locally.`
+        t("deletion_error"),
+        t("deletion_error_message", { playlistName: playlist.name })
       );
     }
 
@@ -931,8 +933,8 @@ export default function KoloriApp() {
       logger.error("Playlist not found:", playlistId);
       showNotification(
         "error",
-        "Playlist Error",
-        "Selected playlist not found."
+        t("playlist_error"),
+        t("playlist_not_found")
       );
       return;
     }
@@ -940,10 +942,8 @@ export default function KoloriApp() {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
-        "Device Offline",
-        `${
-          activeDevice?.name || "Device"
-        } is disconnected. Please check your device connection.`
+        t("device_offline_notification"),
+        t("device_offline_notification_message", { deviceName: activeDevice?.name || "Device" })
       );
       return;
     }
@@ -955,8 +955,8 @@ export default function KoloriApp() {
       logger.error("Playlist has no associated preset ID:", playlistToActivate);
       showNotification(
         "error",
-        "Playlist Error",
-        "Selected playlist cannot be activated (missing preset ID)."
+        t("playlist_error"),
+        t("playlist_activation_failed", { errorMessage: "missing preset ID" })
       );
       return;
     }
@@ -975,8 +975,8 @@ export default function KoloriApp() {
         }); // Use playlistToActivate.id
         showNotification(
           "success",
-          "Playlist Activated",
-          `"${playlistToActivate.name}" is now playing.`
+          t("playlist_activated"),
+          t("playlist_playing", { playlistName: playlistToActivate.name })
         );
         sendWebSocketCommand({ lv: true }); // Send live view command
       } else {
@@ -986,8 +986,7 @@ export default function KoloriApp() {
       logger.error("❌ Failed to activate playlist:", error.message);
       showNotification(
         "error",
-        "Activation Failed",
-        `Could not activate playlist: ${error.message}`
+        t("playlist_activation_failed", { errorMessage: error.message })
       );
     }
   };
@@ -996,8 +995,8 @@ export default function KoloriApp() {
     if (currentPlaylist.length === 0) {
       showNotification(
         "error",
-        "Empty Playlist",
-        "Add some custom effects to your playlist before saving."
+        t("empty_playlist"),
+        t("empty_playlist_message")
       );
       return;
     }
@@ -1005,8 +1004,8 @@ export default function KoloriApp() {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
-        "Device Offline",
-        "Connect to a WLED device before saving playlists."
+        t("device_offline_notification"),
+        t("device_offline_playlist_message")
       );
       return;
     }
@@ -1027,8 +1026,8 @@ export default function KoloriApp() {
       logger.error("Some playlist items missing preset IDs:", missingPresetIds);
       showNotification(
         "error",
-        "Invalid Playlist",
-        "All playlist items must be saved custom effects with preset IDs."
+        t("invalid_playlist"),
+        t("invalid_playlist_message")
       );
       return;
     }
@@ -1071,8 +1070,8 @@ export default function KoloriApp() {
 
         showNotification(
           "success",
-          "Playlist Saved!",
-          `"${finalPlaylistName}" has been saved to your WLED device via WebSocket.`
+          t("notification_playlist_saved"),
+          t("playlist_saved_message", { playlistName: finalPlaylistName })
         );
       } else {
         throw new Error("WebSocket playlist save failed");
@@ -1081,10 +1080,8 @@ export default function KoloriApp() {
       logger.error("❌ Failed to save playlist via WebSocket:", error.message);
       showNotification(
         "error",
-        "Save Failed",
-        `Could not save playlist via WebSocket: ${
-          error.message || "WebSocket not connected"
-        }`
+        t("save_failed"),
+        t("save_failed_message", { errorMessage: error.message || "WebSocket not connected" })
       );
     }
   };
@@ -1103,8 +1100,8 @@ export default function KoloriApp() {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
-        "Device Offline",
-        "Cannot control disconnected device"
+        t("device_offline_notification"),
+        t("cannot_control_disconnected_device")
       );
       return;
     }
@@ -1116,11 +1113,11 @@ export default function KoloriApp() {
     if (result.success) {
       showNotification(
         "success",
-        "Manual Control",
-        "Lights turned ON manually"
+        t("manual_control"),
+        t("lights_on_manual")
       );
     } else {
-      showNotification("error", "Control Failed", result.message);
+      showNotification("error", t("control_failed"), result.message);
     }
   };
 
@@ -1128,8 +1125,8 @@ export default function KoloriApp() {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
-        "Device Offline",
-        "Cannot control disconnected device"
+        t("device_offline_notification"),
+        t("cannot_control_disconnected_device")
       );
       return;
     }
@@ -1141,11 +1138,11 @@ export default function KoloriApp() {
     if (result.success) {
       showNotification(
         "success",
-        "Manual Control",
-        "Lights turned OFF manually"
+        t("manual_control"),
+        t("lights_off_manual")
       );
     } else {
-      showNotification("error", "Control Failed", result.message);
+      showNotification("error", t("control_failed"), result.message);
     }
   };
 
@@ -1157,8 +1154,8 @@ export default function KoloriApp() {
 
     showNotification(
       "info",
-      "Schedule Debug",
-      `Current hour: ${currentHour}, Should be: ${shouldBeOn ? "ON" : "OFF"}`
+      t("schedule_debug"),
+      t("schedule_debug_message", { currentHour, status: shouldBeOn ? "ON" : "OFF" })
     );
 
     // Immediately run schedule check
@@ -1254,7 +1251,7 @@ export default function KoloriApp() {
     localStorage.removeItem(DEVICES_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_DEVICE_STORAGE_KEY);
 
-    alert("You must accept the terms to use Kolori. The page will now close.");
+    alert(t("user_agreement_alert"));
     window.close();
   };
 
@@ -1354,8 +1351,8 @@ export default function KoloriApp() {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
-        "Device Offline",
-        "Connect to a WLED device to fetch presets."
+        t("device_offline_notification"),
+        t("fetch_presets_error")
       );
       return;
     }
@@ -1406,8 +1403,8 @@ export default function KoloriApp() {
 
           showNotification(
             "success",
-            "Presets Imported",
-            `Successfully imported ${totalItems} ${itemType} from your WLED device.`
+            t("presets_imported"),
+            t("presets_imported_message", { totalItems, itemType })
           );
         }
       } else {
@@ -1417,8 +1414,8 @@ export default function KoloriApp() {
       logger.error("❌ Failed to fetch WLED presets:", error.message);
       showNotification(
         "error",
-        "Import Failed",
-        `Could not fetch presets: ${error.message}`
+        t("import_failed"),
+        t("import_failed_message", { errorMessage: error.message })
       );
     }
   };
@@ -1612,14 +1609,14 @@ export default function KoloriApp() {
             setDeviceToDelete(null);
           }}
           onConfirm={confirmRemoveDevice}
-          title="Remove Device"
+          title={t("remove_device_title")}
           message={
             deviceToDelete
-              ? `Are you sure you want to remove "${deviceToDelete.name}"?\n\nThis will permanently delete the device from your list and cannot be undone.`
+              ? t("remove_device_message", { deviceName: deviceToDelete.name })
               : ""
           }
-          confirmText="Remove Device"
-          cancelText="Cancel"
+          confirmText={t("remove_device_confirm")}
+          cancelText={t("cancel")}
           isDark={isDark}
           isDestructive={true}
         />

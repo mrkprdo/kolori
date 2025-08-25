@@ -1,4 +1,5 @@
 import { AlertTriangle, X } from "lucide-react";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function ConfirmModal({
   isOpen,
@@ -11,6 +12,7 @@ export default function ConfirmModal({
   isDark,
   isDestructive = false,
 }) {
+  const { t } = useTranslations();
   if (!isOpen) return null;
 
   return (
@@ -69,7 +71,7 @@ export default function ConfirmModal({
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
-            {cancelText}
+            {t(cancelText)}
           </button>
           <button
             onClick={() => {
@@ -82,7 +84,7 @@ export default function ConfirmModal({
                 : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
-            {confirmText}
+            {t(confirmText)}
           </button>
         </div>
       </div>

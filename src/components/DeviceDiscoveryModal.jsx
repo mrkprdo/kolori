@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { X, Wifi, Loader2, CheckCircle, AlertCircle, Plus } from "lucide-react";
 import { logger } from "../utils/logger";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, isDark, savedDevices = [] }) {
+  const { t } = useTranslations();
   const [scanning, setScanning] = useState(false);
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [scanStatus, setScanStatus] = useState("idle");
@@ -199,7 +201,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className={`text-xl font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
-            Device Discovery
+            {t("device_discovery")}
           </h2>
           <button
             onClick={onClose}
@@ -219,7 +221,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Loader2 size={20} className="animate-spin text-green-500" />
                   <span className={`font-medium ${isDark ? "text-white" : "text-gray-900"}`}>
-                    Scanning network...
+                    {t("scanning_network")}
                   </span>
                 </div>
                 <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2`}>
@@ -234,7 +236,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                 
                 {discoveredDevices.length > 0 && (
                   <p className={`text-sm ${isDark ? "text-green-400" : "text-green-600"} font-medium`}>
-                    {discoveredDevices.length} device{discoveredDevices.length !== 1 ? 's' : ''} found
+                    {t("scan_complete", { count: discoveredDevices.length })}
                   </p>
                 )}
               </div>
@@ -252,7 +254,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                   </div>
                   <div>
                     <h3 className={`text-lg font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
-                      Found {discoveredDevices.length} device{discoveredDevices.length !== 1 ? 's' : ''}
+                      {t("scan_complete", { count: discoveredDevices.length })}
                     </h3>
                     <div className="space-y-2">
                       {discoveredDevices.map((device, index) => {
@@ -277,7 +279,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                                   </p>
                                   {!isAlreadySaved && (
                                     <span className="text-xs text-red-500 font-bold">
-                                      * NEW
+                                      * {t("new")}
                                     </span>
                                   )}
                                 </div>
@@ -291,7 +293,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                                 ) : isAdding ? (
                                   <div className="flex items-center gap-1">
                                     <Loader2 size={12} className="animate-spin text-blue-500" />
-                                    <span className="text-xs text-blue-500">Adding...</span>
+                                    <span className="text-xs text-blue-500">{t("adding")}</span>
                                   </div>
                                 ) : (
                                   <button
@@ -301,7 +303,7 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                                     }}
                                     className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                                   >
-                                    Add
+                                    {t("add")}
                                   </button>
                                 )}
                               </div>
@@ -321,16 +323,16 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
                   </div>
                   <div>
                     <h3 className={`text-lg font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
-                      No devices found
+                      {t("no_devices_found")}
                     </h3>
                     <p className={`text-sm mb-4 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                      Make sure your WLED devices are powered on and connected to the same network.
+                      {t("no_devices_found_explanation")}
                     </p>
                     <button
                       onClick={handleStartScan}
                       className="bg-gradient-to-r from-green-500 to-teal-500 text-white py-2 px-4 rounded-lg font-medium hover:from-green-600 hover:to-teal-600 transition-all"
                     >
-                      Scan Again
+                      {t("scan_again")}
                     </button>
                   </div>
                 </>
@@ -347,16 +349,16 @@ export default function DeviceDiscoveryModal({ isOpen, onClose, onDeviceSelect, 
               </div>
               <div>
                 <h3 className={`text-lg font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
-                  Scan failed
+                  {t("scan_failed")}
                 </h3>
                 <p className={`text-sm mb-4 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                  There was an error while scanning for devices. Please try again.
+                  {t("scan_failed_explanation")}
                 </p>
                 <button
                   onClick={handleStartScan}
                   className="bg-gradient-to-r from-green-500 to-teal-500 text-white py-2 px-4 rounded-lg font-medium hover:from-green-600 hover:to-teal-600 transition-all"
                 >
-                  Try Again
+                  {t("try_again")}
                 </button>
               </div>
             </div>

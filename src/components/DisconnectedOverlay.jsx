@@ -1,4 +1,5 @@
 import { WifiOff, AlertTriangle, RefreshCw, Settings } from "lucide-react";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function DisconnectedOverlay({
   isVisible,
@@ -8,6 +9,7 @@ export default function DisconnectedOverlay({
   isRetrying = false,
   onGoToSettings,
 }) {
+  const { t } = useTranslations();
   if (!isVisible) return null;
 
   return (
@@ -38,7 +40,7 @@ export default function DisconnectedOverlay({
             isDark ? "text-white" : "text-gray-900"
           }`}
         >
-          Device Disconnected
+          {t("device_disconnected")}
         </h3>
 
         {/* Message */}
@@ -47,9 +49,7 @@ export default function DisconnectedOverlay({
             isDark ? "text-gray-300" : "text-gray-600"
           }`}
         >
-          <span className="font-medium">{deviceName}</span> is currently
-          offline. Preset controls are disabled until the connection is
-          restored.
+          {t("device_offline", { deviceName })}
         </p>
 
         {/* Status indicators */}
@@ -64,7 +64,7 @@ export default function DisconnectedOverlay({
               isDark ? "text-gray-300" : "text-gray-600"
             }`}
           >
-            Connection lost • Retrying automatically
+            {t("connection_lost")}
           </span>
         </div>
 
@@ -81,7 +81,7 @@ export default function DisconnectedOverlay({
           }`}
         >
           <RefreshCw size={16} className={isRetrying ? "animate-spin" : ""} />
-          {isRetrying ? "Checking Connection..." : "Check Connection Now"}
+          {isRetrying ? t("checking_connection") : t("check_connection_now")}
         </button>
 
         {/* Divider */}
@@ -104,7 +104,7 @@ export default function DisconnectedOverlay({
                   : "bg-white text-gray-500"
               }`}
             >
-              Or
+              {t("or")}
             </span>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function DisconnectedOverlay({
               isDark ? "text-gray-300" : "text-gray-600"
             }`}
           >
-            Change to a different device or add a new one.
+            {t("change_device_prompt")}
           </p>
           <button
             onClick={onGoToSettings}
@@ -127,7 +127,7 @@ export default function DisconnectedOverlay({
             }`}
           >
             <Settings size={16} />
-            Go to Settings
+            {t("go_to_settings")}
           </button>
         </div>
       </div>

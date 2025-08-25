@@ -1,4 +1,5 @@
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function DeviceForm({
   isOpen,
@@ -8,6 +9,7 @@ export default function DeviceForm({
   onAddDevice,
   isDark,
 }) {
+  const { t } = useTranslations();
   if (!isOpen) return null;
 
   // IP address validation function
@@ -46,7 +48,7 @@ export default function DeviceForm({
         <h3
           className={`text-lg font-semibold mb-4 ${isDark ? "text-white" : ""}`}
         >
-          Add WLED Device
+          {t("add_wled_device")}
         </h3>
 
         <div className="space-y-4">
@@ -56,7 +58,7 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Device Name <span className="text-red-500">*</span>
+              {t("device_name_required")}
             </label>
             <input
               type="text"
@@ -74,7 +76,7 @@ export default function DeviceForm({
               }`}
             />
             <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-              {newDevice.name.length}/30 characters
+              {newDevice.name.length}/30 {t("characters")}
             </div>
           </div>
 
@@ -84,7 +86,7 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              IP Address
+              {t("ip_address")}
             </label>
             <input
               type="text"
@@ -105,7 +107,7 @@ export default function DeviceForm({
             />
             {newDevice.ip && !isValidIP(newDevice.ip) && (
               <div className="text-xs mt-1 text-red-500">
-                Please enter a valid IP address (e.g., 192.168.1.100)
+                {t("invalid_ip")}
               </div>
             )}
           </div>
@@ -116,7 +118,7 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              mDNS Name
+              {t("mdns_name")}
             </label>
             <input
               type="text"
@@ -136,18 +138,17 @@ export default function DeviceForm({
             />
             {newDevice.mdns && !isValidMdns(newDevice.mdns) && (
               <div className="text-xs mt-1 text-red-500">
-                Please enter a valid mDNS name (letters, numbers, hyphens, dots allowed)
+                {t("invalid_mdns")}
               </div>
             )}
             <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-              Alternative to IP address. Examples: wled-device, device.local, subdomain.domain.local
+              {t("mdns_alternative")}
             </div>
           </div>
 
           <div className={`p-3 rounded-lg ${isDark ? "bg-blue-900/20 border border-blue-800" : "bg-blue-50 border border-blue-200"}`}>
             <div className={`text-sm ${isDark ? "text-blue-400" : "text-blue-600"}`}>
-              <strong>Connection Options:</strong> Provide either an IP address OR mDNS name (or both). 
-              The app will automatically test which one works and use the most reliable option.
+              <strong>{t("connection_options")}</strong> {t("connection_options_explanation")}
             </div>
           </div>
 
@@ -157,7 +158,7 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Protocol
+              {t("protocol")}
             </label>
             <div className="flex gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -170,7 +171,7 @@ export default function DeviceForm({
                   className="text-blue-500 focus:ring-blue-500"
                 />
                 <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                  HTTP (Default)
+                  {t("http_default")}
                 </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -183,12 +184,12 @@ export default function DeviceForm({
                   className="text-blue-500 focus:ring-blue-500"
                 />
                 <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                  HTTPS (Secure)
+                  {t("https_secure")}
                 </span>
               </label>
             </div>
             <div className={`text-xs mt-1 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-              Most WLED devices use HTTP. Use HTTPS only if your device supports SSL.
+              {t("protocol_explanation")}
             </div>
           </div>
 
@@ -198,7 +199,7 @@ export default function DeviceForm({
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Description (Optional)
+              {t("description_optional")}
             </label>
             <input
               type="text"
@@ -245,7 +246,7 @@ export default function DeviceForm({
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             onClick={onAddDevice}
@@ -253,7 +254,7 @@ export default function DeviceForm({
             className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {newDevice.validating && <Loader2 size={16} className="animate-spin" />}
-            {newDevice.validating ? 'Validating...' : 'Add Device'}
+            {newDevice.validating ? t("validating") : t("add_device_button")}
           </button>
         </div>
       </div>

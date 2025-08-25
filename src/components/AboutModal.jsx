@@ -1,7 +1,9 @@
 import { X, Github, Palette } from "lucide-react";
 import packageJson from "../../package.json";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function AboutModal({ isOpen, onClose, isDark }) {
+  const { t } = useTranslations();
   if (!isOpen) return null;
 
   const openGitHub = () => {
@@ -30,10 +32,10 @@ export default function AboutModal({ isOpen, onClose, isDark }) {
               </div>
               <div>
                 <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-                  About Kolori
+                  {t("about_kolori")}
                 </h2>
                 <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                  v{packageJson.version}
+                  {t("version", { version: packageJson.version })}
                 </p>
               </div>
             </div>
@@ -53,10 +55,10 @@ export default function AboutModal({ isOpen, onClose, isDark }) {
           {/* Description */}
           <div className="text-center space-y-3">
             <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Kolori
+              {t("app_title")}
             </div>
             <p className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-              A modern, intuitive web interface for controlling WLED devices with style and ease.
+              {t("about_kolori_description")}
             </p>
           </div>
 
@@ -64,7 +66,7 @@ export default function AboutModal({ isOpen, onClose, isDark }) {
           <div className={`text-center p-4 rounded-lg ${
             isDark ? "bg-gray-800" : "bg-gray-50"
           }`}>
-            <p className="text-sm mb-3">Developed with ❤️ by</p>
+            <p className="text-sm mb-3">{t("developed_by")}</p>
             <button
               onClick={openProfile}
               className={`font-semibold hover:underline ${
@@ -82,13 +84,13 @@ export default function AboutModal({ isOpen, onClose, isDark }) {
               className="w-full bg-gray-900 text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
             >
               <Github size={20} />
-              View on GitHub
+              {t("view_on_github")}
             </button>
             
             <div className={`text-center text-xs ${
               isDark ? "text-gray-500" : "text-gray-400"
             }`}>
-              <p>This is an open-source project. Contributions are welcome!</p>
+              <p>{t("open_source_notice")}</p>
             </div>
           </div>
         </div>

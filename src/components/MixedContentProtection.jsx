@@ -1,6 +1,8 @@
 import { Shield, CheckCircle, Globe, Wifi, ArrowRight } from "lucide-react";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function MixedContentProtection({ isDark, onAccept }) {
+  const { t } = useTranslations();
   const isHttps = window.location.protocol === 'https:';
   
   return (
@@ -17,9 +19,9 @@ export default function MixedContentProtection({ isDark, onAccept }) {
               <Shield size={48} />
             </div>
           </div>
-          <h1 className="text-3xl font-bold mb-2">Mixed Content Protection</h1>
+          <h1 className="text-3xl font-bold mb-2">{t("mixed_content_protection_title")}</h1>
           <p className={`text-lg ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-            Ensuring secure communication with your WLED devices
+            {t("mixed_content_protection_subtitle")}
           </p>
         </div>
 
@@ -32,7 +34,7 @@ export default function MixedContentProtection({ isDark, onAccept }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Globe size={24} className={isDark ? "text-blue-400" : "text-blue-600"} />
-              <span className="font-semibold">Current Connection</span>
+              <span className="font-semibold">{t("current_connection")}</span>
             </div>
             <div className={`px-3 py-1 rounded-full text-sm font-medium ${
               isHttps 
@@ -43,16 +45,16 @@ export default function MixedContentProtection({ isDark, onAccept }) {
                   ? "bg-orange-900 text-orange-300"
                   : "bg-orange-100 text-orange-800"
             }`}>
-              {isHttps ? '🔒 HTTPS' : '🔓 HTTP'}
+              {isHttps ? `🔒 ${t("https")}` : `🔓 ${t("http")}`}
             </div>
           </div>
           
           <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
             <p className="mb-2">
-              <strong>Current URL:</strong> {window.location.href}
+              <strong>{t("current_url")}:</strong> {window.location.href}
             </p>
             <p>
-              <strong>Protocol:</strong> {isHttps ? 'Secure (HTTPS)' : 'Standard (HTTP)'}
+              <strong>{t("protocol")}:</strong> {isHttps ? t("secure_connection") : t("standard_connection")}
             </p>
           </div>
         </div>
@@ -65,7 +67,7 @@ export default function MixedContentProtection({ isDark, onAccept }) {
         }`}>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Wifi size={20} />
-            How Device Communication Works
+            {t("how_device_communication_works")}
           </h2>
           
           <div className="space-y-4">
@@ -75,11 +77,10 @@ export default function MixedContentProtection({ isDark, onAccept }) {
                   <CheckCircle size={20} className="text-green-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-green-600 dark:text-green-400">
-                      Mixed Content Protection Active
+                      {t("mixed_content_protection_active")}
                     </p>
                     <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                      This app runs in a special protected iframe that allows secure communication 
-                      with HTTP WLED devices even when served over HTTPS.
+                      {t("mixed_content_protection_active_explanation")}
                     </p>
                   </div>
                 </div>
@@ -88,11 +89,10 @@ export default function MixedContentProtection({ isDark, onAccept }) {
                   <Shield size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-blue-600 dark:text-blue-400">
-                      Enhanced Security
+                      {t("enhanced_security")}
                     </p>
                     <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                      Your connection to this website remains secure while allowing local 
-                      device communication through controlled permissions.
+                      {t("enhanced_security_explanation")}
                     </p>
                   </div>
                 </div>
@@ -102,11 +102,10 @@ export default function MixedContentProtection({ isDark, onAccept }) {
                 <CheckCircle size={20} className="text-green-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-green-600 dark:text-green-400">
-                    Direct Communication
+                    {t("direct_communication")}
                   </p>
                   <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                    Since this app is served over HTTP, it can communicate directly with 
-                    your WLED devices without any restrictions.
+                    {t("direct_communication_explanation")}
                   </p>
                 </div>
               </div>
@@ -121,24 +120,24 @@ export default function MixedContentProtection({ isDark, onAccept }) {
             : "bg-blue-50 border border-blue-200"
         }`}>
           <h3 className="font-semibold mb-3 text-blue-600 dark:text-blue-400">
-            What this means for you:
+            {t("what_this_means_for_you")}:
           </h3>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-2">
               <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-              <span>Full access to control your WLED devices</span>
+              <span>{t("full_access_to_wled")}</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-              <span>Real-time preset activation and effect control</span>
+              <span>{t("real_time_control")}</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-              <span>WebSocket connections for live updates</span>
+              <span>{t("websocket_updates")}</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-              <span>No additional configuration required</span>
+              <span>{t("no_additional_config")}</span>
             </li>
           </ul>
         </div>
@@ -153,12 +152,12 @@ export default function MixedContentProtection({ isDark, onAccept }) {
                 : "bg-blue-600 hover:bg-blue-700 text-white"
             }`}
           >
-            I Understand, Continue
+            {t("i_understand_continue")}
             <ArrowRight size={20} />
           </button>
           
           <p className={`mt-6 text-sm ${isDark ? "text-gray-500" : "text-gray-500"}`}>
-            By continuing, you acknowledge that this app will communicate with devices on your local network.
+            {t("local_network_acknowledgement")}
           </p>
         </div>
       </div>

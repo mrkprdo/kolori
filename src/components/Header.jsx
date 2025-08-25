@@ -1,6 +1,7 @@
 import { Settings, Wifi, WifiOff, Sun, Moon, Sunrise } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { logger } from "../utils/logger";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function Header({
   deviceName,
@@ -12,6 +13,7 @@ export default function Header({
   isDark,
   scheduleMode,
 }) {
+  const { t } = useTranslations();
   const isNativePlatform = Capacitor.isNativePlatform();
   
   return (
@@ -26,7 +28,7 @@ export default function Header({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Kolori
+            {t("app_title")}
           </div>
           <div className="flex items-center gap-2">
             <span

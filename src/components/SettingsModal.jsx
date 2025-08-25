@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw, RefreshCw, Settings } from "lucide-react";
+import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw, RefreshCw, Settings, Globe } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
 import DeviceDiscoveryModal from "./DeviceDiscoveryModal";
+import { useTranslations } from "../hooks/useTranslations.jsx";
 
 export default function SettingsModal({
   isOpen,
@@ -29,6 +30,7 @@ export default function SettingsModal({
   onTestScheduleLogic,
   onFetchWledPresets,
 }) {
+  const { t, setLanguage, language } = useTranslations();
   const [showAbout, setShowAbout] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState("");
@@ -75,7 +77,7 @@ export default function SettingsModal({
             <h2
               className={`text-lg font-semibold ${isDark ? "text-white" : ""}`}
             >
-              Settings
+              {t("settings")}
             </h2>
             <button
               onClick={onClose}
@@ -102,7 +104,7 @@ export default function SettingsModal({
               }`}
             >
               <Monitor size={16} className="inline mr-2" />
-              Devices
+              {t("devices")}
             </button>
             <button
               onClick={() => setActiveTab("config")}
@@ -117,7 +119,7 @@ export default function SettingsModal({
               }`}
             >
               <Settings size={16} className="inline mr-2" />
-              Config
+              {t("config")}
             </button>
           </div>
         </div>
@@ -134,7 +136,7 @@ export default function SettingsModal({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold">WLED Devices</h3>
+                <h3 className="font-semibold">{t("wled_devices")}</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -142,16 +144,16 @@ export default function SettingsModal({
                   className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 hover:bg-green-600 transition-colors sm:px-3 sm:text-sm"
                 >
                   <RefreshCw size={12} className="sm:w-3.5 sm:h-3.5" />
-                  <span className="hidden xs:inline">Scan for Devices</span>
-                  <span className="xs:hidden">Scan</span>
+                  <span className="hidden xs:inline">{t("scan_for_devices")}</span>
+                  <span className="xs:hidden">{t("scan")}</span>
                 </button>
                 <button
                   onClick={onShowDeviceForm}
                   className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 hover:bg-blue-600 transition-colors sm:px-3 sm:text-sm"
                 >
                   <Plus size={12} className="sm:w-3.5 sm:h-3.5" />
-                  <span className="hidden xs:inline">Add Device</span>
-                  <span className="xs:hidden">Add</span>
+                  <span className="hidden xs:inline">{t("add_device")}</span>
+                  <span className="xs:hidden">{t("add")}</span>
                 </button>
               </div>
             </div>
@@ -187,12 +189,12 @@ export default function SettingsModal({
                           <h4 className="font-medium">{device.name}</h4>
                           <div className="flex items-center gap-1">
                             {device.isConnected ? (
-                              <Wifi size={16} className="text-green-600" title="Connected" />
+                              <Wifi size={16} className="text-green-600" title={t("connected")} />
                             ) : (
-                              <WifiOff size={16} className="text-red-600" title="Disconnected" />
+                              <WifiOff size={16} className="text-red-600" title={t("disconnected")} />
                             )}
                             {activeDeviceId === device.id && (
-                              <CircleDot size={16} className="text-blue-600" title="Active Device" />
+                              <CircleDot size={16} className="text-blue-600" title={t("active_device")} />
                             )}
                           </div>
                         </div>
@@ -211,7 +213,7 @@ export default function SettingsModal({
                                 ? "bg-green-900 text-green-300 hover:bg-green-800"
                                 : "bg-green-100 text-green-800 hover:bg-green-200"
                             }`}
-                            title="Save changes"
+                            title={t("save_changes")}
                           >
                             <Check size={14} />
                           </button>
@@ -222,7 +224,7 @@ export default function SettingsModal({
                                 ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
                                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                             }`}
-                            title="Cancel editing"
+                            title={t("cancel_editing")}
                           >
                             <X size={14} />
                           </button>
@@ -239,7 +241,7 @@ export default function SettingsModal({
                                 ? "bg-purple-900 text-purple-200 hover:bg-purple-800"
                                 : "bg-purple-100 text-purple-800 hover:bg-purple-200"
                             }`}
-                            title="Sync WLED presets and playlists"
+                            title={t("sync_wled_presets")}
                           >
                             <RotateCw size={14} />
                           </button>
@@ -250,7 +252,7 @@ export default function SettingsModal({
                                 ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
                                 : "bg-blue-100 text-blue-800 hover:bg-blue-200"
                             }`}
-                            title="Open WLED web interface"
+                            title={t("open_wled_interface")}
                           >
                             <ExternalLink size={14} />
                           </button>
@@ -261,7 +263,7 @@ export default function SettingsModal({
                                 ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
                                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                             }`}
-                            title="Edit device name"
+                            title={t("edit_device_name")}
                           >
                             <Pencil size={14} />
                           </button>
@@ -275,7 +277,7 @@ export default function SettingsModal({
                                 ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
                                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                             }`}
-                            title="Select as active device"
+                            title={t("select_active_device")}
                           >
                             <Check size={14} />
                           </button>
@@ -286,7 +288,7 @@ export default function SettingsModal({
                                 ? "bg-red-900 text-red-300 hover:bg-red-800"
                                 : "bg-red-100 text-red-800 hover:bg-red-200"
                             }`}
-                            title="Remove device"
+                            title={t("remove_device")}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -309,7 +311,7 @@ export default function SettingsModal({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold">Schedule</h3>
+                <h3 className="font-semibold">{t("schedule")}</h3>
               </div>
               <div className="flex items-center gap-2">
                 
@@ -331,7 +333,7 @@ export default function SettingsModal({
             
             {/* Manual Control Buttons for Testing */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Manual Control (Testing)</span>
+              <span className="text-sm text-gray-500">{t("manual_control_testing")}</span>
               <div className="flex gap-2">
                 <button
                   onClick={onManualTurnOn}
@@ -341,7 +343,7 @@ export default function SettingsModal({
                       : "bg-green-100 text-green-800 hover:bg-green-200"
                   }`}
                 >
-                  Turn ON
+                  {t("turn_on")}
                 </button>
                 <button
                   onClick={onManualTurnOff}
@@ -351,14 +353,14 @@ export default function SettingsModal({
                       : "bg-red-100 text-red-800 hover:bg-red-200"
                   }`}
                 >
-                  Turn OFF
+                  {t("turn_off")}
                 </button>
               </div>
             </div>
 
             {/* Schedule Debug Button */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Schedule Debug</span>
+              <span className="text-sm text-gray-500">{t("schedule_debug")}</span>
               <button
                 onClick={onTestScheduleLogic}
                 className={`px-3 py-1 rounded-lg text-sm font-medium ${
@@ -367,7 +369,7 @@ export default function SettingsModal({
                     : "bg-blue-100 text-blue-800 hover:bg-blue-200"
                 }`}
               >
-                🧪 Test Schedule
+                🧪 {t("test_schedule")}
               </button>
             </div>
           </div>
@@ -376,7 +378,7 @@ export default function SettingsModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Palette size={16} />
-              <h3 className="font-semibold">Appearance</h3>
+              <h3 className="font-semibold">{t("appearance")}</h3>
             </div>
             <select
               value={theme}
@@ -393,11 +395,32 @@ export default function SettingsModal({
             </select>
           </div>
 
+          {/* Language Settings */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe size={16} />
+              <h3 className="font-semibold">{t("language")}</h3>
+            </div>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium border ${
+                isDark
+                  ? "bg-gray-800 border-gray-600 text-white"
+                  : "bg-white border-gray-300"
+              }`}
+            >
+              <option value="en">🇺🇸 English</option>
+              <option value="fr">🇫🇷 Français</option>
+              <option value="es">🇪🇸 Español</option>
+            </select>
+          </div>
+
           {/* About Section */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Info size={16} />
-              <h3 className="font-semibold">About</h3>
+              <h3 className="font-semibold">{t("about")}</h3>
             </div>
             <button
               onClick={() => setShowAbout(true)}
@@ -407,7 +430,7 @@ export default function SettingsModal({
                   : "bg-white border-gray-300 hover:bg-gray-50"
               }`}
             >
-              App Info
+              {t("app_info")}
             </button>
           </div>
             </div>
