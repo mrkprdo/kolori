@@ -1,6 +1,9 @@
 import { Plus, Wifi, Palette, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import DeviceDiscoveryModal from "./DeviceDiscoveryModal";
 
-export default function WelcomePage({ isDark, onAddDevice }) {
+export default function WelcomePage({ isDark, onAddDevice, devices = [] }) {
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 ${
       isDark ? "bg-gray-900" : "bg-gray-50"
@@ -50,6 +53,7 @@ export default function WelcomePage({ isDark, onAddDevice }) {
           </button>
           
           <button
+            onClick={() => setShowDiscoveryModal(true)}
             className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-3 hover:from-green-600 hover:to-teal-600 transition-all shadow-lg"
           >
             <RefreshCw size={20} />
@@ -79,6 +83,14 @@ export default function WelcomePage({ isDark, onAddDevice }) {
           </ul>
         </div>
       </div>
+      
+      <DeviceDiscoveryModal 
+        isOpen={showDiscoveryModal}
+        onClose={() => setShowDiscoveryModal(false)}
+        onDeviceSelect={onAddDevice}
+        isDark={isDark}
+        savedDevices={devices}
+      />
     </div>
   );
 }
