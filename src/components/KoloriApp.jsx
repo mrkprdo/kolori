@@ -104,6 +104,14 @@ export default function KoloriApp() {
     devicesRef.current = devices;
   }, [devices]);
 
+  // Debug live LED data updates
+  useEffect(() => {
+    logger.log("🎬 Live LED data state changed:", liveLedData.length, "LEDs");
+    if (liveLedData.length > 0) {
+      logger.log("🎬 First LED color:", liveLedData[0]);
+    }
+  }, [liveLedData]);
+
   // One-time startup log and mixed content detection
   useEffect(() => {
     logger.log("🎉 KoloriApp initialized in development mode");
@@ -271,16 +279,25 @@ export default function KoloriApp() {
     ) {
       setWebSocketCallbacks({
         onOpen: () => {
+          logger.log("🔌 WebSocket connected successfully");
           // Update device connection status to reflect WebSocket connection
           setDevices((prevDevices) =>
             prevDevices.map((d) =>
               d.id === activeDevice.id ? { ...d, isConnected: true } : d
             )
           );
+          
+          // Automatically start live view when WebSocket connects (with small delay)
+          setTimeout(() => {
+            logger.log("📡 Attempting to send live view command...");
+            const success = sendWebSocketCommand({ lv: true });
+            logger.log("🎬 Live view command sent:", success ? "SUCCESS" : "FAILED");
+          }, 100);
         },
         onMessage: (data) => {
           if (data instanceof ArrayBuffer) {
             // Handle binary data (live LED data)
+            logger.log("📊 Received binary LED data, size:", data.byteLength);
             const byteArray = new Uint8Array(data);
             const colors = [];
             let bytesPerLed = 3; // Default to RGB
@@ -292,13 +309,16 @@ export default function KoloriApp() {
 
             for (let i = 0; i < byteArray.length; i += bytesPerLed) {
               colors.push({
-                g: byteArray[i],
-                b: byteArray[i + 1],
-                r: byteArray[i + 2],
+                r: byteArray[i + 2], // Red
+                g: byteArray[i],     // Green  
+                b: byteArray[i + 1], // Blue
                 w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
               });
             }
+            logger.log("🎨 Processed LED colors:", colors.length, "LEDs, bytes per LED:", bytesPerLed);
+            logger.log("🎨 First few colors:", colors.slice(0, 3));
             setLiveLedData(colors);
+            logger.log("🔄 Live LED data updated in state");
           } else {
             // Handle JSON data
             // Update active device state based on WebSocket message
@@ -362,6 +382,8 @@ export default function KoloriApp() {
         clearTimeout(wsConnectTimer);
       }
       disconnectWebSocket();
+      // Clear live LED data when disconnecting
+      setLiveLedData([]);
     };
   }, [activeDevice?.id, activeDevice?.ip, activeDevice?.protocol]);
 

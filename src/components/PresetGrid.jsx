@@ -763,8 +763,10 @@ function PresetGrid({
                   <div className="font-medium text-sm mb-1">
                     Active: {activePresetData.name}
                   </div>
-                  {/* Live LED Data - Small LED Pills */}
-                  {liveLedData.length > 0 && (
+                </>
+              )}
+              {/* Live LED Data - Small LED Pills - Show regardless of active preset */}
+              {liveLedData.length > 0 && (
                     <div className="mt-3">
                       <div className="flex flex-wrap gap-0.5 items-end">
                         {liveLedData.map((color, index) => (
@@ -806,8 +808,6 @@ function PresetGrid({
                       </div>
                     </div>
                   )}
-                </>
-              )}
             </div>
           </div>
         </div>
