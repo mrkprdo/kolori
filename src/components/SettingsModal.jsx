@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw } from "lucide-react";
+import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw, RefreshCw } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
+import DeviceDiscoveryModal from "./DeviceDiscoveryModal";
 
 export default function SettingsModal({
   isOpen,
@@ -19,6 +20,7 @@ export default function SettingsModal({
   newDevice,
   onNewDeviceChange,
   onAddDevice,
+  onAutoAddDevice,
   isDark,
   scheduleMode,
   onScheduleChange,
@@ -30,6 +32,7 @@ export default function SettingsModal({
   const [showAbout, setShowAbout] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState("");
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -96,13 +99,24 @@ export default function SettingsModal({
                 <Monitor size={16} />
                 <h3 className="font-semibold">WLED Devices</h3>
               </div>
-              <button
-                onClick={onShowDeviceForm}
-                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1"
-              >
-                <Plus size={14} />
-                Add Device
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowDiscoveryModal(true)}
+                  className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 hover:bg-green-600 transition-colors sm:px-3 sm:text-sm"
+                >
+                  <RefreshCw size={12} className="sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden xs:inline">Scan for Devices</span>
+                  <span className="xs:hidden">Scan</span>
+                </button>
+                <button
+                  onClick={onShowDeviceForm}
+                  className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 hover:bg-blue-600 transition-colors sm:px-3 sm:text-sm"
+                >
+                  <Plus size={12} className="sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden xs:inline">Add Device</span>
+                  <span className="xs:hidden">Add</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -374,6 +388,26 @@ export default function SettingsModal({
         onDeviceChange={onNewDeviceChange}
         onAddDevice={onAddDevice}
         isDark={isDark}
+      />
+
+      {/* Device Discovery Modal */}
+      <DeviceDiscoveryModal
+        isOpen={showDiscoveryModal}
+        onClose={() => setShowDiscoveryModal(false)}
+        onDeviceSelect={(deviceData) => {
+          if (deviceData && deviceData.autoAdd) {
+            // Handle auto-add devices by calling the parent's auto-add handler
+            // We need to pass this through props
+            if (onAutoAddDevice) {
+              onAutoAddDevice(deviceData);
+            }
+          } else {
+            // Handle manual device selection (open form)
+            onShowDeviceForm();
+          }
+        }}
+        isDark={isDark}
+        savedDevices={devices}
       />
     </div>
   );

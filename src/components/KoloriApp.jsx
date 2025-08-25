@@ -1140,10 +1140,74 @@ export default function KoloriApp() {
     checkAndApplySchedule();
   };
 
+  // Auto-add device handler (used by both welcome page and settings modal)
+  const handleAutoAddDevice = async (deviceData) => {
+    logger.log("🚀 Auto-adding discovered device:", deviceData.name, deviceData.ip);
+    
+    try {
+      // Check for duplicate IP only
+      const duplicateIP = devices.find(
+        (device) => device.ip === deviceData.ip
+      );
+      
+      if (duplicateIP) {
+        logger.warn("Device already exists with IP:", deviceData.ip);
+        return;
+      }
+      
+      // Validate device connection
+      const validation = await validateDevice(
+        deviceData.ip,
+        deviceData.mdns || "",
+        deviceData.protocol || "http"
+      );
+      
+      if (!validation.success) {
+        logger.error("Device validation failed:", validation.message);
+        return;
+      }
+      
+      // Create device object
+      const device = {
+        id: Date.now(),
+        name: deviceData.name,
+        ip: deviceData.ip || validation.bestAddress,
+        mdns: deviceData.mdns || "",
+        protocol: deviceData.protocol || "http",
+        description: "",
+        isConnected: true,
+        autoBrightness: true,
+        maxBrightness: 80,
+        bestAddress: validation.bestAddress,
+        wledInfo: validation.info,
+      };
+      
+      // Add device to list
+      const updatedDevices = [...devices, device];
+      setDevices(updatedDevices);
+      
+      // Set as active device if it's the first one
+      if (devices.length === 0) {
+        setActiveDeviceId(device.id);
+      }
+      
+      logger.log("✅ Device auto-added successfully:", device.name);
+      
+    } catch (error) {
+      logger.error("❌ Error auto-adding device:", error);
+    }
+  };
+
   // Handle first device addition
-  const handleAddFirstDevice = () => {
-    setShowSettings(true);
-    setShowDeviceForm(true);
+  const handleAddFirstDevice = async (deviceData) => {
+    // If device has autoAdd flag, add it directly
+    if (deviceData && deviceData.autoAdd) {
+      await handleAutoAddDevice(deviceData);
+    } else {
+      // Regular flow - open settings modal
+      setShowSettings(true);
+      setShowDeviceForm(true);
+    }
   };
 
   // Handle user agreement
@@ -1359,7 +1423,7 @@ export default function KoloriApp() {
   if (devices.length === 0) {
     return (
       <>
-        <WelcomePage isDark={isDark} onAddDevice={handleAddFirstDevice} />
+        <WelcomePage isDark={isDark} onAddDevice={handleAddFirstDevice} devices={devices} />
 
         {/* Settings Modal for adding first device */}
         <SettingsModal
@@ -1401,6 +1465,7 @@ export default function KoloriApp() {
           newDevice={newDevice}
           onNewDeviceChange={setNewDevice}
           onAddDevice={addDevice}
+          onAutoAddDevice={handleAutoAddDevice}
           isDark={isDark}
           scheduleMode={scheduleMode}
           onScheduleChange={setSchedule}
@@ -1503,6 +1568,7 @@ export default function KoloriApp() {
           newDevice={newDevice}
           onNewDeviceChange={setNewDevice}
           onAddDevice={addDevice}
+          onAutoAddDevice={handleAutoAddDevice}
           isDark={isDark}
           scheduleMode={scheduleMode}
           onScheduleChange={setSchedule}
