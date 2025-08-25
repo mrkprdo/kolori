@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw, RefreshCw } from "lucide-react";
+import { Plus, Check, Trash2, Wifi, WifiOff, CircleDot, ExternalLink, Info, Calendar, Sun, Moon, Clock, Monitor, Palette, Pencil, X, Download, Loader2, RotateCw, RefreshCw, Settings } from "lucide-react";
 import DeviceForm from "./DeviceForm";
 import AboutModal from "./AboutModal";
 import DeviceDiscoveryModal from "./DeviceDiscoveryModal";
@@ -33,6 +33,7 @@ export default function SettingsModal({
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState("");
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("devices");
 
   if (!isOpen) return null;
 
@@ -70,7 +71,7 @@ export default function SettingsModal({
             isDark ? "border-gray-700" : "border-gray-200"
           }`}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <h2
               className={`text-lg font-semibold ${isDark ? "text-white" : ""}`}
             >
@@ -85,6 +86,40 @@ export default function SettingsModal({
               ×
             </button>
           </div>
+          
+          {/* Tab Navigation */}
+          <div className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab("devices")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === "devices"
+                  ? isDark
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-100 text-blue-700"
+                  : isDark
+                  ? "text-gray-300 hover:text-white hover:bg-gray-700"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+            >
+              <Monitor size={16} className="inline mr-2" />
+              Devices
+            </button>
+            <button
+              onClick={() => setActiveTab("config")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === "config"
+                  ? isDark
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-100 text-blue-700"
+                  : isDark
+                  ? "text-gray-300 hover:text-white hover:bg-gray-700"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+            >
+              <Settings size={16} className="inline mr-2" />
+              Config
+            </button>
+          </div>
         </div>
 
         <div
@@ -92,11 +127,13 @@ export default function SettingsModal({
             isDark ? "text-white" : ""
           }`}
         >
-          {/* Device Management */}
+          {/* Devices Tab */}
+          {activeTab === "devices" && (
+            <div className="space-y-6">
+              {/* Device Management */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Monitor size={16} />
                 <h3 className="font-semibold">WLED Devices</h3>
               </div>
               <div className="flex items-center gap-2">
@@ -262,13 +299,16 @@ export default function SettingsModal({
             </div>
           </div>
 
-          
+            </div>
+          )}
 
-          {/* Schedule Settings */}
+          {/* Config Tab */}
+          {activeTab === "config" && (
+            <div className="space-y-6">
+              {/* Schedule Settings */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Calendar size={16} />
                 <h3 className="font-semibold">Schedule</h3>
               </div>
               <div className="flex items-center gap-2">
@@ -370,6 +410,8 @@ export default function SettingsModal({
               App Info
             </button>
           </div>
+            </div>
+          )}
         </div>
       </div>
 
