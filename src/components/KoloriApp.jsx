@@ -97,6 +97,10 @@ export default function KoloriApp() {
   });
   const [filterTerm, setFilterTerm] = useState("");
   const [liveLedData, setLiveLedData] = useState([]);
+  const [liveViewEnabled, setLiveViewEnabled] = useState(() => {
+    const saved = localStorage.getItem("kolori_live_view_enabled");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
 
   // Use ref to track current devices for heartbeat monitoring
   const devicesRef = useRef(devices);
@@ -104,13 +108,6 @@ export default function KoloriApp() {
     devicesRef.current = devices;
   }, [devices]);
 
-  // Debug live LED data updates
-  useEffect(() => {
-    logger.log("🎬 Live LED data state changed:", liveLedData.length, "LEDs");
-    if (liveLedData.length > 0) {
-      logger.log("🎬 First LED color:", liveLedData[0]);
-    }
-  }, [liveLedData]);
 
   // One-time startup log and mixed content detection
   useEffect(() => {
@@ -279,7 +276,6 @@ export default function KoloriApp() {
     ) {
       setWebSocketCallbacks({
         onOpen: () => {
-          logger.log("🔌 WebSocket connected successfully");
           // Update device connection status to reflect WebSocket connection
           setDevices((prevDevices) =>
             prevDevices.map((d) =>
@@ -287,17 +283,14 @@ export default function KoloriApp() {
             )
           );
           
-          // Automatically start live view when WebSocket connects (with small delay)
+          // Set live view state when WebSocket connects (with small delay)
           setTimeout(() => {
-            logger.log("📡 Attempting to send live view command...");
-            const success = sendWebSocketCommand({ lv: true });
-            logger.log("🎬 Live view command sent:", success ? "SUCCESS" : "FAILED");
+            sendWebSocketCommand({ lv: liveViewEnabled });
           }, 100);
         },
         onMessage: (data) => {
           if (data instanceof ArrayBuffer) {
             // Handle binary data (live LED data)
-            logger.log("📊 Received binary LED data, size:", data.byteLength);
             const byteArray = new Uint8Array(data);
             const colors = [];
             let bytesPerLed = 3; // Default to RGB
@@ -315,10 +308,7 @@ export default function KoloriApp() {
                 w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
               });
             }
-            logger.log("🎨 Processed LED colors:", colors.length, "LEDs, bytes per LED:", bytesPerLed);
-            logger.log("🎨 First few colors:", colors.slice(0, 3));
             setLiveLedData(colors);
-            logger.log("🔄 Live LED data updated in state");
           } else {
             // Handle JSON data
             // Update active device state based on WebSocket message
@@ -852,6 +842,19 @@ export default function KoloriApp() {
       title: "",
       message: "",
     });
+  };
+
+  const handleLiveViewToggle = (enabled) => {
+    setLiveViewEnabled(enabled);
+    if (enabled) {
+      // Enable live view
+      sendWebSocketCommand({ lv: true });
+    } else {
+      // Disable live view
+      sendWebSocketCommand({ lv: false });
+      // Clear existing LED data
+      setLiveLedData([]);
+    }
   };
 
   const editPlaylist = (playlist) => {
@@ -1537,6 +1540,7 @@ export default function KoloriApp() {
           filterTerm={filterTerm}
           setFilterTerm={setFilterTerm}
           liveLedData={liveLedData}
+          onLiveViewToggle={handleLiveViewToggle}
         />
 
         {/* Modals */}
@@ -1627,6 +1631,8 @@ export default function KoloriApp() {
           title={notification.title}
           message={notification.message}
           onClose={closeNotification}
+          autoClose={true}
+          duration={4000}
           isDark={isDark}
         />
       </main>

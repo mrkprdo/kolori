@@ -413,6 +413,7 @@ function PresetGrid({
   onPlaylistSelect,
   setShowSettings,
   liveLedData,
+  onLiveViewToggle,
 }) {
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(() => {
     const saved = localStorage.getItem("kolori_seasonal_collapsed");
@@ -450,6 +451,7 @@ function PresetGrid({
       JSON.stringify(isPlaylistsCollapsed)
     );
   }, [isPlaylistsCollapsed]);
+
   const [showEffectForm, setShowEffectForm] = useState(false);
   const [selectedEffect, setSelectedEffect] = useState("");
   const [selectedPalette, setSelectedPalette] = useState("");
@@ -461,6 +463,18 @@ function PresetGrid({
   const [wledEffects, setWledEffects] = useState([]);
   const [wledPalettes, setWledPalettes] = useState([]);
   const [isLoadingEffects, setIsLoadingEffects] = useState(false);
+  const [liveViewEnabled, setLiveViewEnabled] = useState(() => {
+    const saved = localStorage.getItem("kolori_live_view_enabled");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // Save live view toggle state to localStorage
+  useEffect(() => {
+    localStorage.setItem(
+      "kolori_live_view_enabled",
+      JSON.stringify(liveViewEnabled)
+    );
+  }, [liveViewEnabled]);
 
   // Fetch effects and palettes from WLED device
   const fetchWledData = async () => {
@@ -745,10 +759,33 @@ function PresetGrid({
 
       {/* Live View Section */}
       <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Play size={20} />
-          Live View
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Play size={20} />
+            Live View
+          </h2>
+          {/* Toggle Switch */}
+          <button
+            onClick={() => {
+              const newValue = !liveViewEnabled;
+              setLiveViewEnabled(newValue);
+              if (onLiveViewToggle) {
+                onLiveViewToggle(newValue);
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              liveViewEnabled
+                ? "bg-blue-500"
+                : isDark ? "bg-gray-600" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                liveViewEnabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
         <div
           className={`border rounded-xl p-4 ${
             isDark
@@ -765,8 +802,8 @@ function PresetGrid({
                   </div>
                 </>
               )}
-              {/* Live LED Data - Small LED Pills - Show regardless of active preset */}
-              {liveLedData.length > 0 && (
+              {/* Live LED Data - Small LED Pills - Show when enabled and data available */}
+              {liveViewEnabled && liveLedData.length > 0 && (
                     <div className="mt-3">
                       <div className="flex flex-wrap gap-0.5 items-end">
                         {liveLedData.map((color, index) => (
@@ -808,6 +845,12 @@ function PresetGrid({
                       </div>
                     </div>
                   )}
+              {/* Live View Disabled Message */}
+              {!liveViewEnabled && (
+                <div className={`text-sm mt-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  Live view disabled
+                </div>
+              )}
             </div>
           </div>
         </div>

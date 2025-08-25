@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 
@@ -12,70 +12,23 @@ export default function Notification({
   duration = 4000,
   isDark
 }) {
-  const [isShowing, setIsShowing] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const timerRef = useRef(null);
-  const animationTimerRef = useRef(null);
 
-  const handleClose = useCallback(() => {
-    if (isClosing) return; // Prevent multiple close calls
-    
-    setIsClosing(true);
-    setIsShowing(false);
-    
-    // Clear any existing timers
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    // Wait for animation to complete before calling onClose
-    animationTimerRef.current = setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 300);
-  }, [onClose, isClosing]);
-
+  // Simple auto-close timer
   useEffect(() => {
-    // Clear all timers on cleanup or when visibility changes
+    if (isVisible && autoClose) {
+      timerRef.current = setTimeout(() => {
+        onClose();
+      }, duration);
+    }
+
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      if (animationTimerRef.current) {
-        clearTimeout(animationTimerRef.current);
-        animationTimerRef.current = null;
-      }
     };
-  }, []);
-
-  useEffect(() => {
-    if (isVisible && !isClosing) {
-      setIsShowing(true);
-      
-      if (autoClose) {
-        // Clear any existing timer before setting new one
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-        
-        timerRef.current = setTimeout(() => {
-          handleClose();
-        }, duration);
-      }
-    } else if (!isVisible) {
-      // Reset state when notification is hidden externally
-      setIsShowing(false);
-      setIsClosing(false);
-      
-      // Clear any existing timers
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-  }, [isVisible, autoClose, duration, handleClose, isClosing]);
+  }, [isVisible, autoClose, duration]);
 
   if (!isVisible) return null;
 
@@ -105,15 +58,7 @@ export default function Notification({
   
   return (
     <div 
-      className={`fixed z-50 transition-all duration-300 ${
-        isShowing 
-          ? "transform translate-x-0 opacity-100" 
-          : "transform translate-x-full opacity-0"
-      }`}
-      style={{
-        top: isNativePlatform ? '6rem' : 'calc(env(safe-area-inset-top) + 1rem)',
-        right: 'calc(env(safe-area-inset-right) + 1rem)',
-      }}
+      className="fixed z-50 top-4 right-4 transform translate-x-0 opacity-100 transition-all duration-300"
     >
       <div
         className={`max-w-sm w-full shadow-lg rounded-lg border-l-4 p-4 ${getColors()}`}
@@ -136,7 +81,7 @@ export default function Notification({
           </div>
           <div className="ml-4 flex-shrink-0 flex">
             <button
-              onClick={handleClose}
+              onClick={onClose}
               className={`inline-flex rounded-md p-1.5 ${isDark ? "text-gray-400 hover:text-gray-300" : "text-gray-400 hover:text-gray-500"} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
             >
               <X size={16} />
