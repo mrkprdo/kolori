@@ -97,12 +97,17 @@ export default function KoloriApp() {
   });
   const [filterTerm, setFilterTerm] = useState("");
   const [liveLedData, setLiveLedData] = useState([]);
+  const [liveViewEnabled, setLiveViewEnabled] = useState(() => {
+    const saved = localStorage.getItem("kolori_live_view_enabled");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
 
   // Use ref to track current devices for heartbeat monitoring
   const devicesRef = useRef(devices);
   useEffect(() => {
     devicesRef.current = devices;
   }, [devices]);
+
 
   // One-time startup log and mixed content detection
   useEffect(() => {
@@ -277,6 +282,11 @@ export default function KoloriApp() {
               d.id === activeDevice.id ? { ...d, isConnected: true } : d
             )
           );
+          
+          // Set live view state when WebSocket connects (with small delay)
+          setTimeout(() => {
+            sendWebSocketCommand({ lv: liveViewEnabled });
+          }, 100);
         },
         onMessage: (data) => {
           if (data instanceof ArrayBuffer) {
@@ -292,9 +302,9 @@ export default function KoloriApp() {
 
             for (let i = 0; i < byteArray.length; i += bytesPerLed) {
               colors.push({
-                g: byteArray[i],
-                b: byteArray[i + 1],
-                r: byteArray[i + 2],
+                r: byteArray[i + 2], // Red
+                g: byteArray[i],     // Green  
+                b: byteArray[i + 1], // Blue
                 w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
               });
             }
@@ -362,6 +372,8 @@ export default function KoloriApp() {
         clearTimeout(wsConnectTimer);
       }
       disconnectWebSocket();
+      // Clear live LED data when disconnecting
+      setLiveLedData([]);
     };
   }, [activeDevice?.id, activeDevice?.ip, activeDevice?.protocol]);
 
@@ -830,6 +842,19 @@ export default function KoloriApp() {
       title: "",
       message: "",
     });
+  };
+
+  const handleLiveViewToggle = (enabled) => {
+    setLiveViewEnabled(enabled);
+    if (enabled) {
+      // Enable live view
+      sendWebSocketCommand({ lv: true });
+    } else {
+      // Disable live view
+      sendWebSocketCommand({ lv: false });
+      // Clear existing LED data
+      setLiveLedData([]);
+    }
   };
 
   const editPlaylist = (playlist) => {
@@ -1515,6 +1540,7 @@ export default function KoloriApp() {
           filterTerm={filterTerm}
           setFilterTerm={setFilterTerm}
           liveLedData={liveLedData}
+          onLiveViewToggle={handleLiveViewToggle}
         />
 
         {/* Modals */}
@@ -1605,6 +1631,8 @@ export default function KoloriApp() {
           title={notification.title}
           message={notification.message}
           onClose={closeNotification}
+          autoClose={true}
+          duration={4000}
           isDark={isDark}
         />
       </main>
