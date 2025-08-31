@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm start)",
+      "Bash(npm ls:*)",
+      "Bash(npx expo start:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run:*)",
+      "Bash(npx react-native-clean-project:*)",
+      "Bash(node:*)",
+      "Bash(npm uninstall:*)",
+      "WebSearch",
+      "Bash(npx expo prebuild:*)",
+      "Bash(adb:*)",
+      "Bash(npx expo run:android:*)",
+      "Bash(npx expo logs:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
