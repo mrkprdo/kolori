@@ -10,6 +10,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Device as WledDevice, Theme, ScheduleMode, Settings } from '../types';
@@ -142,39 +143,30 @@ export default function SettingsModal({
     <ScrollView contentContainerStyle={styles.tabContentContainer}>
       <Text style={styles.sectionTitle}>Appearance</Text>
       <View style={styles.settingsGroup}>
-        {(['light', 'dark', 'system'] as Theme[]).map((themeOption) => (
-          <TouchableOpacity
-            key={themeOption}
-            onPress={() => onThemeChange(themeOption)}
-            style={[styles.optionButton, theme === themeOption && styles.optionButtonActive]}
-          >
-            <Text style={[styles.optionText, theme === themeOption && styles.optionTextActive]}>
-              {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
-            </Text>
-            {theme === themeOption && <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />}
-          </TouchableOpacity>
-        ))}
+        <Picker
+          selectedValue={theme}
+          onValueChange={(itemValue) => onThemeChange(itemValue as Theme)}
+          style={{ color: isDark ? '#FFF' : '#000', backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 12 }}
+          itemStyle={{ height: 120 }} // Adjust height as needed
+        >
+          <Picker.Item label="System" value="system" />
+          <Picker.Item label="Light" value="light" />
+          <Picker.Item label="Dark" value="dark" />
+        </Picker>
       </View>
 
       <Text style={styles.sectionTitle}>Schedule Mode</Text>
       <View style={styles.settingsGroup}>
-        {(['all-day', 'day', 'night'] as ScheduleMode[]).map((mode) => (
-          <TouchableOpacity
-            key={mode}
-            onPress={() => onScheduleModeChange(mode)}
-            style={[styles.optionButton, scheduleMode === mode && styles.optionButtonActive]}
-          >
-            <View>
-              <Text style={[styles.optionText, scheduleMode === mode && styles.optionTextActive]}>
-                {mode === 'all-day' ? 'All Day' : mode.charAt(0).toUpperCase() + mode.slice(1)} Mode
-              </Text>
-              <Text style={[styles.optionSubText, scheduleMode === mode && styles.optionSubTextActive]}>
-                {mode === 'all-day' ? 'LEDs active 24/7' : mode === 'day' ? 'Active during daytime' : 'Active during nighttime'}
-              </Text>
-            </View>
-            {scheduleMode === mode && <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />}
-          </TouchableOpacity>
-        ))}
+        <Picker
+          selectedValue={scheduleMode}
+          onValueChange={(itemValue) => onScheduleModeChange(itemValue as ScheduleMode)}
+          style={{ color: isDark ? '#FFF' : '#000', backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 12 }}
+          itemStyle={{ height: 120 }} // Adjust height as needed
+        >
+          <Picker.Item label="All Day Mode" value="all-day" />
+          <Picker.Item label="Day Mode" value="day" />
+          <Picker.Item label="Night Mode" value="night" />
+        </Picker>
       </View>
 
       <Text style={styles.sectionTitle}>Live View</Text>
