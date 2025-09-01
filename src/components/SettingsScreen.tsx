@@ -1494,28 +1494,28 @@ const styles = StyleSheet.create({
   discoveredDeviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 6,
+    borderRadius: 4,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   discoveredDeviceInfo: {
     flex: 1,
   },
   discoveredDeviceName: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   discoveredDeviceIP: {
-    fontSize: 14,
+    fontSize: 11,
   },
   connectButton: {
     backgroundColor: '#3b82f6',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    minWidth: 40,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    minWidth: 32,
     alignItems: 'center',
   },
   noDevicesContainer: {

@@ -36,7 +36,6 @@ import Notification from './Notification';
 import SettingsModal from './SettingsModal';
 import PlaylistModal from './PlaylistModal';
 import AddDeviceManuallyModal from './AddDeviceManuallyModal';
-import ScanNetworkModal from './ScanNetworkModal';
 
 interface KoloriAppProps {
   navigation: any;
@@ -48,6 +47,9 @@ interface KoloriAppProps {
   onSettingsUpdate: (settings: Settings) => void;
   onSetActiveDeviceId: (id: number | null) => void;
   onDeviceAdd: (device: WledDevice) => void;
+  showScanNetworkModal: boolean;
+  setShowScanNetworkModal: (show: boolean) => void;
+  setIsDiscoveryInProgress: (inProgress: boolean) => void;
 }
 
 export default function KoloriApp({
@@ -60,6 +62,9 @@ export default function KoloriApp({
   onSettingsUpdate,
   onSetActiveDeviceId,
   onDeviceAdd,
+  showScanNetworkModal,
+  setShowScanNetworkModal,
+  setIsDiscoveryInProgress,
 }: KoloriAppProps) {
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
@@ -68,7 +73,6 @@ export default function KoloriApp({
   const [showSettings, setShowSettings] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
-  const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
@@ -179,7 +183,6 @@ export default function KoloriApp({
           scheduleMode={settings.scheduleMode}
           onScheduleModeChange={(mode) => onSettingsUpdate({ ...settings, scheduleMode: mode })}
           devices={devices}
-          onDeviceUpdate={onDeviceUpdate}
           onDeviceRemove={onDeviceDelete}
           onAddDevice={() => { setShowSettings(false); setShowAddManuallyModal(true); }}
           onScanForDevices={() => { setShowSettings(false); setShowScanNetworkModal(true); }}
@@ -201,14 +204,6 @@ export default function KoloriApp({
           onDeviceAdded={onDeviceAdd}
           isDark={isDark}
           existingDevices={devices}
-        />
-        <ScanNetworkModal
-          isVisible={showScanNetworkModal}
-          onClose={() => setShowScanNetworkModal(false)}
-          onDeviceAdded={onDeviceAdd}
-          isDark={isDark}
-          existingDevices={devices}
-          backgroundScanDevices={[]}
         />
       </SafeAreaView>
     </SafeAreaProvider>

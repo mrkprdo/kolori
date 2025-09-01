@@ -172,16 +172,6 @@ export default function PresetGrid({
     }
   };
 
-  console.log('PresetGrid render:', {
-    isDark,
-    backgroundColor,
-    textColor,
-    seasonalPresetsCount: SEASONAL_PRESETS.length,
-    customEffectsCount: customEffects.length,
-    activePreset,
-    activeDevice: activeDevice?.name
-  });
-
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <ScrollView 

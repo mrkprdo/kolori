@@ -15,6 +15,7 @@ import KoloriApp from './src/components/KoloriApp';
 import UserAgreement from './src/components/UserAgreement';
 import LoadingScreen from './src/components/LoadingScreen';
 import DeviceOnboardingScreen from './src/components/DeviceOnboardingScreen';
+import ScanNetworkModal from './src/components/ScanNetworkModal';
 
 // Utils
 import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings } from './src/utils/storage';
@@ -32,6 +33,15 @@ export default function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [activeDeviceId, setActiveDeviceId] = useState<number | null>(null);
+  const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
+  const [isDiscoveryInProgress, setIsDiscoveryInProgress] = useState(false);
+  
+  // Debug modal state changes
+  const debugSetShowScanNetworkModal = (show: boolean) => {
+    console.log('🔍 Modal state changing from', showScanNetworkModal, 'to', show);
+    console.trace('Modal state change trace:');
+    setShowScanNetworkModal(show);
+  };
   const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
   const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
   
@@ -82,18 +92,22 @@ export default function App() {
   }, []);
 
   const handleAddDevice = (device: Device) => {
+    // Check current route OUTSIDE the setState callback to avoid stale closures
+    const currentRoute = navigationRef.getCurrentRoute();
+    const isOnOnboardingScreen = currentRoute?.name === 'DeviceOnboarding';
+    const shouldNavigate = devices.length === 0 && isOnOnboardingScreen && !isDiscoveryInProgress;
+    
     setDevices(prevDevices => {
-      const wasOnboarding = prevDevices.length === 0;
       const newDevices = [...prevDevices, device];
       saveDevices(newDevices);
-      if (wasOnboarding) {
-        setActiveDeviceId(device.id);
-        if (navigationRef.isReady()) {
-          navigationRef.reset({ index: 0, routes: [{ name: 'KoloriApp' }] });
-        }
-      }
       return newDevices;
     });
+    
+    // Set active device when transitioning from onboarding
+    // Note: Navigation happens automatically due to conditional Stack.Screen rendering
+    if (shouldNavigate) {
+      setActiveDeviceId(device.id);
+    }
   };
 
   const handleUpdateDevice = (deviceId: number, updates: Partial<Device>) => {
@@ -108,9 +122,8 @@ export default function App() {
     setDevices(prevDevices => {
       const newDevices = prevDevices.filter(d => d.id !== deviceId);
       saveDevices(newDevices);
-      if (newDevices.length === 0 && navigationRef.isReady()) {
-        navigationRef.reset({ index: 0, routes: [{ name: 'DeviceOnboarding' }] });
-      }
+      // The navigation will automatically switch to DeviceOnboarding 
+      // when devices.length === 0 due to the conditional rendering
       return newDevices;
     });
   };
@@ -150,7 +163,7 @@ export default function App() {
               <NavigationContainer ref={navigationRef}>
                 <StatusBar style={isDark ? "light" : "dark"} />
                 <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' } }}>
-                  {devices.length === 0 ? (
+                  {(devices.length === 0 && !isDiscoveryInProgress) ? (
                     <Stack.Screen name="DeviceOnboarding">
                       {(props) => (
                         <DeviceOnboardingScreen
@@ -159,6 +172,9 @@ export default function App() {
                           onDeviceAdded={handleAddDevice}
                           backgroundScanDevices={backgroundScanDevices}
                           existingDevices={devices}
+                          showScanNetworkModal={showScanNetworkModal}
+                          setShowScanNetworkModal={debugSetShowScanNetworkModal}
+                          setIsDiscoveryInProgress={setIsDiscoveryInProgress}
                         />
                       )}
                     </Stack.Screen>
@@ -175,6 +191,9 @@ export default function App() {
                           onDeviceDelete={handleDeleteDevice}
                           onSettingsUpdate={handleUpdateSettings}
                           onSetActiveDeviceId={handleSetActiveDeviceId}
+                          showScanNetworkModal={showScanNetworkModal}
+                          setShowScanNetworkModal={debugSetShowScanNetworkModal}
+                          setIsDiscoveryInProgress={setIsDiscoveryInProgress}
                         />
                       )}
                     </Stack.Screen>
@@ -191,6 +210,17 @@ export default function App() {
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       {renderContent()}
+      
+      {/* Global ScanNetworkModal - outside navigation to prevent unmounting */}
+      <ScanNetworkModal
+        isVisible={showScanNetworkModal}
+        onClose={() => debugSetShowScanNetworkModal(false)}
+        onDeviceAdded={handleAddDevice}
+        isDark={settings?.theme !== 'light'}
+        existingDevices={devices}
+        backgroundScanDevices={backgroundScanDevices}
+        setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+      />
     </Animated.View>
   );
 }

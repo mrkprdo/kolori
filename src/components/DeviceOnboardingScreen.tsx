@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AddDeviceManuallyModal from './AddDeviceManuallyModal';
-import ScanNetworkModal from './ScanNetworkModal';
 import { Device } from '../types';
 import { MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 
@@ -12,6 +11,9 @@ interface DeviceOnboardingScreenProps {
   onDeviceAdded: (device: Device) => void;
   backgroundScanDevices?: MdnsWledDevice[];
   existingDevices?: Device[];
+  showScanNetworkModal: boolean;
+  setShowScanNetworkModal: (show: boolean) => void;
+  setIsDiscoveryInProgress: (inProgress: boolean) => void;
 }
 
 export default function DeviceOnboardingScreen({
@@ -19,9 +21,11 @@ export default function DeviceOnboardingScreen({
   onDeviceAdded,
   backgroundScanDevices = [],
   existingDevices = [],
+  showScanNetworkModal,
+  setShowScanNetworkModal,
+  setIsDiscoveryInProgress,
 }: DeviceOnboardingScreenProps) {
   const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
-  const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
 
   const styles = getStyles(isDark);
 
@@ -61,14 +65,6 @@ export default function DeviceOnboardingScreen({
         onDeviceAdded={onDeviceAdded}
         isDark={isDark}
         existingDevices={existingDevices}
-      />
-      <ScanNetworkModal
-        isVisible={showScanNetworkModal}
-        onClose={() => setShowScanNetworkModal(false)}
-        onDeviceAdded={onDeviceAdded}
-        isDark={isDark}
-        existingDevices={existingDevices}
-        backgroundScanDevices={backgroundScanDevices}
       />
     </SafeAreaView>
   );

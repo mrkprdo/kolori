@@ -38,6 +38,9 @@ export default function AddDeviceManuallyModal({
         ip: deviceIP.trim(),
         protocol: 'http',
         isConnected: true,
+        isPlaying: false,
+        autoBrightness: false,
+        maxBrightness: 255,
       };
       setIsValidating(false);
       onDeviceAdded(newDevice);
