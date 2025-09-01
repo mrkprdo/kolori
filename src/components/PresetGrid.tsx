@@ -110,7 +110,6 @@ export default function PresetGrid({
   liveLedData,
   onLiveViewToggle,
 }: PresetGridProps) {
-  console.log('PresetGrid: liveLedData received:', liveLedData); // Debug log
   
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
@@ -507,20 +506,17 @@ const styles = StyleSheet.create({
   ledGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    minHeight: 50, // Increased minHeight
-    backgroundColor: 'lightgray', // Distinct background
-    padding: 5, // Add some padding
+    minHeight: 20, // Revert to original minHeight
   },
   ledPill: {
-    width: 20, // Temporarily larger
-    height: 20, // Temporarily larger
-    marginRight: 5, // More spacing
-    marginBottom: 5,
-    borderRadius: 5, // More rounded
-    backgroundColor: 'red', // Distinct color
-    borderWidth: 1, // Visible border
-    borderColor: 'blue', // Distinct border color
-    elevation: 10, // More prominent shadow
+    width: 6,
+    height: 11,
+    marginRight: 2,
+    marginBottom: 2,
+    borderRadius: 2,
+    borderWidth: 0.2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    elevation: 5, // Keep a default elevation for Android shadow
   },
   ledCount: {
     fontSize: 12,
