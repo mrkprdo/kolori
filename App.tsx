@@ -83,9 +83,9 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'loading' | 'agreement' | 'main'>('loading');
 
   const transitionToScreen = (nextScreen: 'loading' | 'agreement' | 'main') => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start(() => {
       setCurrentScreen(nextScreen);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start();
     });
   };
 

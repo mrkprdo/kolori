@@ -241,9 +241,10 @@ export default function PresetGrid({
                           top: 0.5,
                           left: 0.5,
                           borderRadius: 1,
-                          width: 2,
                           height: 4,
                           backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                          flex: 1,
+                          maxWidth: 2,
                         }}
                       />
                     </View>

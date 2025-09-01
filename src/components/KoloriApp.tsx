@@ -19,6 +19,7 @@ import {
   checkWledHeartbeat,
   turnWledOn,
   turnWledOff,
+  getWledPresets, // Added getWledPresets
 } from '../config/wledApi';
 import { SEASONAL_PRESETS } from '../constants/presets';
 import {
@@ -171,6 +172,13 @@ export default function KoloriApp({
     };
   }, [activeDevice, settings.liveViewEnabled]); // Reconnect if activeDevice or liveViewEnabled changes
 
+  // Fetch presets and playlists when active device changes or becomes connected
+  useEffect(() => {
+    if (activeDevice && activeDevice.ip && activeDevice.isConnected) {
+      fetchWledPresets();
+    }
+  }, [activeDevice?.id, activeDevice?.ip, activeDevice?.isConnected]);
+
   const activeDevice = devices.find((d) => d.id === activeDeviceId) || devices[0];
   const isConnected = activeDevice?.isConnected || false;
   const deviceName = activeDevice?.name || 'No Device';
@@ -181,6 +189,80 @@ export default function KoloriApp({
 
   const showNotification = (type: NotificationState['type'], title: string, message: string) => {
     setNotification({ isVisible: true, type, title, message });
+  };
+
+  // Fetch WLED presets and playlists from device
+  const fetchWledPresets = async () => {
+    if (!activeDevice?.isConnected) {
+      showNotification(
+        "error",
+        "Device Offline",
+        "Connect to a WLED device to fetch presets."
+      );
+      return;
+    }
+
+    try {
+      const result = await getWledPresets(
+        getDeviceAddress(activeDevice),
+        activeDevice.protocol || "http"
+      );
+
+      if (result.success) {
+        // Update custom effects with fetched presets and save to localStorage
+        const EXCLUDE_PREFIXES = [
+          "preset 0",
+          "autumn-",
+          "xmas-",
+          "canada day-",
+        ];
+
+        const fetchedPresets = (result.presets || []).filter((effect: any) => {
+          const effectNameLower = effect.name.toLowerCase();
+          return !EXCLUDE_PREFIXES.some((prefix) =>
+            effectNameLower.startsWith(prefix)
+          );
+        });
+        setCustomEffects(fetchedPresets);
+        storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, fetchedPresets); // Save to storage
+
+        // Update saved playlists with fetched playlists and save to localStorage
+        const fetchedPlaylists = (result.playlists || []).filter((playlist: any) => {
+          const playlistNameLower = playlist.name.toLowerCase();
+          return !EXCLUDE_PREFIXES.some((prefix) =>
+            playlistNameLower.startsWith(prefix)
+          );
+        });
+        setSavedPlaylists(fetchedPlaylists);
+        storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, fetchedPlaylists); // Save to storage
+
+        if (fetchedPresets.length > 0 || fetchedPlaylists.length > 0) {
+          const totalItems =
+            (fetchedPresets.length || 0) + (fetchedPlaylists.length || 0);
+          const itemType =
+            fetchedPresets.length > 0 && fetchedPlaylists.length > 0
+              ? "presets and playlists"
+              : fetchedPresets.length > 0
+              ? "presets"
+              : "playlists";
+
+          showNotification(
+            "success",
+            "Presets Imported",
+            `Successfully imported ${totalItems} ${itemType} from your WLED device.`
+          );
+        }
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      logger.error("❌ Failed to fetch WLED presets:", error.message);
+      showNotification(
+        "error",
+        "Import Failed",
+        `Could not fetch presets: ${error.message}`
+      );
+    }
   };
 
   return (
