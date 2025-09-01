@@ -101,5 +101,10 @@ export interface Settings {
   theme: Theme;
   scheduleMode: ScheduleMode;
   liveViewEnabled: boolean;
+  autoScan: boolean;
+  debugLogs: boolean;
+  scanTimeout: number;
+  maxDevices: number;
+  backgroundScanEnabled: boolean;
   [key: string]: any;
 }

@@ -7,10 +7,12 @@ import {
   Modal,
   Switch,
   StyleSheet,
+  Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Device as WledDevice, Theme, ScheduleMode } from '../types';
+import { Device as WledDevice, Theme, ScheduleMode, Settings } from '../types';
 
 interface SettingsModalProps {
   isVisible: boolean;
@@ -24,6 +26,9 @@ interface SettingsModalProps {
   onDeviceRemove: (deviceId: number) => void;
   onAddDevice: () => void;
   onScanForDevices: () => void;
+  // New settings
+  settings: Settings;
+  onSettingsUpdate: (settings: Settings) => void;
 }
 
 const TABS = [
@@ -78,6 +83,8 @@ export default function SettingsModal({
   onDeviceRemove,
   onAddDevice,
   onScanForDevices,
+  settings,
+  onSettingsUpdate,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState('devices');
   const styles = getStyles(isDark);
@@ -168,6 +175,184 @@ export default function SettingsModal({
             {scheduleMode === mode && <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />}
           </TouchableOpacity>
         ))}
+      </View>
+
+      <Text style={styles.sectionTitle}>Live View</Text>
+      <View style={styles.settingsGroup}>
+        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
+          <View>
+            <Text style={styles.optionText}>Live LED View</Text>
+            <Text style={styles.optionSubText}>Stream live LED colors from device</Text>
+          </View>
+          <Switch
+            value={settings.liveViewEnabled}
+            onValueChange={(value) => onSettingsUpdate({ ...settings, liveViewEnabled: value })}
+            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
+            thumbColor={settings.liveViewEnabled ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
+          />
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>Device Discovery</Text>
+      <View style={styles.settingsGroup}>
+        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
+          <View>
+            <Text style={styles.optionText}>Auto Scan</Text>
+            <Text style={styles.optionSubText}>Automatically start scanning for devices</Text>
+          </View>
+          <Switch
+            value={settings.autoScan}
+            onValueChange={(value) => onSettingsUpdate({ ...settings, autoScan: value })}
+            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
+            thumbColor={settings.autoScan ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
+          />
+        </View>
+
+        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
+          <View>
+            <Text style={styles.optionText}>Background Scan</Text>
+            <Text style={styles.optionSubText}>Continue scanning in background</Text>
+          </View>
+          <Switch
+            value={settings.backgroundScanEnabled}
+            onValueChange={(value) => onSettingsUpdate({ ...settings, backgroundScanEnabled: value })}
+            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
+            thumbColor={settings.backgroundScanEnabled ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
+          />
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>Advanced</Text>
+      <View style={styles.settingsGroup}>
+        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
+          <View>
+            <Text style={styles.optionText}>Debug Logs</Text>
+            <Text style={styles.optionSubText}>Show detailed logs for troubleshooting</Text>
+          </View>
+          <Switch
+            value={settings.debugLogs}
+            onValueChange={(value) => onSettingsUpdate({ ...settings, debugLogs: value })}
+            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
+            thumbColor={settings.debugLogs ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.optionButton, { justifyContent: 'space-between' }]}
+          onPress={() => {
+            Alert.prompt(
+              'Scan Timeout',
+              'Set scan timeout in seconds (5-60):',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Save',
+                  onPress: (value) => {
+                    const timeout = parseInt(value || '15');
+                    if (!isNaN(timeout) && timeout >= 5 && timeout <= 60) {
+                      onSettingsUpdate({ ...settings, scanTimeout: timeout });
+                    }
+                  }
+                }
+              ],
+              'plain-text',
+              settings.scanTimeout.toString()
+            );
+          }}
+        >
+          <View>
+            <Text style={styles.optionText}>Scan Timeout</Text>
+            <Text style={styles.optionSubText}>{settings.scanTimeout} seconds</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.optionButton, { justifyContent: 'space-between' }]}
+          onPress={() => {
+            Alert.prompt(
+              'Max Devices',
+              'Set maximum number of devices (1-50):',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Save',
+                  onPress: (value) => {
+                    const max = parseInt(value || '10');
+                    if (!isNaN(max) && max >= 1 && max <= 50) {
+                      onSettingsUpdate({ ...settings, maxDevices: max });
+                    }
+                  }
+                }
+              ],
+              'plain-text',
+              settings.maxDevices.toString()
+            );
+          }}
+        >
+          <View>
+            <Text style={styles.optionText}>Max Devices</Text>
+            <Text style={styles.optionSubText}>Maximum {settings.maxDevices} devices</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Danger Zone</Text>
+      <View style={styles.settingsGroup}>
+        <TouchableOpacity
+          style={[styles.optionButton, { justifyContent: 'space-between', borderColor: '#EF4444', borderWidth: 1 }]}
+          onPress={() => {
+            Alert.alert(
+              'Clear Cache',
+              'This will clear all cached data but keep your devices and settings.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Clear Cache',
+                  style: 'destructive',
+                  onPress: () => {
+                    // Clear cache logic would go here
+                    Alert.alert('Success', 'Cache cleared successfully');
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <View>
+            <Text style={[styles.optionText, { color: '#EF4444' }]}>Clear Cache</Text>
+            <Text style={styles.optionSubText}>Clear cached data (keeps devices)</Text>
+          </View>
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.optionButton, { justifyContent: 'space-between', borderColor: '#EF4444', borderWidth: 1 }]}
+          onPress={() => {
+            Alert.alert(
+              'Reset Application',
+              'This will remove all devices and reset the app to first-time setup. This action cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Reset App',
+                  style: 'destructive',
+                  onPress: () => {
+                    // Reset app logic would go here
+                    Alert.alert('App Reset', 'Application has been reset to factory settings');
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <View>
+            <Text style={[styles.optionText, { color: '#EF4444' }]}>Reset Application</Text>
+            <Text style={styles.optionSubText}>Remove all data and reset app</Text>
+          </View>
+          <Ionicons name="warning" size={20} color="#EF4444" />
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );

@@ -106,7 +106,16 @@ export default function App() {
         if (loadedSettings && Object.keys(loadedSettings).length > 0) {
           setSettings(loadedSettings as Settings);
         } else {
-          setSettings({ theme: 'dark', scheduleMode: 'all-day', liveViewEnabled: false });
+          setSettings({ 
+            theme: 'dark', 
+            scheduleMode: 'all-day', 
+            liveViewEnabled: false,
+            autoScan: true,
+            debugLogs: false,
+            scanTimeout: 15,
+            maxDevices: 10,
+            backgroundScanEnabled: true
+          });
         }
 
         if (!agreementResult) {
@@ -272,6 +281,7 @@ export default function App() {
           onDeviceRemove={handleDeleteDevice}
           onAddDevice={() => { setShowSettings(false); setAddModalOpenedFrom('settings'); setShowAddManuallyModal(true); }}
           onScanForDevices={handleOpenScanModalFromSettings}
+          settings={settings}
         />
       )}
 
