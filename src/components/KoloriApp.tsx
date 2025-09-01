@@ -33,9 +33,7 @@ import {
 import Header from './Header';
 import PresetGrid from './PresetGrid';
 import Notification from './Notification';
-import SettingsModal from './SettingsModal';
 import PlaylistModal from './PlaylistModal';
-import AddDeviceManuallyModal from './AddDeviceManuallyModal';
 
 interface KoloriAppProps {
   navigation: any;
@@ -50,6 +48,8 @@ interface KoloriAppProps {
   showScanNetworkModal: boolean;
   setShowScanNetworkModal: (show: boolean) => void;
   setIsDiscoveryInProgress: (inProgress: boolean) => void;
+  onShowSettings: () => void;
+  onScanFromMain: () => void;
 }
 
 export default function KoloriApp({
@@ -65,14 +65,14 @@ export default function KoloriApp({
   showScanNetworkModal,
   setShowScanNetworkModal,
   setIsDiscoveryInProgress,
+  onShowSettings,
+  onScanFromMain,
 }: KoloriAppProps) {
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
   
-  const [showSettings, setShowSettings] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
-  const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
@@ -144,7 +144,7 @@ export default function KoloriApp({
           devices={devices}
           activeDeviceId={activeDeviceId}
           setActiveDeviceId={onSetActiveDeviceId}
-          setShowSettings={() => setShowSettings(true)}
+          setShowSettings={onShowSettings}
           isDark={isDark}
           scheduleMode={settings.scheduleMode}
         />
@@ -163,7 +163,7 @@ export default function KoloriApp({
           onPlaylistEdit={(playlist) => {}}
           onPlaylistRemove={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
           onPlaylistSelect={(id) => {}}
-          setShowSettings={() => setShowSettings(true)}
+          setShowSettings={onShowSettings}
           liveLedData={liveLedData}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
         />
@@ -173,19 +173,6 @@ export default function KoloriApp({
           autoClose={true}
           duration={4000}
           isDark={isDark}
-        />
-        <SettingsModal
-          isVisible={showSettings}
-          onClose={() => setShowSettings(false)}
-          isDark={isDark}
-          theme={settings.theme}
-          onThemeChange={(theme) => onSettingsUpdate({ ...settings, theme })}
-          scheduleMode={settings.scheduleMode}
-          onScheduleModeChange={(mode) => onSettingsUpdate({ ...settings, scheduleMode: mode })}
-          devices={devices}
-          onDeviceRemove={onDeviceDelete}
-          onAddDevice={() => { setShowSettings(false); setShowAddManuallyModal(true); }}
-          onScanForDevices={() => { setShowSettings(false); setShowScanNetworkModal(true); }}
         />
         <PlaylistModal
           isVisible={showPlaylist}
@@ -197,13 +184,6 @@ export default function KoloriApp({
           onEditPlaylist={(playlist) => setSavedPlaylists(prev => prev.map(p => p.id === playlist.id ? playlist : p))}
           onDeletePlaylist={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
           onPlayPlaylist={(id) => {}}
-        />
-        <AddDeviceManuallyModal
-          isVisible={showAddManuallyModal}
-          onClose={() => setShowAddManuallyModal(false)}
-          onDeviceAdded={onDeviceAdd}
-          isDark={isDark}
-          existingDevices={devices}
         />
       </SafeAreaView>
     </SafeAreaProvider>

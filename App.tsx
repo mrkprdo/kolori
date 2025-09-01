@@ -16,6 +16,8 @@ import UserAgreement from './src/components/UserAgreement';
 import LoadingScreen from './src/components/LoadingScreen';
 import DeviceOnboardingScreen from './src/components/DeviceOnboardingScreen';
 import ScanNetworkModal from './src/components/ScanNetworkModal';
+import SettingsModal from './src/components/SettingsModal';
+import AddDeviceManuallyModal from './src/components/AddDeviceManuallyModal';
 
 // Utils
 import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings } from './src/utils/storage';
@@ -35,12 +37,44 @@ export default function App() {
   const [activeDeviceId, setActiveDeviceId] = useState<number | null>(null);
   const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
   const [isDiscoveryInProgress, setIsDiscoveryInProgress] = useState(false);
+  const [scanModalOpenedFrom, setScanModalOpenedFrom] = useState<'main' | 'settings'>('main');
+  const [addModalOpenedFrom, setAddModalOpenedFrom] = useState<'main' | 'settings'>('main');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
   
   // Debug modal state changes
   const debugSetShowScanNetworkModal = (show: boolean) => {
     console.log('🔍 Modal state changing from', showScanNetworkModal, 'to', show);
     console.trace('Modal state change trace:');
     setShowScanNetworkModal(show);
+  };
+
+  // Smart scan modal handler
+  const handleCloseScanModal = () => {
+    setShowScanNetworkModal(false);
+    // If opened from settings, reopen settings
+    if (scanModalOpenedFrom === 'settings') {
+      setShowSettings(true);
+    }
+  };
+
+  const handleOpenScanModalFromSettings = () => {
+    setShowSettings(false);
+    setScanModalOpenedFrom('settings');
+    setShowScanNetworkModal(true);
+  };
+
+  const handleOpenScanModalFromMain = () => {
+    setScanModalOpenedFrom('main');
+    setShowScanNetworkModal(true);
+  };
+
+  const handleCloseAddManuallyModal = () => {
+    setShowAddManuallyModal(false);
+    // If opened from settings, reopen settings
+    if (addModalOpenedFrom === 'settings') {
+      setShowSettings(true);
+    }
   };
   const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
   const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
@@ -194,6 +228,8 @@ export default function App() {
                           showScanNetworkModal={showScanNetworkModal}
                           setShowScanNetworkModal={debugSetShowScanNetworkModal}
                           setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+                          onShowSettings={() => setShowSettings(true)}
+                          onScanFromMain={handleOpenScanModalFromMain}
                         />
                       )}
                     </Stack.Screen>
@@ -214,12 +250,38 @@ export default function App() {
       {/* Global ScanNetworkModal - outside navigation to prevent unmounting */}
       <ScanNetworkModal
         isVisible={showScanNetworkModal}
-        onClose={() => debugSetShowScanNetworkModal(false)}
+        onClose={handleCloseScanModal}
         onDeviceAdded={handleAddDevice}
         isDark={settings?.theme !== 'light'}
         existingDevices={devices}
         backgroundScanDevices={backgroundScanDevices}
         setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+      />
+      
+      {/* Global SettingsModal */}
+      {settings && (
+        <SettingsModal
+          isVisible={showSettings}
+          onClose={() => setShowSettings(false)}
+          isDark={settings.theme !== 'light'}
+          theme={settings.theme}
+          onThemeChange={(theme) => handleUpdateSettings({ ...settings, theme })}
+          scheduleMode={settings.scheduleMode}
+          onScheduleModeChange={(mode) => handleUpdateSettings({ ...settings, scheduleMode: mode })}
+          devices={devices}
+          onDeviceRemove={handleDeleteDevice}
+          onAddDevice={() => { setShowSettings(false); setAddModalOpenedFrom('settings'); setShowAddManuallyModal(true); }}
+          onScanForDevices={handleOpenScanModalFromSettings}
+        />
+      )}
+
+      {/* Global AddDeviceManuallyModal */}
+      <AddDeviceManuallyModal
+        isVisible={showAddManuallyModal}
+        onClose={handleCloseAddManuallyModal}
+        onDeviceAdded={handleAddDevice}
+        isDark={settings?.theme !== 'light'}
+        existingDevices={devices}
       />
     </Animated.View>
   );
