@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 
 interface DeviceOnboardingScreenProps {
@@ -647,6 +648,14 @@ export default function DeviceOnboardingScreen({
             </Text>
             <TouchableOpacity
               onPress={() => {
+                if (Constants.appOwnership === 'expo') {
+                  Alert.alert(
+                    'Network Discovery Unavailable',
+                    'Network device scanning requires a development build. Use "Add Device Manually" instead or build with:\n\n• npx expo run:android\n• npx expo run:ios'
+                  );
+                  return;
+                }
+                
                 if (isScanning) {
                   wledMdnsDiscovery.stopScan();
                   setIsScanning(false);
@@ -659,7 +668,10 @@ export default function DeviceOnboardingScreen({
                   scanForDevices();
                 }
               }}
-              style={styles.scanButton}
+              style={[
+                styles.scanButton,
+                { opacity: Constants.appOwnership === 'expo' ? 0.5 : 1 }
+              ]}
             >
               <Ionicons 
                 name={isScanning ? "stop" : "refresh"} 
@@ -767,19 +779,41 @@ export default function DeviceOnboardingScreen({
 
             {!isScanning && discoveredDevices.length === 0 && (
               <View style={styles.noDevicesContainer}>
-                <Ionicons 
-                  name="search" 
-                  size={48} 
-                  color={isDark ? '#4b5563' : '#9ca3af'} 
-                />
-                <Text style={[
-                  styles.noDevicesText,
-                  { color: isDark ? '#9ca3af' : '#6b7280' }
-                ]}>
-                  No WLED devices found on your network.{'\n'}
-                  Make sure your WLED devices are powered on and connected to the same WiFi network.{'\n\n'}
-                  Tap the refresh button to scan again.
-                </Text>
+                {Constants.appOwnership === 'expo' ? (
+                  <>
+                    <Ionicons 
+                      name="information-circle" 
+                      size={48} 
+                      color={isDark ? '#4b5563' : '#9ca3af'} 
+                    />
+                    <Text style={[
+                      styles.noDevicesText,
+                      { color: isDark ? '#9ca3af' : '#6b7280' }
+                    ]}>
+                      Network device discovery is not available in Expo Go.{'\n\n'}
+                      To enable automatic device discovery, build a development version:{'\n'}
+                      • npx expo run:android{'\n'}
+                      • npx expo run:ios{'\n\n'}
+                      For now, you can add devices manually using their IP addresses.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons 
+                      name="search" 
+                      size={48} 
+                      color={isDark ? '#4b5563' : '#9ca3af'} 
+                    />
+                    <Text style={[
+                      styles.noDevicesText,
+                      { color: isDark ? '#9ca3af' : '#6b7280' }
+                    ]}>
+                      No WLED devices found on your network.{'\n'}
+                      Make sure your WLED devices are powered on and connected to the same WiFi network.{'\n\n'}
+                      Tap the refresh button to scan again.
+                    </Text>
+                  </>
+                )}
               </View>
             )}
           </ScrollView>

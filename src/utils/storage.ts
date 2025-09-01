@@ -12,8 +12,6 @@ export const STORAGE_KEYS = {
   SCHEDULE_MODE: 'kolori_schedule_mode',
   PLAYLISTS: 'kolori_playlists',
   CUSTOM_EFFECTS: 'kolori_custom_effects',
-  MIXED_CONTENT: 'kolori_mixed_content_accepted',
-  MIXED_CONTENT_ACCEPTED: 'kolori_mixed_content_accepted',
   LIVE_VIEW_ENABLED: 'kolori_live_view_enabled',
   SEASONAL_COLLAPSED: 'kolori_seasonal_collapsed',
   CUSTOM_EFFECTS_COLLAPSED: 'kolori_custom_effects_collapsed',
@@ -102,4 +100,32 @@ class Storage {
 }
 
 export const storage = new Storage();
+
+// Device management functions
+export const loadDevices = async () => {
+  return storage.loadFromStorage(STORAGE_KEYS.DEVICES, []);
+};
+
+export const saveDevices = async (devices: any[]) => {
+  return storage.saveToStorage(STORAGE_KEYS.DEVICES, devices);
+};
+
+// Settings management functions  
+export const loadSettings = async () => {
+  return storage.loadFromStorage(STORAGE_KEYS.DEVICE_CONFIG, {});
+};
+
+export const saveSettings = async (settings: any) => {
+  return storage.saveToStorage(STORAGE_KEYS.DEVICE_CONFIG, settings);
+};
+
+// User agreement functions
+export const loadHasAgreed = async () => {
+  return storage.loadFromStorage(STORAGE_KEYS.USER_AGREEMENT, false);
+};
+
+export const saveHasAgreed = async (hasAgreed: boolean) => {
+  return storage.saveToStorage(STORAGE_KEYS.USER_AGREEMENT, hasAgreed);
+};
+
 export default storage;

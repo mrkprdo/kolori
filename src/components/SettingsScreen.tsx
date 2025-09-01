@@ -19,11 +19,15 @@ import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 
 interface SettingsScreenProps {
   isDark?: boolean;
-  onClose: () => void;
-  onResetApp: () => void;
+  onClose?: () => void;
+  onResetApp?: () => void;
   devices?: any[];
   onDeviceRemove?: (deviceId: string) => void;
   onDeviceAdd?: (device: any) => void;
+  settings?: any;
+  onUpdateSettings?: (newSettings: any) => Promise<void>;
+  route?: any;
+  navigation?: any;
 }
 
 type SettingsTab = 'devices' | 'config';
@@ -96,7 +100,7 @@ export default function SettingsScreen({
       
       return false;
     } catch (error) {
-      console.log(`Device ${device.name} (${device.ip}) is offline:`, error.message || error);
+      console.log(`Device ${device.name} (${device.ip}) is offline:`, (error as Error).message || error);
       return false;
     }
   };
@@ -389,7 +393,7 @@ export default function SettingsScreen({
       console.error('Failed to start mDNS scan:', error);
       console.error('Error details:', JSON.stringify(error));
       setIsScanning(false);
-      const errorMessage = error.message || error.toString() || 'Unknown error';
+      const errorMessage = (error as Error).message || (error as Error).toString() || 'Unknown error';
       console.log('Error type:', typeof error);
       console.log('Error keys:', Object.keys(error || {}));
       
@@ -1544,5 +1548,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default SettingsScreen;

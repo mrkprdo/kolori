@@ -11,12 +11,14 @@ interface WelcomePageProps {
   isDark: boolean;
   onAddDevice: (deviceData?: any) => void;
   devices?: WledDevice[];
+  onAgree: () => void;
 }
 
 export default function WelcomePage({ 
   isDark, 
   onAddDevice, 
-  devices = [] 
+  devices = [],
+  onAgree
 }: WelcomePageProps) {
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
 
@@ -76,35 +78,35 @@ export default function WelcomePage({
           {/* Add device buttons */}
           <View className="w-full space-y-4">
             <TouchableOpacity
-              onPress={() => onAddDevice()}
+              onPress={onAgree}
               className="bg-gradient-to-r from-blue-500 to-purple-500 py-4 px-6 rounded-xl flex-row items-center justify-center space-x-3 shadow-lg"
               style={{
                 backgroundColor: '#3B82F6', // Fallback for gradient
               }}
             >
-              <Ionicons name="add" size={20} color="white" />
+              <Ionicons name="checkmark" size={20} color="white" />
               <Text className="text-white font-semibold text-lg">
-                Add Your First Device
+                Get Started
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity
               onPress={() => setShowDiscoveryModal(true)}
-              className="py-4 px-6 rounded-xl flex-row items-center justify-center space-x-3 shadow-lg"
+              className="py-4 px-6 rounded-xl flex-row items-center justify-center space-x-3 shadow-lg border border-gray-300"
               style={{
-                backgroundColor: '#10B981', // Fallback for gradient
+                backgroundColor: isDark ? '#374151' : '#F3F4F6',
               }}
             >
-              <Ionicons name="refresh" size={20} color="white" />
-              <Text className="text-white font-semibold text-lg">
-                Scan for Devices
+              <Ionicons name="information-circle" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+              <Text className={`font-semibold text-lg ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                Learn More
               </Text>
             </TouchableOpacity>
             
             <Text className={`text-sm text-center ${
               isDark ? 'text-gray-500' : 'text-gray-400'
             }`}>
-              You'll need your WLED device's IP address
+              By continuing, you agree to use this app with your own WLED devices
             </Text>
           </View>
 
@@ -145,27 +147,30 @@ export default function WelcomePage({
           </View>
         </View>
 
-        {/* TODO: Add DeviceDiscoveryModal when showDiscoveryModal is true */}
+        {/* Info Modal */}
         {showDiscoveryModal && (
           <View className="absolute inset-0 bg-black/50 items-center justify-center">
-            <View className={`m-4 p-6 rounded-xl ${
+            <View className={`m-4 p-6 rounded-xl max-w-sm ${
               isDark ? 'bg-gray-800' : 'bg-white'
             }`}>
               <Text className={`text-lg font-semibold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`}>
-                Device Discovery
+                About Kolori
               </Text>
-              <Text className={`mb-4 ${
+              <Text className={`mb-4 leading-relaxed ${
                 isDark ? 'text-gray-300' : 'text-gray-600'
               }`}>
-                Device discovery modal coming soon!
+                Kolori is a mobile app for controlling WLED devices on your local network. 
+                You can discover devices automatically or add them manually using their IP addresses.
+                {'\n\n'}
+                WLED is an open-source firmware for ESP8266/ESP32 microcontrollers that allows you to control addressable LED strips.
               </Text>
               <TouchableOpacity
                 onPress={() => setShowDiscoveryModal(false)}
-                className="bg-blue-500 py-2 px-4 rounded-lg"
+                className="bg-blue-500 py-3 px-6 rounded-lg"
               >
-                <Text className="text-white text-center font-medium">Close</Text>
+                <Text className="text-white text-center font-medium">Got it!</Text>
               </TouchableOpacity>
             </View>
           </View>

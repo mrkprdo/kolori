@@ -43,7 +43,6 @@ import Notification from './Notification';
 import SettingsModal from './SettingsModal';
 import PlaylistModal from './PlaylistModal';
 import DeviceForm from './DeviceForm';
-import MixedContentProtection from './MixedContentProtection';
 
 export default function KoloriApp() {
   // State management with AsyncStorage initialization
@@ -51,7 +50,6 @@ export default function KoloriApp() {
   const [devices, setDevices] = useState<WledDevice[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<number | null>(null);
   const [userAgreementAccepted, setUserAgreementAccepted] = useState<boolean | any>(false);
-  const [mixedContentAccepted, setMixedContentAccepted] = useState(false);
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('all-day');
@@ -89,7 +87,6 @@ export default function KoloriApp() {
           storedScheduleMode,
           storedPlaylists,
           storedCustomEffects,
-          storedMixedContent,
           storedLiveView
         ] = await Promise.all([
           storage.loadFromStorage(STORAGE_KEYS.DEVICES, []),
@@ -98,7 +95,6 @@ export default function KoloriApp() {
           storage.loadFromStorage(STORAGE_KEYS.SCHEDULE_MODE, 'all-day'),
           storage.loadFromStorage(STORAGE_KEYS.PLAYLISTS, []),
           storage.loadFromStorage(STORAGE_KEYS.CUSTOM_EFFECTS, []),
-          storage.loadFromStorage(STORAGE_KEYS.MIXED_CONTENT_ACCEPTED, false),
           storage.loadFromStorage(STORAGE_KEYS.LIVE_VIEW_ENABLED, true),
         ]);
 
@@ -108,7 +104,6 @@ export default function KoloriApp() {
         setScheduleMode(storedScheduleMode as ScheduleMode);
         setSavedPlaylists(storedPlaylists);
         setCustomEffects(storedCustomEffects);
-        setMixedContentAccepted(storedMixedContent);
         setLiveViewEnabled(storedLiveView);
 
         logger.log('✅ KoloriApp initialized successfully');
@@ -794,24 +789,6 @@ export default function KoloriApp() {
     );
   }
 
-  // Show mixed content protection if not accepted
-  if (!mixedContentAccepted) {
-    return (
-      <SafeAreaProvider>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <MixedContentProtection
-          isDark={isDark}
-          onAccept={() => {
-            setMixedContentAccepted(true);
-            storage.saveToStorage(STORAGE_KEYS.MIXED_CONTENT, true);
-          }}
-          onReject={() => {
-            logger.log('Mixed content protection rejected');
-          }}
-        />
-      </SafeAreaProvider>
-    );
-  }
 
   // Show welcome page if no devices
   if (devices.length === 0) {

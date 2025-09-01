@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import './global.css';
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,10 +8,12 @@ import { StatusBar } from 'expo-status-bar';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SheetProvider } from 'react-native-actions-sheet';
+import { BackHandler } from 'react-native';
 
 // Components
 import KoloriApp from './src/components/KoloriApp';
 import WelcomePage from './src/components/WelcomePage';
+import UserAgreement from './src/components/UserAgreement';
 import LoadingScreen from './src/components/LoadingScreen';
 import DeviceOnboardingScreen from './src/components/DeviceOnboardingScreen';
 import SettingsScreen from './src/components/SettingsScreen';
@@ -19,10 +23,12 @@ import {
   loadDevices, 
   saveDevices, 
   loadSettings, 
-  saveSettings,
-  loadHasAgreed,
-  saveHasAgreed
+  saveSettings
 } from './src/utils/storage';
+import { 
+  hasValidAgreement, 
+  saveAgreementSignature 
+} from './src/utils/userAgreement';
 
 // Types
 import { Device, Settings } from './src/types';
@@ -38,6 +44,7 @@ export default function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
+  const [showAgreement, setShowAgreement] = useState(false);
   const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
 
   // Background scanning effect
@@ -77,24 +84,31 @@ export default function App() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [loadedDevices, loadedSettings, loadedHasAgreed] = await Promise.all([
+        const [loadedDevices, loadedSettings, agreementValid] = await Promise.all([
           loadDevices(),
           loadSettings(),
-          loadHasAgreed(),
+          hasValidAgreement(),
         ]);
 
         setDevices(loadedDevices);
-        setSettings(loadedSettings);
-        setHasAgreed(loadedHasAgreed);
+        const defaultSettings: Settings = {
+          theme: 'dark',
+          scheduleMode: 'all-day',
+          liveViewEnabled: false,
+        };
+        setSettings(loadedSettings && Object.keys(loadedSettings).length > 0 ? loadedSettings as Settings : defaultSettings);
+        setHasAgreed(agreementValid);
+        setShowAgreement(!agreementValid);
       } catch (error) {
         console.error("Failed to load initial data:", error);
         // Set default settings if loading fails
         setSettings({
-          isDark: true,
-          showNotifications: true,
-          defaultBrightness: 255,
-          autoStart: false,
+          theme: 'dark',
+          scheduleMode: 'all-day',
+          liveViewEnabled: false,
         });
+        setHasAgreed(false);
+        setShowAgreement(true);
       } finally {
         // Use a timeout to simulate a longer loading time for better UX
         setTimeout(() => {
@@ -136,20 +150,42 @@ export default function App() {
     await saveSettings(newSettings);
   };
 
-  const handleAgreement = async () => {
+  const handleAgreementAccept = async () => {
+    await saveAgreementSignature();
     setHasAgreed(true);
-    await saveHasAgreed(true);
+    setShowAgreement(false);
+  };
+
+  const handleAgreementReject = () => {
+    // User rejected the agreement - close the app
+    BackHandler.exitApp();
+  };
+
+  const handleWelcomeAddDevice = () => {
+    // For now, this will just trigger the agreement
+    // In the future, this could navigate to a device setup screen
+    console.log('Add device requested');
   };
 
   if (isLoading || hasAgreed === null) {
-    return <LoadingScreen isDark={settings?.isDark ?? true} />;
+    return <LoadingScreen isDark={settings?.theme === 'dark'} />;
+  }
+
+  if (showAgreement) {
+    return (
+      <UserAgreement 
+        isDark={settings?.theme === 'dark'} 
+        onAccept={handleAgreementAccept}
+        onReject={handleAgreementReject}
+      />
+    );
   }
 
   if (!hasAgreed) {
-    return <WelcomePage onAgree={handleAgreement} isDark={settings?.isDark ?? true} />;
+    return <WelcomePage onAgree={() => setShowAgreement(true)} onAddDevice={handleWelcomeAddDevice} isDark={settings?.theme === 'dark'} />;
   }
 
-  const isDark = settings?.isDark ?? true;
+  const isDark = settings?.theme === 'dark';
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -176,18 +212,7 @@ export default function App() {
                     />
                   )}
                 </Stack.Screen>
-                <Stack.Screen name="KoloriApp">
-                  {(props) => (
-                    <KoloriApp
-                      {...props}
-                      devices={devices}
-                      settings={settings!}
-                      onUpdateDevice={handleUpdateDevice}
-                      onDeleteDevice={handleDeleteDevice}
-                      onUpdateSettings={handleUpdateSettings}
-                    />
-                  )}
-                </Stack.Screen>
+                <Stack.Screen name="KoloriApp" component={KoloriApp} />
                 <Stack.Screen name="Settings">
                   {(props) => (
                     <SettingsScreen

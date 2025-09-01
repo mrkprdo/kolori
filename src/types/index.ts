@@ -93,3 +93,13 @@ export interface ApiResponse {
 
 export type ScheduleMode = 'all-day' | 'day' | 'night';
 export type Theme = 'light' | 'dark' | 'system';
+
+// Alias for compatibility with App.tsx
+export type Device = WledDevice;
+
+export interface Settings {
+  theme: Theme;
+  scheduleMode: ScheduleMode;
+  liveViewEnabled: boolean;
+  [key: string]: any;
+}

@@ -45,7 +45,10 @@ export class WledMdnsDiscovery {
       
       // Check if running in Expo Go (which doesn't support native modules)
       if (Constants.appOwnership === 'expo') {
-        throw new Error('mDNS is not supported in Expo Go. Please use a development build: npx expo run:android or npx expo run:ios');
+        console.warn('mDNS is not supported in Expo Go. Network discovery will be disabled.');
+        console.log('To enable network discovery, use a development build: npx expo run:android or npx expo run:ios');
+        this.isInitialized = false;
+        return;
       }
       
       // Add a small delay to ensure the native module is ready
@@ -62,9 +65,6 @@ export class WledMdnsDiscovery {
     } catch (error) {
       console.error('Failed to initialize mDNS Zeroconf:', error);
       this.isInitialized = false;
-      if (this.listeners.onError) {
-        this.listeners.onError(`Initialization failed: ${error}`);
-      }
     }
   }
 
@@ -72,8 +72,8 @@ export class WledMdnsDiscovery {
     if (!this.zeroconf) return;
 
     // Service found
-    this.zeroconf.on('found', (name: string) => {
-      console.log('mDNS service found:', name);
+    this.zeroconf.on('found', (service: any) => {
+      console.log('mDNS service found:', service.name);
     });
 
     // Service resolved with full details
@@ -205,11 +205,7 @@ export class WledMdnsDiscovery {
     }
 
     if (!this.isInitialized || !this.zeroconf) {
-      const errorMsg = 'mDNS Zeroconf not properly initialized. This may be due to missing permissions or unsupported device.';
-      console.error(errorMsg);
-      if (this.listeners.onError) {
-        this.listeners.onError(errorMsg);
-      }
+      console.log('mDNS discovery not available - running in Expo Go or initialization failed');
       return;
     }
 

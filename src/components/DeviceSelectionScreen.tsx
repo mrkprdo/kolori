@@ -7,6 +7,13 @@ interface DeviceSelectionScreenProps {
   isDark?: boolean;
   onAddDevice: () => void;
   onScanNetwork: () => void;
+  devices?: any[];
+  settings?: any;
+  onUpdateDevice?: (updatedDevice: any) => Promise<void>;
+  onDeleteDevice?: (deviceId: number) => Promise<void>;
+  onUpdateSettings?: (newSettings: any) => Promise<void>;
+  route?: any;
+  navigation?: any;
 }
 
 export default function DeviceSelectionScreen({
@@ -184,6 +191,14 @@ const styles = StyleSheet.create({
   actionsContainer: {
     gap: 16,
     marginBottom: 40,
+  },
+  card: {
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   actionCard: {
     padding: 24,
