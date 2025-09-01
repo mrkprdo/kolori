@@ -29,6 +29,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   modalContent: { flex: 1, padding: 16 },
   scanningIndicator: { alignItems: 'center', padding: 32 },
   scanningText: { marginTop: 16, fontSize: 16, textAlign: 'center', color: isDark ? '#d1d5db' : '#6b7280' },
+  scanningOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: isDark ? 'rgba(17, 24, 39, 0.6)' : 'rgba(249, 250, 251, 0.6)', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  scanningOverlayContent: { alignItems: 'center' },
   deviceCard: { flexDirection: 'row', alignItems: 'center', padding: 6, borderRadius: 4, borderWidth: 1, marginBottom: 6, backgroundColor: isDark ? '#1F2937' : '#FFF', borderColor: isDark ? '#374151' : '#E5E7EB' },
   deviceInfo: { flex: 1 },
   deviceName: { fontSize: 12, fontWeight: '600', marginBottom: 0, color: isDark ? '#FFF' : '#111827' },
@@ -219,13 +221,8 @@ export default function ScanNetworkModal({
           </TouchableOpacity>
         </View>
         <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 80 }}>
-          {isScanning && (
-            <View style={styles.scanningIndicator}>
-              <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={styles.scanningText}>Scanning network for WLED devices...</Text>
-            </View>
-          )}
-          {discoveredDevices.map((device) => (
+          <View style={{ opacity: isScanning ? 0.3 : 1 }}>
+            {discoveredDevices.map((device) => (
             <View key={device.name} style={styles.deviceCard}>
               <View style={styles.deviceInfo}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -245,10 +242,21 @@ export default function ScanNetworkModal({
               </TouchableOpacity>
             </View>
           ))}
-          {!isScanning && discoveredDevices.length === 0 && (
-            <View style={styles.noDevicesContainer}>
-              <Ionicons name="search" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-              <Text style={styles.noDevicesText}>No WLED devices found on your network.</Text>
+            {!isScanning && discoveredDevices.length === 0 && (
+              <View style={styles.noDevicesContainer}>
+                <Ionicons name="search" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
+                <Text style={styles.noDevicesText}>No WLED devices found on your network.</Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Scanning Overlay */}
+          {isScanning && (
+            <View style={styles.scanningOverlay}>
+              <View style={styles.scanningOverlayContent}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.scanningText}>Scanning network for WLED devices...</Text>
+              </View>
             </View>
           )}
         </ScrollView>
