@@ -265,12 +265,12 @@ export default function ScanNetworkModal({
         <View style={styles.addAllButtonContainer}>
           <TouchableOpacity 
             onPress={addAllDevices} 
-            disabled={discoveredDevices.filter(d => d.status === 'discovered').length === 0}
+            disabled={isScanning || discoveredDevices.filter(d => d.status === 'discovered').length === 0}
             style={[
               styles.addAllButton, 
               { 
-                backgroundColor: discoveredDevices.filter(d => d.status === 'discovered').length > 0 ? '#059669' : '#9ca3af',
-                opacity: discoveredDevices.filter(d => d.status === 'discovered').length > 0 ? 1 : 0.5
+                backgroundColor: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? '#059669' : '#9ca3af',
+                opacity: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? 1 : 0.5
               }
             ]}>
             <Ionicons name="add-circle" size={20} color="white" />
