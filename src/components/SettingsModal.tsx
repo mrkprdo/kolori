@@ -13,6 +13,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AboutModal from './AboutModal'; // New import for AboutModal
 import { Device as WledDevice, Theme, ScheduleMode, Settings } from '../types';
 
 interface SettingsModalProps {
@@ -61,6 +62,15 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: isDark ? '#FFF' : '#111827', marginBottom: 8 },
   settingsGroup: { gap: 8 },
   optionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 16, borderRadius: 12 },
+  dropdownOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: isDark ? '#1F2937' : '#FFF',
+    paddingVertical: 8, // Reduced vertical padding
+    paddingHorizontal: 16, // Keep horizontal padding same as optionButton
+    borderRadius: 12,
+  },
   optionButtonActive: { backgroundColor: isDark ? '#3B82F6' : '#EBF5FF', borderWidth: 1, borderColor: isDark ? '#3B82F6' : '#90CDF4' },
   optionText: { color: isDark ? '#FFF' : '#111827', fontSize: 16, fontWeight: '500' },
   optionTextActive: { color: isDark ? '#EBF5FF' : '#2563EB' },
@@ -88,6 +98,7 @@ export default function SettingsModal({
   onSettingsUpdate,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState('devices');
+  const [showAbout, setShowAbout] = useState(false); // New state for About modal
   const styles = getStyles(isDark);
 
   const handleShowAddManually = () => {
@@ -143,152 +154,41 @@ export default function SettingsModal({
     <ScrollView contentContainerStyle={styles.tabContentContainer}>
       <Text style={styles.sectionTitle}>Appearance</Text>
       <View style={styles.settingsGroup}>
-        <Picker
-          selectedValue={theme}
-          onValueChange={(itemValue) => onThemeChange(itemValue as Theme)}
-          style={{ color: isDark ? '#FFF' : '#000', backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 12 }}
-          itemStyle={{ height: 120 }} // Adjust height as needed
-        >
-          <Picker.Item label="System" value="system" />
-          <Picker.Item label="Light" value="light" />
-          <Picker.Item label="Dark" value="dark" />
-        </Picker>
-      </View>
-
-      <Text style={styles.sectionTitle}>Schedule Mode</Text>
-      <View style={styles.settingsGroup}>
-        <Picker
-          selectedValue={scheduleMode}
-          onValueChange={(itemValue) => onScheduleModeChange(itemValue as ScheduleMode)}
-          style={{ color: isDark ? '#FFF' : '#000', backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 12 }}
-          itemStyle={{ height: 120 }} // Adjust height as needed
-        >
-          <Picker.Item label="All Day Mode" value="all-day" />
-          <Picker.Item label="Day Mode" value="day" />
-          <Picker.Item label="Night Mode" value="night" />
-        </Picker>
-      </View>
-
-      <Text style={styles.sectionTitle}>Live View</Text>
-      <View style={styles.settingsGroup}>
-        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
-          <View>
-            <Text style={styles.optionText}>Live LED View</Text>
-            <Text style={styles.optionSubText}>Stream live LED colors from device</Text>
-          </View>
-          <Switch
-            value={settings.liveViewEnabled}
-            onValueChange={(value) => onSettingsUpdate({ ...settings, liveViewEnabled: value })}
-            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
-            thumbColor={settings.liveViewEnabled ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
-          />
+        <View style={styles.dropdownOptionButton}>
+          <Picker
+            selectedValue={theme}
+            onValueChange={(itemValue) => onThemeChange(itemValue as Theme)}
+            style={{ flex: 1, color: isDark ? '#FFF' : '#000', dropdownIconColor: isDark ? '#FFF' : '#000' }}
+            itemStyle={{ height: 120 }} // Adjust height as needed
+          >
+            <Picker.Item label="System" value="system" />
+            <Picker.Item label="Light" value="light" />
+            <Picker.Item label="Dark" value="dark" />
+          </Picker>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Device Discovery</Text>
+      <Text style={styles.sectionTitle}>About</Text>
       <View style={styles.settingsGroup}>
-        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
-          <View>
-            <Text style={styles.optionText}>Auto Scan</Text>
-            <Text style={styles.optionSubText}>Automatically start scanning for devices</Text>
-          </View>
-          <Switch
-            value={settings.autoScan}
-            onValueChange={(value) => onSettingsUpdate({ ...settings, autoScan: value })}
-            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
-            thumbColor={settings.autoScan ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
-          />
-        </View>
-
-        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
-          <View>
-            <Text style={styles.optionText}>Background Scan</Text>
-            <Text style={styles.optionSubText}>Continue scanning in background</Text>
-          </View>
-          <Switch
-            value={settings.backgroundScanEnabled}
-            onValueChange={(value) => onSettingsUpdate({ ...settings, backgroundScanEnabled: value })}
-            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
-            thumbColor={settings.backgroundScanEnabled ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
-          />
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Advanced</Text>
-      <View style={styles.settingsGroup}>
-        <View style={[styles.optionButton, { justifyContent: 'space-between' }]}>
-          <View>
-            <Text style={styles.optionText}>Debug Logs</Text>
-            <Text style={styles.optionSubText}>Show detailed logs for troubleshooting</Text>
-          </View>
-          <Switch
-            value={settings.debugLogs}
-            onValueChange={(value) => onSettingsUpdate({ ...settings, debugLogs: value })}
-            trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
-            thumbColor={settings.debugLogs ? '#FFF' : isDark ? '#9CA3AF' : '#F3F4F6'}
-          />
-        </View>
-
         <TouchableOpacity
           style={[styles.optionButton, { justifyContent: 'space-between' }]}
-          onPress={() => {
-            Alert.prompt(
-              'Scan Timeout',
-              'Set scan timeout in seconds (5-60):',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Save',
-                  onPress: (value) => {
-                    const timeout = parseInt(value || '15');
-                    if (!isNaN(timeout) && timeout >= 5 && timeout <= 60) {
-                      onSettingsUpdate({ ...settings, scanTimeout: timeout });
-                    }
-                  }
-                }
-              ],
-              'plain-text',
-              settings.scanTimeout.toString()
-            );
-          }}
+          onPress={() => setShowAbout(true)}
         >
           <View>
-            <Text style={styles.optionText}>Scan Timeout</Text>
-            <Text style={styles.optionSubText}>{settings.scanTimeout} seconds</Text>
+            <Text style={styles.optionText}>App Info</Text>
+            <Text style={styles.optionSubText}>View application version and licenses</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.optionButton, { justifyContent: 'space-between' }]}
-          onPress={() => {
-            Alert.prompt(
-              'Max Devices',
-              'Set maximum number of devices (1-50):',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Save',
-                  onPress: (value) => {
-                    const max = parseInt(value || '10');
-                    if (!isNaN(max) && max >= 1 && max <= 50) {
-                      onSettingsUpdate({ ...settings, maxDevices: max });
-                    }
-                  }
-                }
-              ],
-              'plain-text',
-              settings.maxDevices.toString()
-            );
-          }}
-        >
-          <View>
-            <Text style={styles.optionText}>Max Devices</Text>
-            <Text style={styles.optionSubText}>Maximum {settings.maxDevices} devices</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <Ionicons name="information-circle-outline" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
         </TouchableOpacity>
       </View>
+
+      
+
+      
+
+      
+
+      
 
       <Text style={styles.sectionTitle}>Danger Zone</Text>
       <View style={styles.settingsGroup}>
@@ -381,6 +281,13 @@ export default function SettingsModal({
         {activeTab === 'devices' ? renderDevicesTab() : renderGeneralTab()}
 
       </SafeAreaView>
+
+      {/* About Modal */}
+      <AboutModal
+        isVisible={showAbout}
+        onClose={() => setShowAbout(false)}
+        isDark={isDark}
+      />
     </Modal>
   );
 }
