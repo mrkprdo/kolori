@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import './global.css';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SheetProvider } from 'react-native-actions-sheet';
-import { BackHandler } from 'react-native';
+import { BackHandler, Animated } from 'react-native';
 
 // Components
 import KoloriApp from './src/components/KoloriApp';
@@ -46,6 +46,30 @@ export default function App() {
   const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
   const [showAgreement, setShowAgreement] = useState(false);
   const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
+  
+  // Animation refs for smooth transitions
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [currentScreen, setCurrentScreen] = useState<'loading' | 'agreement' | 'main'>('loading');
+
+  // Smooth transition between screens
+  const transitionToScreen = (nextScreen: 'loading' | 'agreement' | 'main') => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start();
+    
+    setTimeout(() => {
+      setCurrentScreen(nextScreen);
+    }, 200);
+  };
 
   // Background scanning effect
   useEffect(() => {
@@ -83,13 +107,16 @@ export default function App() {
   // Load initial data
   useEffect(() => {
     const loadInitialData = async () => {
+      let agreementValid = false;
+      
       try {
-        const [loadedDevices, loadedSettings, agreementValid] = await Promise.all([
+        const [loadedDevices, loadedSettings, agreementResult] = await Promise.all([
           loadDevices(),
           loadSettings(),
           hasValidAgreement(),
         ]);
 
+        agreementValid = agreementResult;
         setDevices(loadedDevices);
         const defaultSettings: Settings = {
           theme: 'dark',
@@ -98,7 +125,12 @@ export default function App() {
         };
         setSettings(loadedSettings && Object.keys(loadedSettings).length > 0 ? loadedSettings as Settings : defaultSettings);
         setHasAgreed(agreementValid);
-        setShowAgreement(!agreementValid);
+        
+        // Only show agreement if it's not valid
+        if (!agreementValid) {
+          setShowAgreement(true);
+        }
+        
       } catch (error) {
         console.error("Failed to load initial data:", error);
         // Set default settings if loading fails
@@ -109,11 +141,17 @@ export default function App() {
         });
         setHasAgreed(false);
         setShowAgreement(true);
+        agreementValid = false;
       } finally {
-        // Use a timeout to simulate a longer loading time for better UX
+        // Smooth transition from loading to next screen
         setTimeout(() => {
           setIsLoading(false);
-        }, 1500);
+          if (!agreementValid) {
+            transitionToScreen('agreement');
+          } else {
+            transitionToScreen('main');
+          }
+        }, 800);
       }
     };
 
@@ -154,6 +192,7 @@ export default function App() {
     await saveAgreementSignature();
     setHasAgreed(true);
     setShowAgreement(false);
+    transitionToScreen('main');
   };
 
   const handleAgreementReject = () => {
@@ -167,69 +206,74 @@ export default function App() {
     console.log('Add device requested');
   };
 
-  if (isLoading || hasAgreed === null) {
-    return <LoadingScreen isDark={settings?.theme === 'dark'} />;
-  }
+  // Animated screen rendering
+  const renderCurrentScreen = () => {
+    if (isLoading || hasAgreed === null || settings === null || currentScreen === 'loading') {
+      return <LoadingScreen isDark={settings?.theme === 'dark'} />;
+    }
 
-  if (showAgreement) {
+    if (currentScreen === 'agreement' || showAgreement) {
+      return (
+        <UserAgreement 
+          isDark={settings?.theme === 'dark'} 
+          onAccept={handleAgreementAccept}
+          onReject={handleAgreementReject}
+        />
+      );
+    }
+
+    // Main app content (currentScreen === 'main')
+    const isDark = settings?.theme === 'dark';
+
     return (
-      <UserAgreement 
-        isDark={settings?.theme === 'dark'} 
-        onAccept={handleAgreementAccept}
-        onReject={handleAgreementReject}
-      />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ActionSheetProvider>
+          <SheetProvider>
+            <SafeAreaProvider>
+              <NavigationContainer ref={navigationRef}>
+                <StatusBar style={isDark ? "light" : "dark"} />
+                <Stack.Navigator 
+                  initialRouteName={devices.length === 0 ? 'DeviceOnboarding' : 'KoloriApp'}
+                  screenOptions={{ 
+                    headerShown: false,
+                    contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' }
+                  }}
+                >
+                  <Stack.Screen name="DeviceOnboarding">
+                    {(props) => (
+                      <DeviceOnboardingScreen
+                        {...props}
+                        isDark={isDark}
+                        onDeviceAdded={handleAddDevice}
+                        backgroundScanDevices={backgroundScanDevices}
+                        existingDevices={devices}
+                      />
+                    )}
+                  </Stack.Screen>
+                  <Stack.Screen name="KoloriApp" component={KoloriApp} />
+                  <Stack.Screen name="Settings">
+                    {(props) => (
+                      <SettingsScreen
+                        {...props}
+                        settings={settings!}
+                        onUpdateSettings={handleUpdateSettings}
+                        isDark={isDark}
+                      />
+                    )}
+                  </Stack.Screen>
+                </Stack.Navigator>
+              </NavigationContainer>
+            </SafeAreaProvider>
+          </SheetProvider>
+        </ActionSheetProvider>
+      </GestureHandlerRootView>
     );
-  }
-
-  // This condition should never trigger since we handle agreement differently now
-  // if (!hasAgreed) {
-  //   return <WelcomePage onAgree={() => setShowAgreement(true)} onAddDevice={handleWelcomeAddDevice} isDark={settings?.theme === 'dark'} />;
-  // }
-
-  const isDark = settings?.theme === 'dark';
+  };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ActionSheetProvider>
-        <SheetProvider>
-          <SafeAreaProvider>
-            <NavigationContainer ref={navigationRef}>
-              <StatusBar style={isDark ? "light" : "dark"} />
-              <Stack.Navigator 
-                initialRouteName={devices.length === 0 ? 'DeviceOnboarding' : 'KoloriApp'}
-                screenOptions={{ 
-                  headerShown: false,
-                  contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' }
-                }}
-              >
-                <Stack.Screen name="DeviceOnboarding">
-                  {(props) => (
-                    <DeviceOnboardingScreen
-                      {...props}
-                      isDark={isDark}
-                      onDeviceAdded={handleAddDevice}
-                      backgroundScanDevices={backgroundScanDevices}
-                      existingDevices={devices}
-                    />
-                  )}
-                </Stack.Screen>
-                <Stack.Screen name="KoloriApp" component={KoloriApp} />
-                <Stack.Screen name="Settings">
-                  {(props) => (
-                    <SettingsScreen
-                      {...props}
-                      settings={settings!}
-                      onUpdateSettings={handleUpdateSettings}
-                      isDark={isDark}
-                    />
-                  )}
-                </Stack.Screen>
-              </Stack.Navigator>
-            </NavigationContainer>
-          </SafeAreaProvider>
-        </SheetProvider>
-      </ActionSheetProvider>
-    </GestureHandlerRootView>
+    <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
+      {renderCurrentScreen()}
+    </Animated.View>
   );
 }
 
