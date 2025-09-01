@@ -41,14 +41,14 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   tabButtonActive: { backgroundColor: '#3B82F6' },
   tabText: { color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '600' },
   tabTextActive: { color: '#FFF' },
-  tabContentContainer: { padding: 16, gap: 16 },
+  tabContentContainer: { padding: 16, gap: 6 },
   addDeviceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderStyle: 'dashed', borderWidth: 2, borderColor: isDark ? '#4B5563' : '#D1D5DB', gap: 8 },
   addDeviceText: { color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '600', fontSize: 16 },
-  deviceCard: { backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 12, padding: 16 },
-  deviceCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  deviceName: { color: isDark ? '#FFF' : '#111827', fontWeight: '600', fontSize: 16, marginBottom: 4 },
-  deviceIp: { color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 14 },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 8, alignSelf: 'center' },
+  deviceCard: { backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 4, padding: 6 },
+  deviceCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  deviceName: { color: isDark ? '#FFF' : '#111827', fontWeight: '600', fontSize: 12, marginBottom: 0 },
+  deviceIp: { color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 11 },
+  statusDot: { width: 8, height: 8, borderRadius: 4, alignSelf: 'center' },
   trashButton: { padding: 4 },
   noDevicesContainer: { alignItems: 'center', paddingVertical: 48, gap: 16 },
   noDevicesText: { color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 16, fontWeight: '500' },
@@ -100,8 +100,8 @@ export default function SettingsModal({
             <View style={styles.deviceCardHeader}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444', marginRight: 6, marginLeft: 0, width: 6, height: 6, borderRadius: 3 }]} />
                   <Text style={styles.deviceName}>{device.name}</Text>
-                  <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }]} />
                 </View>
                 <Text style={styles.deviceIp}>{device.ip}</Text>
               </View>
