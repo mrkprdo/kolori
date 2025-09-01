@@ -820,7 +820,7 @@ export default function KoloriApp() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111827' : '#f9fafb' }]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         
         {/* Header */}
@@ -941,3 +941,9 @@ export default function KoloriApp() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

@@ -1,5 +1,5 @@
 // PresetGrid Component for React Native
-// Migrated from kolori_old/src/components/PresetGrid.jsx
+// Clean implementation with consistent theming
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -8,7 +8,7 @@ import {
   TouchableOpacity, 
   ScrollView,
   Dimensions,
-  FlatList 
+  StyleSheet
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
@@ -36,34 +36,35 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
   return (
     <TouchableOpacity
       onPress={() => onClick(preset.id)}
-      className={`rounded-xl shadow-sm border-2 overflow-hidden relative m-1 ${
-        isActive
-          ? 'border-white shadow-lg'
-          : 'border-white/20'
-      }`}
-      style={{
-        width: cardWidth,
-        aspectRatio: 1,
-        backgroundColor: '#6366f1', // Fallback color since we can't easily use gradients
-      }}
+      style={[
+        styles.presetCard,
+        {
+          width: cardWidth,
+          borderColor: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
+          backgroundColor: '#6366f1',
+          shadowColor: isActive ? '#3b82f6' : '#000',
+          shadowOpacity: isActive ? 0.3 : 0.1,
+          elevation: isActive ? 8 : 2,
+        }
+      ]}
     >
-      <View className="absolute inset-0 bg-black/10" />
-      <View className="relative flex-1 p-3 justify-center items-center">
+      <View style={styles.cardOverlay} />
+      <View style={styles.cardContent}>
         {showIcon && (
-          <Text className="text-2xl mb-1 drop-shadow-lg">{preset.icon}</Text>
+          <Text style={styles.cardIcon}>{preset.icon}</Text>
         )}
-        <Text className="font-medium text-xs text-white text-center leading-tight">
+        <Text style={styles.cardTitle}>
           {preset.name}
         </Text>
         {preset.effectName && (
-          <Text className="text-xs opacity-75 text-white text-center leading-tight mt-1">
+          <Text style={styles.cardSubtitle}>
             {preset.effectName}
           </Text>
         )}
       </View>
       {isActive && (
-        <View className="absolute top-1 right-1">
-          <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
+        <View style={styles.activeIndicator}>
+          <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         </View>
       )}
     </TouchableOpacity>
@@ -115,11 +116,18 @@ export default function PresetGrid({
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
   const [liveViewEnabled, setLiveViewEnabled] = useState(true);
 
+  // Theme colors
+  const backgroundColor = isDark ? '#111827' : '#f9fafb';
+  const cardBackground = isDark ? '#1f2937' : '#ffffff';
+  const textColor = isDark ? '#ffffff' : '#111827';
+  const subtextColor = isDark ? '#9ca3af' : '#6b7280';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+
   // Load collapse states from storage
   useEffect(() => {
     const loadCollapseStates = async () => {
       try {
-        const [seasonal, customEffects, playlists, liveView] = await Promise.all([
+        const [seasonal, customEffectsState, playlists, liveView] = await Promise.all([
           storage.loadFromStorage(STORAGE_KEYS.SEASONAL_COLLAPSED, true),
           storage.loadFromStorage(STORAGE_KEYS.CUSTOM_EFFECTS_COLLAPSED, true),
           storage.loadFromStorage(STORAGE_KEYS.PLAYLISTS_COLLAPSED, false),
@@ -127,7 +135,7 @@ export default function PresetGrid({
         ]);
 
         setIsSeasonalCollapsed(seasonal);
-        setIsCustomEffectsCollapsed(customEffects);
+        setIsCustomEffectsCollapsed(customEffectsState);
         setIsPlaylistsCollapsed(playlists);
         setLiveViewEnabled(liveView);
       } catch (error) {
@@ -138,7 +146,7 @@ export default function PresetGrid({
     loadCollapseStates();
   }, []);
 
-  // Save collapse states to storage
+  // Save collapse states
   useEffect(() => {
     storage.saveToStorage(STORAGE_KEYS.SEASONAL_COLLAPSED, isSeasonalCollapsed);
   }, [isSeasonalCollapsed]);
@@ -164,19 +172,30 @@ export default function PresetGrid({
     }
   };
 
+  console.log('PresetGrid render:', {
+    isDark,
+    backgroundColor,
+    textColor,
+    seasonalPresetsCount: SEASONAL_PRESETS.length,
+    customEffectsCount: customEffects.length,
+    activePreset,
+    activeDevice: activeDevice?.name
+  });
+
   return (
-    <ScrollView 
-      className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
-      showsVerticalScrollIndicator={false}
-    >
-      <View className="p-4 space-y-6 pb-24">
+    <View style={[styles.container, { backgroundColor }]}>
+      <ScrollView 
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         
         {/* Live View Section */}
-        <View>
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center">
-              <Ionicons name="play" size={20} color={isDark ? '#fff' : '#000'} />
-              <Text className={`text-lg font-semibold ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="play" size={20} color={textColor} />
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
                 Live View
               </Text>
             </View>
@@ -184,85 +203,81 @@ export default function PresetGrid({
             {/* Toggle Switch */}
             <TouchableOpacity
               onPress={handleLiveViewToggle}
-              className={`relative w-11 h-6 rounded-full ${
-                liveViewEnabled ? 'bg-blue-500' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-              }`}
+              style={[
+                styles.toggleSwitch,
+                { backgroundColor: liveViewEnabled ? '#3b82f6' : borderColor }
+              ]}
             >
               <View
-                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transform transition-transform ${
-                  liveViewEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
+                style={[
+                  styles.toggleThumb,
+                  { 
+                    backgroundColor: '#ffffff',
+                    transform: [{ translateX: liveViewEnabled ? 20 : 2 }] 
+                  }
+                ]}
               />
             </TouchableOpacity>
           </View>
           
-          <View className={`border rounded-xl p-4 ${
-            isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
-          }`}>
-            <View className="flex-row items-center">
-              <View className="flex-1">
-                {activePresetData && (
-                  <Text className={`font-medium text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    Active: {activePresetData.name}
-                  </Text>
-                )}
-                
-                {/* Live LED Data - Small LED Pills */}
-                {liveViewEnabled && liveLedData.length > 0 && (
-                  <View className="mt-3">
-                    <View className="flex-row flex-wrap">
-                      {liveLedData.slice(0, 60).map((color, index) => (
-                        <View
-                          key={index}
-                          className="w-1.5 h-3 mr-0.5 mb-0.5 rounded-sm"
-                          style={{
-                            backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-                            shadowColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 0.6,
-                            shadowRadius: 2,
-                            elevation: 2,
-                          }}
-                        />
-                      ))}
-                    </View>
-                    <Text className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {liveLedData.length} LED{liveLedData.length !== 1 ? 's' : ''} live
-                    </Text>
-                  </View>
-                )}
-                
-                {!liveViewEnabled && (
-                  <Text className={`text-sm mt-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Live view disabled
-                  </Text>
-                )}
+          <View style={[styles.card, { backgroundColor: cardBackground, borderColor }]}>
+            {activePresetData && (
+              <Text style={[styles.activePresetText, { color: textColor }]}>
+                Active: {activePresetData.name}
+              </Text>
+            )}
+            
+            {/* Live LED Data */}
+            {liveViewEnabled && liveLedData.length > 0 && (
+              <View style={styles.ledContainer}>
+                <View style={styles.ledGrid}>
+                  {liveLedData.slice(0, 60).map((color, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.ledPill,
+                        {
+                          backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+                        }
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={[styles.ledCount, { color: subtextColor }]}>
+                  {liveLedData.length} LED{liveLedData.length !== 1 ? 's' : ''} live
+                </Text>
               </View>
-            </View>
+            )}
+            
+            {!liveViewEnabled && (
+              <Text style={[styles.disabledText, { color: subtextColor }]}>
+                Live view disabled
+              </Text>
+            )}
           </View>
         </View>
 
         {/* Seasonal Presets */}
-        <View>
+        <View style={styles.section}>
           <TouchableOpacity
             onPress={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
-            className="flex-row items-center justify-between mb-3"
+            style={styles.sectionHeader}
           >
-            <View className="flex-row items-center">
-              <Ionicons name="calendar" size={20} color={isDark ? '#fff' : '#000'} />
-              <Text className={`text-lg font-semibold ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="calendar" size={20} color={textColor} />
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
                 Seasonal Presets
               </Text>
             </View>
             <Ionicons
               name={isSeasonalCollapsed ? 'chevron-down' : 'chevron-up'}
               size={20}
-              color={isDark ? '#9CA3AF' : '#6B7280'}
+              color={subtextColor}
             />
           </TouchableOpacity>
           
           {!isSeasonalCollapsed && (
-            <View className="flex-row flex-wrap justify-between">
+            <View style={styles.presetGrid}>
               {SEASONAL_PRESETS.map((preset) => (
                 <PresetCard
                   key={preset.id}
@@ -278,61 +293,50 @@ export default function PresetGrid({
         </View>
 
         {/* Custom Effects */}
-        <View>
+        <View style={styles.section}>
           <TouchableOpacity
             onPress={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
-            className="flex-row items-center justify-between mb-3"
+            style={styles.sectionHeader}
           >
-            <View className="flex-row items-center">
-              <Ionicons name="color-palette" size={20} color={isDark ? '#fff' : '#000'} />
-              <Text className={`text-lg font-semibold ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="color-palette" size={20} color={textColor} />
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
                 Custom Effects
               </Text>
             </View>
             <Ionicons
               name={isCustomEffectsCollapsed ? 'chevron-down' : 'chevron-up'}
               size={20}
-              color={isDark ? '#9CA3AF' : '#6B7280'}
+              color={subtextColor}
             />
           </TouchableOpacity>
           
           {!isCustomEffectsCollapsed && (
-            <View className="space-y-4">
+            <View>
               {!activeDevice?.isConnected ? (
-                <View className={`p-4 border rounded-xl text-center ${
-                  isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-50'
-                }`}>
-                  <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                  <Ionicons name="wifi-outline" size={24} color={subtextColor} style={styles.infoIcon} />
+                  <Text style={[styles.infoText, { color: subtextColor }]}>
                     Connect to a WLED device to load available effects
                   </Text>
                 </View>
               ) : (
-                <>
+                <View>
                   {/* Add Effect Button */}
                   <TouchableOpacity
                     onPress={() => {
-                      // TODO: Show effect creation modal
                       logger.log('Effect creation modal not yet implemented');
                     }}
-                    className={`p-4 border-2 border-dashed rounded-xl flex-row items-center justify-center space-x-2 ${
-                      isDark 
-                        ? 'border-gray-600 bg-gray-800' 
-                        : 'border-gray-300 bg-gray-50'
-                    }`}
+                    style={[styles.addButton, { backgroundColor: cardBackground, borderColor: subtextColor }]}
                   >
-                    <Ionicons 
-                      name="add" 
-                      size={20} 
-                      color={isDark ? '#9CA3AF' : '#6B7280'} 
-                    />
-                    <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <Ionicons name="add" size={20} color={subtextColor} />
+                    <Text style={[styles.addButtonText, { color: subtextColor }]}>
                       Add Custom Effect
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Custom Effects Grid */}
                   {customEffects.length > 0 ? (
-                    <View className="flex-row flex-wrap justify-between">
+                    <View style={styles.presetGrid}>
                       {customEffects.map((effect) => (
                         <PresetCard
                           key={effect.id}
@@ -345,84 +349,72 @@ export default function PresetGrid({
                       ))}
                     </View>
                   ) : (
-                    <View className={`p-4 border rounded-xl ${
-                      isDark
-                        ? 'border-gray-700 bg-gray-800'
-                        : 'border-gray-300 bg-gray-50'
-                    }`}>
-                      <Text className={`text-center ${
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
+                    <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                      <Ionicons name="color-palette-outline" size={24} color={subtextColor} style={styles.infoIcon} />
+                      <Text style={[styles.infoText, { color: subtextColor }]}>
                         No custom effects found.
                       </Text>
                     </View>
                   )}
-                </>
+                </View>
               )}
             </View>
           )}
         </View>
 
         {/* Playlists */}
-        <View>
+        <View style={styles.section}>
           <TouchableOpacity
             onPress={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
-            className="flex-row items-center justify-between mb-3"
+            style={styles.sectionHeader}
           >
-            <View className="flex-row items-center">
-              <Ionicons name="list" size={20} color={isDark ? '#fff' : '#000'} />
-              <Text className={`text-lg font-semibold ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="list" size={20} color={textColor} />
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
                 Playlists
               </Text>
             </View>
             <Ionicons
               name={isPlaylistsCollapsed ? 'chevron-down' : 'chevron-up'}
               size={20}
-              color={isDark ? '#9CA3AF' : '#6B7280'}
+              color={subtextColor}
             />
           </TouchableOpacity>
 
           {!isPlaylistsCollapsed && (
-            <View className="space-y-4">
+            <View>
               {/* Create Playlist Button */}
               {customEffects.length > 0 && (
                 <TouchableOpacity
                   onPress={onShowPlaylist}
-                  className={`p-3 rounded-xl flex-row items-center justify-center space-x-2 ${
-                    isDark ? 'bg-blue-900' : 'bg-blue-50'
-                  }`}
+                  style={[styles.createButton, { backgroundColor: isDark ? '#1e3a8a' : '#dbeafe' }]}
                 >
-                  <Ionicons 
-                    name="play" 
-                    size={18} 
-                    color={isDark ? '#93C5FD' : '#1D4ED8'} 
-                  />
-                  <Text className={`font-medium ${
-                    isDark ? 'text-blue-200' : 'text-blue-700'
-                  }`}>
+                  <Ionicons name="play" size={18} color={isDark ? '#93c5fd' : '#1d4ed8'} />
+                  <Text style={[styles.createButtonText, { color: isDark ? '#bfdbfe' : '#1e40af' }]}>
                     Create Playlist
                   </Text>
                 </TouchableOpacity>
               )}
 
               {savedPlaylists && savedPlaylists.length > 0 ? (
-                <View className="flex-row flex-wrap justify-between">
+                <View style={styles.playlistGrid}>
                   {savedPlaylists.map((playlist) => (
                     <TouchableOpacity
                       key={playlist.id}
                       onPress={() => onPlaylistSelect(playlist.id)}
-                      className="w-1/3 p-1"
+                      style={styles.playlistItem}
                     >
                       <View
-                        className={`rounded-xl p-3 aspect-square items-center justify-center ${
-                          playlist.isActive ? 'ring-2 ring-blue-500' : ''
-                        }`}
-                        style={{ backgroundColor: '#8B5CF6' }} // Fallback color
+                        style={[
+                          styles.playlistCard,
+                          { backgroundColor: '#8b5cf6' },
+                          playlist.isActive && { borderWidth: 2, borderColor: '#3b82f6' }
+                        ]}
                       >
-                        <Text className="text-white text-xs text-center font-medium mb-1">
+                        <Text style={styles.playlistName}>
                           {playlist.name}
                         </Text>
-                        <Text className="text-white text-xs opacity-75">
+                        <Text style={styles.playlistCount}>
                           {playlist.items?.length || 0} effects
                         </Text>
                       </View>
@@ -431,17 +423,12 @@ export default function PresetGrid({
                 </View>
               ) : (
                 customEffects.length === 0 && (
-                  <View className="text-center py-8">
-                    <Ionicons 
-                      name="play" 
-                      size={48} 
-                      color={isDark ? '#4B5563' : '#9CA3AF'} 
-                      style={{ opacity: 0.5, alignSelf: 'center', marginBottom: 16 }}
-                    />
-                    <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                    <Ionicons name="play-outline" size={24} color={subtextColor} style={styles.infoIcon} />
+                    <Text style={[styles.infoText, { color: subtextColor }]}>
                       No playlists saved yet
                     </Text>
-                    <Text className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <Text style={[styles.infoSubtext, { color: subtextColor }]}>
                       Create custom effects first to build playlists
                     </Text>
                   </View>
@@ -450,7 +437,210 @@ export default function PresetGrid({
             </View>
           )}
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingVertical: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+  },
+  activePresetText: {
+    fontWeight: '500',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  ledContainer: {
+    marginTop: 12,
+  },
+  ledGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  ledPill: {
+    width: 6,
+    height: 12,
+    marginRight: 2,
+    marginBottom: 2,
+    borderRadius: 2,
+  },
+  ledCount: {
+    fontSize: 12,
+    marginTop: 8,
+  },
+  disabledText: {
+    fontSize: 14,
+    marginTop: 8,
+  },
+  presetGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  presetCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    margin: 4,
+    aspectRatio: 1,
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  cardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  cardContent: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontWeight: '500',
+    fontSize: 12,
+    color: 'white',
+    textAlign: 'center',
+  },
+  cardSubtitle: {
+    fontSize: 10,
+    opacity: 0.75,
+    color: 'white',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+  },
+  infoCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  infoIcon: {
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  infoSubtext: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  addButton: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  addButtonText: {
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  createButton: {
+    padding: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  createButtonText: {
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  playlistGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  playlistItem: {
+    width: '30%',
+    margin: '1.66%',
+  },
+  playlistCard: {
+    borderRadius: 12,
+    padding: 12,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playlistName: {
+    color: 'white',
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  playlistCount: {
+    color: 'white',
+    fontSize: 10,
+    opacity: 0.75,
+  },
+});

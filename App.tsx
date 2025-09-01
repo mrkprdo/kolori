@@ -181,9 +181,10 @@ export default function App() {
     );
   }
 
-  if (!hasAgreed) {
-    return <WelcomePage onAgree={() => setShowAgreement(true)} onAddDevice={handleWelcomeAddDevice} isDark={settings?.theme === 'dark'} />;
-  }
+  // This condition should never trigger since we handle agreement differently now
+  // if (!hasAgreed) {
+  //   return <WelcomePage onAgree={() => setShowAgreement(true)} onAddDevice={handleWelcomeAddDevice} isDark={settings?.theme === 'dark'} />;
+  // }
 
   const isDark = settings?.theme === 'dark';
 

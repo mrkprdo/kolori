@@ -1,8 +1,8 @@
 // Header Component for React Native
-// Migrated from kolori_old/src/components/Header.jsx
+// Converted to use StyleSheet instead of TailwindCSS
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WledDevice, ScheduleMode } from '../types';
 import { logger } from '../utils/logger';
@@ -28,140 +28,146 @@ export default function Header({
   isDark,
   scheduleMode,
 }: HeaderProps) {
-  
-  const getScheduleIcon = () => {
-    switch (scheduleMode) {
-      case 'day':
-        return 'sunny-outline';
-      case 'night':
-        return 'moon-outline';
-      case 'all-day':
-        return 'time-outline';
-      default:
-        return 'time-outline';
+
+  const backgroundColor = isDark ? '#1f2937' : '#ffffff';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const textColor = isDark ? '#ffffff' : '#111827';
+  const subtextColor = isDark ? '#9ca3af' : '#6b7280';
+
+  const handleDeviceSwitch = () => {
+    if (devices.length <= 1) return;
+    
+    const currentIndex = devices.findIndex(d => d.id === activeDeviceId);
+    const nextIndex = (currentIndex + 1) % devices.length;
+    const nextDevice = devices[nextIndex];
+    
+    if (nextDevice) {
+      setActiveDeviceId(nextDevice.id);
+      logger.log('Switched to device:', nextDevice.name);
     }
   };
 
-  const getScheduleColor = () => {
+  const getScheduleText = () => {
     switch (scheduleMode) {
-      case 'day':
-        return '#EAB308'; // yellow-500
-      case 'night':
-        return '#8B5CF6'; // purple-500
-      case 'all-day':
-        return '#3B82F6'; // blue-500
-      default:
-        return '#3B82F6';
+      case 'day': return '☀️ Day';
+      case 'night': return '🌙 Night';
+      case 'all-day': return '⏰ All Day';
+      default: return '⏰ All Day';
     }
   };
 
   return (
-    <View
-      className={`p-4 border-b pt-safe-top ${
-        isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
-      }`}
-    >
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <Text className="text-2xl font-bold">
-            <Text className="text-blue-600">Ko</Text>
-            <Text className="text-purple-600">lori</Text>
+    <View style={[styles.header, { backgroundColor, borderBottomColor: borderColor }]}>
+      <View style={styles.headerContent}>
+        <View style={styles.leftSection}>
+          <Text style={styles.logo}>
+            <Text style={styles.logoBlue}>Ko</Text>
+            <Text style={styles.logoPurple}>lori</Text>
           </Text>
           
-          <View className="ml-4 flex-row items-center">
-            <View
-              className={`px-3 py-1 rounded-lg max-w-32 ${
-                isConnected
-                  ? isDark 
-                    ? 'bg-green-900' 
-                    : 'bg-green-100'
-                  : isDark
-                    ? 'bg-red-900'
-                    : 'bg-red-100'
-              }`}
+          {devices.length > 0 && (
+            <TouchableOpacity 
+              onPress={handleDeviceSwitch}
+              style={styles.deviceInfo}
             >
-              <Text
-                className={`text-xs font-medium ${
-                  isConnected
-                    ? isDark ? 'text-green-200' : 'text-green-800'
-                    : isDark ? 'text-red-200' : 'text-red-800'
-                }`}
-                numberOfLines={1}
-              >
-                {deviceName.length > 12 ? `${deviceName.slice(0, 12)}...` : deviceName}
-              </Text>
-            </View>
-            
-            {devices.length > 1 && (
-              <TouchableOpacity
-                className={`ml-2 px-2 py-1 rounded border ${
-                  isDark
-                    ? 'bg-gray-800 border-gray-600'
-                    : 'bg-white border-gray-300'
-                }`}
-                onPress={() => {
-                  // TODO: Show device picker modal
-                  logger.log('Device picker not yet implemented');
-                }}
-              >
-                <Ionicons 
-                  name="chevron-down" 
-                  size={16} 
-                  color={isDark ? '#9CA3AF' : '#6B7280'} 
+              <View style={styles.deviceStatus}>
+                <View 
+                  style={[
+                    styles.statusDot, 
+                    { backgroundColor: isConnected ? '#10b981' : '#ef4444' }
+                  ]} 
                 />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        <View className="flex-row items-center space-x-3">
-          {/* Schedule Mode Indicator */}
-          {scheduleMode && scheduleMode !== 'all-day' && (
-            <View className="relative">
-              <Ionicons 
-                name={getScheduleIcon()} 
-                size={20} 
-                color={getScheduleColor()} 
-              />
-              <View 
-                className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
-                style={{ backgroundColor: getScheduleColor() }}
-              />
-            </View>
+                <Text style={[styles.deviceName, { color: textColor }]} numberOfLines={1}>
+                  {deviceName}
+                </Text>
+                {devices.length > 1 && (
+                  <Ionicons name="chevron-down" size={16} color={subtextColor} />
+                )}
+              </View>
+            </TouchableOpacity>
           )}
-          
-          {/* Connection Status */}
-          <View className="relative">
-            <Ionicons
-              name={isConnected ? 'wifi' : 'wifi'}
-              size={20}
-              color={isConnected ? '#10B981' : '#EF4444'}
-            />
-            <View
-              className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                isConnected ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            />
+        </View>
+        
+        <View style={styles.rightSection}>
+          <View style={styles.scheduleChip}>
+            <Text style={[styles.scheduleText, { color: subtextColor }]}>
+              {getScheduleText()}
+            </Text>
           </View>
-
-          {/* Settings Button */}
-          <TouchableOpacity
-            className={`p-2 rounded-full ${
-              isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-            }`}
-            onPress={() => {
-              logger.log('⚙️ Settings opened');
-              setShowSettings(true);
-            }}
+          
+          <TouchableOpacity 
+            onPress={() => setShowSettings(true)}
+            style={styles.settingsButton}
           >
-            <Ionicons
-              name="settings-outline"
-              size={20}
-              color={isDark ? '#9CA3AF' : '#6B7280'}
-            />
+            <Ionicons name="settings" size={24} color={textColor} />
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    borderBottomWidth: 1,
+    paddingTop: 8,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  logo: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginRight: 16,
+  },
+  logoBlue: {
+    color: '#2563eb',
+  },
+  logoPurple: {
+    color: '#7c3aed',
+  },
+  deviceInfo: {
+    flex: 1,
+  },
+  deviceStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  deviceName: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 4,
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scheduleChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 12,
+  },
+  scheduleText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  settingsButton: {
+    padding: 4,
+  },
+});
