@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { logger } from '../utils/logger';
 import { storage, STORAGE_KEYS } from '../utils/storage';
+import { deviceMonitor, DeviceStatus } from '../services/deviceMonitor';
 import {
   connectWebSocket,
   disconnectWebSocket,
@@ -70,6 +71,7 @@ export default function KoloriApp({
   const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
+  const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
   
   const devicesRef = useRef(devices);
   useEffect(() => { devicesRef.current = devices; }, [devices]);
@@ -85,6 +87,36 @@ export default function KoloriApp({
     };
     loadLocalData();
   }, []);
+
+  // Device monitoring setup
+  useEffect(() => {
+    if (devices.length === 0) {
+      deviceMonitor.stop();
+      return;
+    }
+
+    // Set up status callback
+    const handleStatusUpdate = (statuses: DeviceStatus[]) => {
+      setDeviceStatuses(statuses);
+      
+      // Update device connection status
+      statuses.forEach(status => {
+        const device = devices.find(d => d.id === status.deviceId);
+        if (device && device.isConnected !== status.isOnline) {
+          onDeviceUpdate(device.id, { isConnected: status.isOnline });
+        }
+      });
+    };
+
+    deviceMonitor.addStatusCallback(handleStatusUpdate);
+    deviceMonitor.start(devices);
+
+    // Cleanup on unmount
+    return () => {
+      deviceMonitor.removeStatusCallback(handleStatusUpdate);
+      deviceMonitor.stop();
+    };
+  }, [devices, onDeviceUpdate]);
 
   const activeDevice = devices.find((d) => d.id === activeDeviceId) || devices[0];
   const isConnected = activeDevice?.isConnected || false;
