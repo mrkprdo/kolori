@@ -4,6 +4,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 import { WledDevice, ScheduleMode } from '../types';
 import { logger } from '../utils/logger';
 
@@ -28,6 +29,7 @@ export default function Header({
   isDark,
   scheduleMode,
 }: HeaderProps) {
+  const { showActionSheetWithOptions } = useActionSheet();
 
   const backgroundColor = isDark ? '#1f2937' : '#ffffff';
   const borderColor = isDark ? '#374151' : '#e5e7eb';
@@ -36,24 +38,31 @@ export default function Header({
 
   const handleDeviceSwitch = () => {
     if (devices.length <= 1) return;
-    
-    const currentIndex = devices.findIndex(d => d.id === activeDeviceId);
-    const nextIndex = (currentIndex + 1) % devices.length;
-    const nextDevice = devices[nextIndex];
-    
-    if (nextDevice) {
-      setActiveDeviceId(nextDevice.id);
-      logger.log('Switched to device:', nextDevice.name);
-    }
-  };
 
-  const getScheduleText = () => {
-    switch (scheduleMode) {
-      case 'day': return '☀️ Day';
-      case 'night': return '🌙 Night';
-      case 'all-day': return '⏰ All Day';
-      default: return '⏰ All Day';
-    }
+    const deviceNames = devices.map(d => d.name);
+    const options = [...deviceNames, 'Cancel'];
+    const cancelButtonIndex = options.length - 1;
+
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        title: 'Select a Device',
+        titleTextStyle: { color: isDark ? '#ffffff' : '#000000' },
+        containerStyle: { backgroundColor: isDark ? '#1f2937' : '#ffffff' },
+        textStyle: { color: isDark ? '#60a5fa' : '#3b82f6' },
+        cancelButtonTintColor: isDark ? '#9ca3af' : '#6b7280',
+      },
+      (selectedIndex) => {
+        if (selectedIndex !== undefined && selectedIndex < deviceNames.length) {
+          const selectedDevice = devices[selectedIndex];
+          if (selectedDevice && selectedDevice.id !== activeDeviceId) {
+            setActiveDeviceId(selectedDevice.id);
+            logger.log('Switched to device:', selectedDevice.name);
+          }
+        }
+      }
+    );
   };
 
   return (
@@ -89,12 +98,6 @@ export default function Header({
         </View>
         
         <View style={styles.rightSection}>
-          <View style={styles.scheduleChip}>
-            <Text style={[styles.scheduleText, { color: subtextColor }]}>
-              {getScheduleText()}
-            </Text>
-          </View>
-          
           <TouchableOpacity 
             onPress={() => setShowSettings(true)}
             style={styles.settingsButton}
@@ -122,7 +125,7 @@ const styles = StyleSheet.create({
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    flex: 1, // Allow left section to take available space
   },
   logo: {
     fontSize: 24,
@@ -136,7 +139,9 @@ const styles = StyleSheet.create({
     color: '#7c3aed',
   },
   deviceInfo: {
-    flex: 1,
+    flex: 1, // Allow device info to take available space
+    justifyContent: 'center', // Center content horizontally
+    alignItems: 'center', // Center content vertically
   },
   deviceStatus: {
     flexDirection: 'row',
@@ -157,15 +162,6 @@ const styles = StyleSheet.create({
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  scheduleChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 12,
-  },
-  scheduleText: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   settingsButton: {
     padding: 4,

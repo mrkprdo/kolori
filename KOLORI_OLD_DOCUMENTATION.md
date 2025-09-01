@@ -551,3 +551,53 @@ The codebase demonstrates professional-level React development patterns, extensi
 **Main Components**: 20+ React components  
 **API Integration**: 25+ WLED API functions  
 **Storage Management**: 6 localStorage keys with persistence helpers
+
+---
+
+## Comprehensive Application Flow
+
+This section describes the end-to-end operational flow of the Kolori application, from initial launch to user interaction and device control.
+
+### 1. Application Initialization
+1.  **Entry Point (`main.jsx`)**: The application bootstraps by rendering the main `App` component into the DOM.
+2.  **Root Component (`App.jsx`)**: This component wraps the entire application in `React.StrictMode` for development checks and sets up the `MixedContentProtection` component. This wrapper is crucial for detecting and informing the user about potential security issues when the app is hosted on HTTPS but communicates with WLED devices over local HTTP.
+3.  **Core Logic (`KoloriApp.jsx`)**: `App.jsx` renders the `KoloriApp` component, which serves as the central hub for state management, device communication, and UI orchestration.
+
+### 2. Onboarding and First-Time Setup
+1.  **User Agreement**: The first action `KoloriApp` takes is checking `localStorage` for a `kolori_user_agreement` flag.
+    - If the flag is not present, a `UserAgreement` modal is displayed, and the main application UI is inaccessible until the user accepts the terms.
+2.  **Device Discovery**: After agreement, the app checks for configured devices in `localStorage`.
+    - If no devices are found, the `WelcomePage` component is rendered. This page provides a user-friendly introduction and prompts the user to add their first WLED device.
+    - The user can then open the `DeviceDiscoveryModal` to scan the network for mDNS-discoverable devices or add one manually via the `DeviceForm` in the `SettingsModal`.
+
+### 3. Main Application Lifecycle
+1.  **Device Loading**: For returning users, `KoloriApp` loads the list of saved devices and the last active device ID from `localStorage`.
+2.  **UI Rendering**: The main interface is rendered, consisting of:
+    - **`Header`**: Displays the app title, the active device's name, its connection status (a dot colored green for online, red for offline), a dropdown to switch between devices, and a button to open the `SettingsModal`.
+    - **`PresetGrid`**: The primary content area where users can interact with seasonal presets, custom effects, and playlists.
+3.  **Device Connection & Synchronization**:
+    - **WebSocket Connection**: The application immediately attempts to establish a WebSocket connection to the active WLED device using its stored IP address. This connection is essential for real-time communication.
+    - **Heartbeat Monitoring**: In parallel, a `setInterval` loop runs every 10 seconds (`checkAllDevicesHeartbeat`). This function sends a lightweight HTTP request to every saved device to check if it's online. The `isConnected` status for each device is updated in the state, and the UI reflects this in the `Header` and `SettingsModal`.
+    - **Real-time State Updates**: Once the WebSocket is connected, it listens for messages from the WLED device. JSON messages containing the device's state (e.g., `state.ps` for the current preset) are used to update the application's UI in real-time.
+
+### 4. User Interaction and Feature Flows
+1.  **Controlling Lights**:
+    - The user clicks on a preset or custom effect in the `PresetGrid`.
+    - An `onClick` handler calls a function (e.g., `activateWledPreset`) which sends a command to the WLED device.
+    - For fastest response, commands like preset activation are sent via the active WebSocket connection. If the WebSocket is down, it can fall back to the HTTP API.
+2.  **Live LED Visualization**:
+    - The user can enable "Live View" from the `PresetGrid`.
+    - This sends a WebSocket command to the WLED device (`{"v":true,"lv":true}`).
+    - The device begins streaming binary data over the WebSocket, where each message contains the RGB values for all LEDs.
+    - The `onmessage` handler in `wledWebSocket.js` detects this binary data, parses it into an array of colors, and updates the `liveLedData` state in `KoloriApp`.
+    - This state is passed to `PresetGrid`, which renders a series of small `div` elements, each styled with the corresponding color, creating a live mirror of the physical LED strip.
+3.  **Scheduling**:
+    - The user configures a schedule (Day/Night mode) in the `SettingsModal`. This choice is saved to `localStorage`.
+    - A `setInterval` loop in `KoloriApp` runs every 60 seconds to enforce the schedule.
+    - The `shouldLightsBeOn` function checks the current time against the selected `scheduleMode`.
+    - If the state should change (e.g., it's 7 PM and "Night Mode" begins), the app automatically sends a `turnWledOn` or `turnWledOff` command to the active device.
+
+### 5. Data and State Management Flow
+- **Source of Truth**: The `KoloriApp` component holds the majority of the application's state (`devices`, `activeDeviceId`, `customEffects`, `theme`, etc.).
+- **Persistence**: Whenever a critical piece of state is modified (e.g., adding a device, saving a playlist), a `saveToStorage` function is called to serialize the state into JSON and write it to `localStorage`.
+- **Initialization**: On application load, `loadFromStorage` functions are used to rehydrate the state from `localStorage`, providing a persistent experience across sessions.

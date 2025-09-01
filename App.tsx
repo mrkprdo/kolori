@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import './global.css';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,29 +12,17 @@ import { BackHandler, Animated } from 'react-native';
 
 // Components
 import KoloriApp from './src/components/KoloriApp';
-import WelcomePage from './src/components/WelcomePage';
 import UserAgreement from './src/components/UserAgreement';
 import LoadingScreen from './src/components/LoadingScreen';
 import DeviceOnboardingScreen from './src/components/DeviceOnboardingScreen';
-import SettingsScreen from './src/components/SettingsScreen';
 
 // Utils
-import { 
-  loadDevices, 
-  saveDevices, 
-  loadSettings, 
-  saveSettings
-} from './src/utils/storage';
-import { 
-  hasValidAgreement, 
-  saveAgreementSignature 
-} from './src/utils/userAgreement';
+import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings } from './src/utils/storage';
+import { hasValidAgreement, saveAgreementSignature } from './src/utils/userAgreement';
 
 // Types
 import { Device, Settings } from './src/types';
-
-// Background Scan
-import { wledMdnsDiscovery, MdnsWledDevice } from './src/utils/wledMdnsDiscovery';
+import { MdnsWledDevice } from './src/utils/wledMdnsDiscovery';
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
@@ -43,187 +31,116 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [devices, setDevices] = useState<Device[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [activeDeviceId, setActiveDeviceId] = useState<number | null>(null);
   const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
-  const [showAgreement, setShowAgreement] = useState(false);
   const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
   
-  // Animation refs for smooth transitions
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [currentScreen, setCurrentScreen] = useState<'loading' | 'agreement' | 'main'>('loading');
 
-  // Smooth transition between screens
   const transitionToScreen = (nextScreen: 'loading' | 'agreement' | 'main') => {
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start();
-    
-    setTimeout(() => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
       setCurrentScreen(nextScreen);
-    }, 200);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    });
   };
 
-  // Background scanning effect
-  useEffect(() => {
-    console.log('Setting up background mDNS listeners...');
-    
-    wledMdnsDiscovery.setListeners({
-      onDeviceFound: (device) => {
-        console.log('BACKGROUND: WLED device found:', device.name);
-        setBackgroundScanDevices(prev => {
-          const exists = prev.some(d => d.name === device.name);
-          if (exists) return prev;
-          return [...prev, device];
-        });
-      },
-      onDeviceRemoved: (device) => {
-        console.log('BACKGROUND: WLED device removed:', device.name);
-        setBackgroundScanDevices(prev => prev.filter(d => d.name !== device.name));
-      },
-      onError: (error) => {
-        console.error('BACKGROUND: mDNS Discovery error:', error);
-        // Optionally, you could show a toast or a non-intrusive notification here
-      }
-    });
-
-    // Start background scanning
-    wledMdnsDiscovery.startScan();
-
-    // Cleanup on app close
-    return () => {
-      console.log('App closing, stopping background mDNS scan.');
-      wledMdnsDiscovery.stopScan();
-    };
-  }, []);
-
-  // Load initial data
   useEffect(() => {
     const loadInitialData = async () => {
-      let agreementValid = false;
-      
       try {
-        const [loadedDevices, loadedSettings, agreementResult] = await Promise.all([
+        const [loadedDevices, loadedSettings, agreementResult, loadedActiveId] = await Promise.all([
           loadDevices(),
           loadSettings(),
           hasValidAgreement(),
+          storage.loadFromStorage(STORAGE_KEYS.ACTIVE_DEVICE, null),
         ]);
 
-        agreementValid = agreementResult;
         setDevices(loadedDevices);
-        const defaultSettings: Settings = {
-          theme: 'dark',
-          scheduleMode: 'all-day',
-          liveViewEnabled: false,
-        };
-        setSettings(loadedSettings && Object.keys(loadedSettings).length > 0 ? loadedSettings as Settings : defaultSettings);
-        setHasAgreed(agreementValid);
-        
-        // Only show agreement if it's not valid
-        if (!agreementValid) {
-          setShowAgreement(true);
+        setActiveDeviceId(loadedActiveId);
+        setHasAgreed(agreementResult);
+
+        if (loadedSettings && Object.keys(loadedSettings).length > 0) {
+          setSettings(loadedSettings as Settings);
+        } else {
+          setSettings({ theme: 'dark', scheduleMode: 'all-day', liveViewEnabled: false });
         }
-        
+
+        if (!agreementResult) {
+          transitionToScreen('agreement');
+        } else {
+          transitionToScreen('main');
+        }
       } catch (error) {
         console.error("Failed to load initial data:", error);
-        // Set default settings if loading fails
-        setSettings({
-          theme: 'dark',
-          scheduleMode: 'all-day',
-          liveViewEnabled: false,
-        });
         setHasAgreed(false);
-        setShowAgreement(true);
-        agreementValid = false;
+        transitionToScreen('agreement');
       } finally {
-        // Smooth transition from loading to next screen
-        setTimeout(() => {
-          setIsLoading(false);
-          if (!agreementValid) {
-            transitionToScreen('agreement');
-          } else {
-            transitionToScreen('main');
-          }
-        }, 800);
+        setIsLoading(false);
       }
     };
-
     loadInitialData();
   }, []);
 
-  const handleAddDevice = async (device: Device) => {
-    const wasOnboarding = devices.length === 0;
-    const newDevices = [...devices, device];
-    setDevices(newDevices);
-    await saveDevices(newDevices);
-    if (wasOnboarding && navigationRef.isReady()) {
-      navigationRef.reset({
-        index: 0,
-        routes: [{ name: 'KoloriApp' }],
-      });
-    }
+  const handleAddDevice = (device: Device) => {
+    setDevices(prevDevices => {
+      const wasOnboarding = prevDevices.length === 0;
+      const newDevices = [...prevDevices, device];
+      saveDevices(newDevices);
+      if (wasOnboarding) {
+        setActiveDeviceId(device.id);
+        if (navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: 'KoloriApp' }] });
+        }
+      }
+      return newDevices;
+    });
   };
 
-  const handleUpdateDevice = async (updatedDevice: Device) => {
-    const newDevices = devices.map(d => d.id === updatedDevice.id ? updatedDevice : d);
-    setDevices(newDevices);
-    await saveDevices(newDevices);
+  const handleUpdateDevice = (deviceId: number, updates: Partial<Device>) => {
+    setDevices(prevDevices => {
+      const newDevices = prevDevices.map(d => d.id === deviceId ? { ...d, ...updates } : d);
+      saveDevices(newDevices);
+      return newDevices;
+    });
   };
 
-  const handleDeleteDevice = async (deviceId: number) => {
-    const newDevices = devices.filter(d => d.id !== deviceId);
-    setDevices(newDevices);
-    await saveDevices(newDevices);
+  const handleDeleteDevice = (deviceId: number) => {
+    setDevices(prevDevices => {
+      const newDevices = prevDevices.filter(d => d.id !== deviceId);
+      saveDevices(newDevices);
+      if (newDevices.length === 0 && navigationRef.isReady()) {
+        navigationRef.reset({ index: 0, routes: [{ name: 'DeviceOnboarding' }] });
+      }
+      return newDevices;
+    });
   };
 
-  const handleUpdateSettings = async (newSettings: Settings) => {
+  const handleSetActiveDeviceId = (id: number | null) => {
+    setActiveDeviceId(id);
+    storage.saveToStorage(STORAGE_KEYS.ACTIVE_DEVICE, id);
+  };
+
+  const handleUpdateSettings = (newSettings: Settings) => {
     setSettings(newSettings);
-    await saveSettings(newSettings);
+    saveSettings(newSettings);
   };
 
   const handleAgreementAccept = async () => {
     await saveAgreementSignature();
     setHasAgreed(true);
-    setShowAgreement(false);
     transitionToScreen('main');
   };
 
-  const handleAgreementReject = () => {
-    // User rejected the agreement - close the app
-    BackHandler.exitApp();
-  };
-
-  const handleWelcomeAddDevice = () => {
-    // For now, this will just trigger the agreement
-    // In the future, this could navigate to a device setup screen
-    console.log('Add device requested');
-  };
-
-  // Animated screen rendering
-  const renderCurrentScreen = () => {
+  const renderContent = () => {
     if (isLoading || hasAgreed === null || settings === null || currentScreen === 'loading') {
-      return <LoadingScreen isDark={settings?.theme === 'dark'} />;
+      return <LoadingScreen isDark={settings?.theme !== 'light'} />;
     }
 
-    if (currentScreen === 'agreement' || showAgreement) {
-      return (
-        <UserAgreement 
-          isDark={settings?.theme === 'dark'} 
-          onAccept={handleAgreementAccept}
-          onReject={handleAgreementReject}
-        />
-      );
+    if (currentScreen === 'agreement') {
+      return <UserAgreement isDark={settings.theme !== 'light'} onAccept={handleAgreementAccept} onReject={() => BackHandler.exitApp()} />;
     }
 
-    // Main app content (currentScreen === 'main')
-    const isDark = settings?.theme === 'dark';
+    const isDark = settings.theme !== 'light';
 
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -232,35 +149,36 @@ export default function App() {
             <SafeAreaProvider>
               <NavigationContainer ref={navigationRef}>
                 <StatusBar style={isDark ? "light" : "dark"} />
-                <Stack.Navigator 
-                  initialRouteName={devices.length === 0 ? 'DeviceOnboarding' : 'KoloriApp'}
-                  screenOptions={{ 
-                    headerShown: false,
-                    contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' }
-                  }}
-                >
-                  <Stack.Screen name="DeviceOnboarding">
-                    {(props) => (
-                      <DeviceOnboardingScreen
-                        {...props}
-                        isDark={isDark}
-                        onDeviceAdded={handleAddDevice}
-                        backgroundScanDevices={backgroundScanDevices}
-                        existingDevices={devices}
-                      />
-                    )}
-                  </Stack.Screen>
-                  <Stack.Screen name="KoloriApp" component={KoloriApp} />
-                  <Stack.Screen name="Settings">
-                    {(props) => (
-                      <SettingsScreen
-                        {...props}
-                        settings={settings!}
-                        onUpdateSettings={handleUpdateSettings}
-                        isDark={isDark}
-                      />
-                    )}
-                  </Stack.Screen>
+                <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' } }}>
+                  {devices.length === 0 ? (
+                    <Stack.Screen name="DeviceOnboarding">
+                      {(props) => (
+                        <DeviceOnboardingScreen
+                          {...props}
+                          isDark={isDark}
+                          onDeviceAdded={handleAddDevice}
+                          backgroundScanDevices={backgroundScanDevices}
+                          existingDevices={devices}
+                        />
+                      )}
+                    </Stack.Screen>
+                  ) : (
+                    <Stack.Screen name="KoloriApp">
+                      {(props) => (
+                        <KoloriApp
+                          {...props}
+                          devices={devices}
+                          activeDeviceId={activeDeviceId}
+                          settings={settings}
+                          onDeviceAdd={handleAddDevice}
+                          onDeviceUpdate={handleUpdateDevice}
+                          onDeviceDelete={handleDeleteDevice}
+                          onSettingsUpdate={handleUpdateSettings}
+                          onSetActiveDeviceId={handleSetActiveDeviceId}
+                        />
+                      )}
+                    </Stack.Screen>
+                  )}
                 </Stack.Navigator>
               </NavigationContainer>
             </SafeAreaProvider>
@@ -271,9 +189,8 @@ export default function App() {
   };
 
   return (
-    <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
-      {renderCurrentScreen()}
+    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      {renderContent()}
     </Animated.View>
   );
 }
-

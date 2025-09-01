@@ -1,21 +1,16 @@
-// SettingsModal Component for React Native
-// Migrated from kolori_old/src/components/SettingsModal.jsx
-
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
   Modal,
   Switch,
-  TextInput
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { WledDevice, Theme, ScheduleMode } from '../types';
-import { logger } from '../utils/logger';
-import { storage, STORAGE_KEYS } from '../utils/storage';
+import { Device as WledDevice, Theme, ScheduleMode } from '../types';
 
 interface SettingsModalProps {
   isVisible: boolean;
@@ -26,23 +21,50 @@ interface SettingsModalProps {
   scheduleMode: ScheduleMode;
   onScheduleModeChange: (mode: ScheduleMode) => void;
   devices: WledDevice[];
-  onDeviceUpdate: (deviceId: number, updates: Partial<WledDevice>) => void;
   onDeviceRemove: (deviceId: number) => void;
   onAddDevice: () => void;
+  onScanForDevices: () => void;
 }
 
-interface SettingsTab {
-  id: string;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const SETTINGS_TABS: SettingsTab[] = [
-  { id: 'general', title: 'General', icon: 'settings-outline' },
+const TABS = [
   { id: 'devices', title: 'Devices', icon: 'hardware-chip-outline' },
-  { id: 'schedule', title: 'Schedule', icon: 'time-outline' },
-  { id: 'about', title: 'About', icon: 'information-circle-outline' },
+  { id: 'general', title: 'General', icon: 'settings-outline' },
 ];
+
+const getStyles = (isDark: boolean) => StyleSheet.create({
+  modalContainer: { flex: 1, backgroundColor: isDark ? '#111827' : '#F3F4F6' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#E5E7EB' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: isDark ? '#FFF' : '#000' },
+  closeButton: { padding: 8 },
+  tabContainer: { flexDirection: 'row', padding: 16, gap: 8 },
+  tabButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, backgroundColor: isDark ? '#1F2937' : '#FFF', gap: 8 },
+  tabButtonActive: { backgroundColor: '#3B82F6' },
+  tabText: { color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '600' },
+  tabTextActive: { color: '#FFF' },
+  tabContentContainer: { padding: 16, gap: 16 },
+  addDeviceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderStyle: 'dashed', borderWidth: 2, borderColor: isDark ? '#4B5563' : '#D1D5DB', gap: 8 },
+  addDeviceText: { color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '600', fontSize: 16 },
+  deviceCard: { backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 12, padding: 16 },
+  deviceCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  deviceName: { color: isDark ? '#FFF' : '#111827', fontWeight: '600', fontSize: 16, marginBottom: 4 },
+  deviceIp: { color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 14 },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 8, alignSelf: 'center' },
+  trashButton: { padding: 4 },
+  noDevicesContainer: { alignItems: 'center', paddingVertical: 48, gap: 16 },
+  noDevicesText: { color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 16, fontWeight: '500' },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: isDark ? '#FFF' : '#111827', marginBottom: 8 },
+  settingsGroup: { gap: 8 },
+  optionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 16, borderRadius: 12 },
+  optionButtonActive: { backgroundColor: isDark ? '#3B82F6' : '#EBF5FF', borderWidth: 1, borderColor: isDark ? '#3B82F6' : '#90CDF4' },
+  optionText: { color: isDark ? '#FFF' : '#111827', fontSize: 16, fontWeight: '500' },
+  optionTextActive: { color: isDark ? '#EBF5FF' : '#2563EB' },
+  optionSubText: { color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 14, marginTop: 4 },
+  optionSubTextActive: { color: isDark ? '#D1D5DB' : '#2C5282' },
+  stickyFooter: { flexDirection: 'row', padding: 16, gap: 16, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#E5E7EB', backgroundColor: isDark ? '#111827' : '#F3F4F6' },
+  footerButtonPrimary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, backgroundColor: '#3B82F6', gap: 8 },
+  footerButtonSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, backgroundColor: isDark ? '#374151' : '#E5E7EB', gap: 8 },
+  footerButtonText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+});
 
 export default function SettingsModal({
   isVisible,
@@ -53,459 +75,134 @@ export default function SettingsModal({
   scheduleMode,
   onScheduleModeChange,
   devices,
-  onDeviceUpdate,
   onDeviceRemove,
   onAddDevice,
+  onScanForDevices,
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState('general');
-  const [deviceSettings, setDeviceSettings] = useState<Record<number, any>>({});
+  const [activeTab, setActiveTab] = useState('devices');
+  const styles = getStyles(isDark);
 
-  useEffect(() => {
-    // Load device-specific settings
-    const loadDeviceSettings = async () => {
-      const settings: Record<number, any> = {};
-      for (const device of devices) {
-        try {
-          const deviceConfig = await storage.loadFromStorage(
-            `${STORAGE_KEYS.DEVICE_CONFIG}_${device.id}`,
-            { autoBrightness: device.autoBrightness || false, maxBrightness: device.maxBrightness || 255 }
-          );
-          settings[device.id] = deviceConfig;
-        } catch (error) {
-          logger.error(`Failed to load settings for device ${device.id}:`, error);
-        }
-      }
-      setDeviceSettings(settings);
-    };
-
-    if (isVisible && devices.length > 0) {
-      loadDeviceSettings();
-    }
-  }, [isVisible, devices]);
-
-  const handleDeviceSettingChange = async (deviceId: number, key: string, value: any) => {
-    const updatedSettings = {
-      ...deviceSettings,
-      [deviceId]: {
-        ...deviceSettings[deviceId],
-        [key]: value,
-      },
-    };
-    setDeviceSettings(updatedSettings);
-
-    // Save to storage
-    try {
-      await storage.saveToStorage(`${STORAGE_KEYS.DEVICE_CONFIG}_${deviceId}`, updatedSettings[deviceId]);
-      
-      // Update device in parent component
-      onDeviceUpdate(deviceId, { [key]: value });
-    } catch (error) {
-      logger.error(`Failed to save device setting:`, error);
-    }
+  const handleShowAddManually = () => {
+    onClose();
+    onAddDevice();
   };
 
-  const renderGeneralSettings = () => (
-    <View className="space-y-6">
-      {/* Theme Settings */}
-      <View>
-        <Text className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Appearance
-        </Text>
-        
-        <View className="space-y-3">
-          {(['light', 'dark', 'system'] as Theme[]).map((themeOption) => (
-            <TouchableOpacity
-              key={themeOption}
-              onPress={() => onThemeChange(themeOption)}
-              className={`p-4 rounded-xl border flex-row items-center justify-between ${
-                theme === themeOption 
-                  ? isDark ? 'border-blue-400 bg-blue-900/20' : 'border-blue-500 bg-blue-50'
-                  : isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-              }`}
-            >
-              <View className="flex-row items-center space-x-3">
-                <Ionicons
-                  name={
-                    themeOption === 'light' ? 'sunny-outline' :
-                    themeOption === 'dark' ? 'moon-outline' : 'phone-portrait-outline'
-                  }
-                  size={20}
-                  color={
-                    theme === themeOption 
-                      ? isDark ? '#60A5FA' : '#2563EB'
-                      : isDark ? '#9CA3AF' : '#6B7280'
-                  }
-                />
-                <Text className={`font-medium ${
-                  theme === themeOption 
-                    ? isDark ? 'text-blue-200' : 'text-blue-600'
-                    : isDark ? 'text-white' : 'text-gray-900'
-                }`}>
-                  {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
-                </Text>
-              </View>
-              {theme === themeOption && (
-                <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+  const handleShowScanNetwork = () => {
+    onClose();
+    onScanForDevices();
+  };
 
-      {/* App Settings */}
-      <View>
-        <Text className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          App Settings
-        </Text>
-        
-        <View className={`p-4 rounded-xl border ${
-          isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-        }`}>
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1">
-              <Text className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Debug Logging
-              </Text>
-              <Text className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Enable detailed logging for troubleshooting
-              </Text>
+  const renderDevicesTab = () => (
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.tabContentContainer}>
+        {devices.map((device) => (
+          <View key={device.id} style={styles.deviceCard}>
+            <View style={styles.deviceCardHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.deviceName}>{device.name}</Text>
+                  <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }]} />
+                </View>
+                <Text style={styles.deviceIp}>{device.ip}</Text>
+              </View>
+              <TouchableOpacity onPress={() => onDeviceRemove(device.id)} style={styles.trashButton}>
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              </TouchableOpacity>
             </View>
-            <Switch
-              value={false} // TODO: Add debug logging state
-              onValueChange={() => {}} // TODO: Handle debug logging toggle
-              trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
-              thumbColor={isDark ? '#F3F4F6' : '#FFFFFF'}
-            />
           </View>
-        </View>
+        ))}
+        {devices.length === 0 && (
+          <View style={styles.noDevicesContainer}>
+            <Ionicons name="hardware-chip-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
+            <Text style={styles.noDevicesText}>No devices configured</Text>
+          </View>
+        )}
+      </ScrollView>
+      <View style={styles.stickyFooter}>
+        <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonPrimary}>
+          <Ionicons name="add" size={20} color="white" />
+          <Text style={styles.footerButtonText}>Add Manually</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonSecondary}>
+          <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
+          <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Scan Network</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
-  const renderDeviceSettings = () => (
-    <View className="space-y-4">
-      {/* Add Device Button */}
-      <TouchableOpacity
-        onPress={onAddDevice}
-        className={`p-4 border-2 border-dashed rounded-xl flex-row items-center justify-center space-x-2 ${
-          isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'
-        }`}
-      >
-        <Ionicons name="add" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        <Text className={`font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          Add New Device
-        </Text>
-      </TouchableOpacity>
+  const renderGeneralTab = () => (
+    <ScrollView contentContainerStyle={styles.tabContentContainer}>
+      <Text style={styles.sectionTitle}>Appearance</Text>
+      <View style={styles.settingsGroup}>
+        {(['light', 'dark', 'system'] as Theme[]).map((themeOption) => (
+          <TouchableOpacity
+            key={themeOption}
+            onPress={() => onThemeChange(themeOption)}
+            style={[styles.optionButton, theme === themeOption && styles.optionButtonActive]}
+          >
+            <Text style={[styles.optionText, theme === themeOption && styles.optionTextActive]}>
+              {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
+            </Text>
+            {theme === themeOption && <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />}
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      {/* Device List */}
-      {devices.map((device) => (
-        <View
-          key={device.id}
-          className={`p-4 rounded-xl border ${
-            isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-          }`}
-        >
-          <View className="flex-row items-start justify-between mb-4">
-            <View className="flex-1">
-              <View className="flex-row items-center space-x-2">
-                <Text className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {device.name}
-                </Text>
-                <View className={`w-2 h-2 rounded-full ${
-                  device.isConnected ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-              </View>
-              <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {device.ip}
-              </Text>
-              {device.responseTime && (
-                <Text className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Response: {device.responseTime}ms
-                </Text>
-              )}
-            </View>
-            
-            <TouchableOpacity
-              onPress={() => onDeviceRemove(device.id)}
-              className="p-2 rounded-lg"
-            >
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Device Configuration */}
-          <View className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-            {/* Auto Brightness */}
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Auto Brightness
-                </Text>
-                <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Automatically adjust brightness based on time
-                </Text>
-              </View>
-              <Switch
-                value={deviceSettings[device.id]?.autoBrightness || false}
-                onValueChange={(value) => handleDeviceSettingChange(device.id, 'autoBrightness', value)}
-                trackColor={{ false: isDark ? '#374151' : '#E5E7EB', true: '#3B82F6' }}
-                thumbColor={isDark ? '#F3F4F6' : '#FFFFFF'}
-              />
-            </View>
-
-            {/* Max Brightness */}
-            <View>
-              <Text className={`font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Max Brightness: {deviceSettings[device.id]?.maxBrightness || 255}
-              </Text>
-              <View className={`h-2 rounded-full ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}>
-                <View 
-                  className="h-full rounded-full bg-blue-500"
-                  style={{ 
-                    width: `${((deviceSettings[device.id]?.maxBrightness || 255) / 255) * 100}%` 
-                  }}
-                />
-              </View>
-              <View className="flex-row justify-between mt-1">
-                <Text className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>0</Text>
-                <Text className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>255</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      ))}
-
-      {devices.length === 0 && (
-        <View className="py-12 items-center">
-          <Ionicons 
-            name="hardware-chip-outline" 
-            size={48} 
-            color={isDark ? '#4B5563' : '#9CA3AF'} 
-            style={{ opacity: 0.5 }}
-          />
-          <Text className={`text-center mt-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            No devices configured
-          </Text>
-          <Text className={`text-sm text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            Add your first WLED device to get started
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderScheduleSettings = () => (
-    <View className="space-y-6">
-      <Text className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        Schedule Mode
-      </Text>
-      
-      <View className="space-y-3">
+      <Text style={styles.sectionTitle}>Schedule Mode</Text>
+      <View style={styles.settingsGroup}>
         {(['all-day', 'day', 'night'] as ScheduleMode[]).map((mode) => (
           <TouchableOpacity
             key={mode}
             onPress={() => onScheduleModeChange(mode)}
-            className={`p-4 rounded-xl border flex-row items-center justify-between ${
-              scheduleMode === mode 
-                ? isDark ? 'border-blue-400 bg-blue-900/20' : 'border-blue-500 bg-blue-50'
-                : isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-            }`}
+            style={[styles.optionButton, scheduleMode === mode && styles.optionButtonActive]}
           >
-            <View className="flex-row items-center space-x-3">
-              <Ionicons
-                name={
-                  mode === 'day' ? 'sunny-outline' :
-                  mode === 'night' ? 'moon-outline' : 'time-outline'
-                }
-                size={20}
-                color={
-                  scheduleMode === mode 
-                    ? isDark ? '#60A5FA' : '#2563EB'
-                    : isDark ? '#9CA3AF' : '#6B7280'
-                }
-              />
-              <View>
-                <Text className={`font-medium ${
-                  scheduleMode === mode 
-                    ? isDark ? 'text-blue-200' : 'text-blue-600'
-                    : isDark ? 'text-white' : 'text-gray-900'
-                }`}>
-                  {mode === 'all-day' ? 'All Day' : mode.charAt(0).toUpperCase() + mode.slice(1)} Mode
-                </Text>
-                <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {mode === 'all-day' 
-                    ? 'LEDs active 24/7' 
-                    : mode === 'day' 
-                    ? 'LEDs active during daytime only'
-                    : 'LEDs active during nighttime only'
-                  }
-                </Text>
-              </View>
+            <View>
+              <Text style={[styles.optionText, scheduleMode === mode && styles.optionTextActive]}>
+                {mode === 'all-day' ? 'All Day' : mode.charAt(0).toUpperCase() + mode.slice(1)} Mode
+              </Text>
+              <Text style={[styles.optionSubText, scheduleMode === mode && styles.optionSubTextActive]}>
+                {mode === 'all-day' ? 'LEDs active 24/7' : mode === 'day' ? 'Active during daytime' : 'Active during nighttime'}
+              </Text>
             </View>
-            {scheduleMode === mode && (
-              <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />
-            )}
+            {scheduleMode === mode && <Ionicons name="checkmark" size={20} color={isDark ? '#60A5FA' : '#2563EB'} />}
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </ScrollView>
   );
-
-  const renderAboutSettings = () => (
-    <View className="space-y-6">
-      {/* App Info */}
-      <View className={`p-6 rounded-xl border ${
-        isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-      }`}>
-        <View className="items-center space-y-4">
-          <View className={`w-16 h-16 rounded-full items-center justify-center ${
-            isDark ? 'bg-blue-900' : 'bg-blue-100'
-          }`}>
-            <Text className="text-2xl font-bold">
-              <Text className="text-blue-600">Ko</Text>
-              <Text className="text-purple-600">lori</Text>
-            </Text>
-          </View>
-          
-          <View className="items-center">
-            <Text className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Kolori
-            </Text>
-            <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Version 1.0.0
-            </Text>
-          </View>
-          
-          <Text className={`text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            A beautiful WLED controller for your LED strips and devices
-          </Text>
-        </View>
-      </View>
-
-      {/* Links */}
-      <View className="space-y-3">
-        <TouchableOpacity
-          className={`p-4 rounded-xl border flex-row items-center justify-between ${
-            isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-          }`}
-        >
-          <View className="flex-row items-center space-x-3">
-            <Ionicons name="logo-github" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-            <Text className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Source Code
-            </Text>
-          </View>
-          <Ionicons name="open-outline" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className={`p-4 rounded-xl border flex-row items-center justify-between ${
-            isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-          }`}
-        >
-          <View className="flex-row items-center space-x-3">
-            <Ionicons name="help-circle-outline" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-            <Text className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Support & Documentation
-            </Text>
-          </View>
-          <Ionicons name="open-outline" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className={`p-4 rounded-xl border flex-row items-center justify-between ${
-            isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'
-          }`}
-        >
-          <View className="flex-row items-center space-x-3">
-            <Ionicons name="star-outline" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-            <Text className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Rate the App
-            </Text>
-          </View>
-          <Ionicons name="open-outline" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Copyright */}
-      <Text className={`text-center text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-        © 2024 Kolori. Open source project.
-      </Text>
-    </View>
-  );
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'general':
-        return renderGeneralSettings();
-      case 'devices':
-        return renderDeviceSettings();
-      case 'schedule':
-        return renderScheduleSettings();
-      case 'about':
-        return renderAboutSettings();
-      default:
-        return renderGeneralSettings();
-    }
-  };
 
   return (
     <Modal visible={isVisible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-        {/* Header */}
-        <View className={`flex-row items-center justify-between p-4 border-b ${
-          isDark ? 'border-gray-700' : 'border-gray-200'
-        }`}>
-          <Text className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Settings
-          </Text>
-          <TouchableOpacity onPress={onClose} className="p-2">
+      <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Settings</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={isDark ? '#FFF' : '#000'} />
           </TouchableOpacity>
         </View>
 
-        {/* Tab Navigation */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          className="p-4"
-        >
-          <View className="flex-row space-x-2">
-            {SETTINGS_TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-full flex-row items-center space-x-2 ${
-                  activeTab === tab.id
-                    ? 'bg-blue-500'
-                    : isDark ? 'bg-gray-800' : 'bg-white'
-                }`}
-              >
-                <Ionicons 
-                  name={tab.icon} 
-                  size={16} 
-                  color={
-                    activeTab === tab.id 
-                      ? '#FFFFFF' 
-                      : isDark ? '#9CA3AF' : '#6B7280'
-                  } 
-                />
-                <Text className={`font-medium ${
-                  activeTab === tab.id 
-                    ? 'text-white' 
-                    : isDark ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  {tab.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        <View style={styles.tabContainer}>
+          {TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              style={[styles.tabButton, activeTab === tab.id && styles.tabButtonActive]}
+            >
+              <Ionicons
+                name={tab.icon as any}
+                size={16}
+                color={activeTab === tab.id ? '#FFF' : (isDark ? '#9CA3AF' : '#6B7280')}
+              />
+              <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                {tab.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-        {/* Tab Content */}
-        <ScrollView className="flex-1 p-4">
-          {renderTabContent()}
-        </ScrollView>
+        {activeTab === 'devices' ? renderDevicesTab() : renderGeneralTab()}
+
       </SafeAreaView>
     </Modal>
   );
