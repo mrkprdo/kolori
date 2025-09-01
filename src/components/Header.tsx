@@ -68,18 +68,26 @@ export default function Header({
   return (
     <View style={[styles.header, { backgroundColor, borderBottomColor: borderColor }]}>
       <View style={styles.headerContent}>
-        <View style={styles.leftSection}>
-          <Text style={styles.logo}>
-            <Text style={styles.logoBlue}>Ko</Text>
-            <Text style={styles.logoPurple}>lori</Text>
-          </Text>
-          
+        {/* Logo */}
+        <Text style={styles.logo}>
+          <Text style={styles.logoBlue}>Ko</Text>
+          <Text style={styles.logoPurple}>lori</Text>
+        </Text>
+        
+        {/* Device Dropdown - Centered */}
+        <View style={styles.centerContainer}>
           {devices.length > 0 && (
             <TouchableOpacity 
               onPress={handleDeviceSwitch}
-              style={styles.deviceInfo}
+              style={[
+                styles.deviceDropdown,
+                { 
+                  backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                  borderColor: isDark ? '#4b5563' : '#d1d5db'
+                }
+              ]}
             >
-              <View style={styles.deviceStatus}>
+              <View style={styles.deviceContent}>
                 <View 
                   style={[
                     styles.statusDot, 
@@ -90,21 +98,20 @@ export default function Header({
                   {deviceName}
                 </Text>
                 {devices.length > 1 && (
-                  <Ionicons name="chevron-down" size={16} color={subtextColor} />
+                  <Ionicons name="chevron-down" size={16} color={subtextColor} style={styles.dropdownIcon} />
                 )}
               </View>
             </TouchableOpacity>
           )}
         </View>
         
-        <View style={styles.rightSection}>
-          <TouchableOpacity 
-            onPress={() => setShowSettings(true)}
-            style={styles.settingsButton}
-          >
-            <Ionicons name="settings" size={24} color={textColor} />
-          </TouchableOpacity>
-        </View>
+        {/* Settings Button */}
+        <TouchableOpacity 
+          onPress={() => setShowSettings(true)}
+          style={styles.settingsButton}
+        >
+          <Ionicons name="settings" size={24} color={textColor} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -113,7 +120,7 @@ export default function Header({
 const styles = StyleSheet.create({
   header: {
     borderBottomWidth: 1,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 16,
   },
@@ -121,16 +128,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1, // Allow left section to take available space
+    minHeight: 44,
   },
   logo: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginRight: 16,
   },
   logoBlue: {
     color: '#2563eb',
@@ -138,14 +140,23 @@ const styles = StyleSheet.create({
   logoPurple: {
     color: '#7c3aed',
   },
-  deviceInfo: {
-    flex: 1, // Allow device info to take available space
-    justifyContent: 'center', // Center content horizontally
-    alignItems: 'center', // Center content vertically
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  deviceStatus: {
+  deviceDropdown: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 120,
+  },
+  deviceContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   statusDot: {
     width: 8,
@@ -156,12 +167,10 @@ const styles = StyleSheet.create({
   deviceName: {
     fontSize: 16,
     fontWeight: '500',
-    flex: 1,
-    marginRight: 4,
+    textAlign: 'center',
   },
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dropdownIcon: {
+    marginLeft: 4,
   },
   settingsButton: {
     padding: 4,
