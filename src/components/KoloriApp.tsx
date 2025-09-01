@@ -122,6 +122,55 @@ export default function KoloriApp({
     };
   }, [devices, onDeviceUpdate]);
 
+  // WebSocket connection and message handling
+  useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates on unmounted component
+
+    if (activeDevice && activeDevice.ip) {
+      connectWebSocket(activeDevice.ip);
+
+      setWebSocketCallbacks({
+        onMessage: (message) => {
+          if (isMounted && message.type === 'liveLedData') {
+            setLiveLedData(message.data);
+          }
+          // Handle other message types if necessary
+        },
+        onOpen: () => {
+          logger.log('WebSocket opened for live view');
+          // Request live LED data when connected and live view is enabled
+          if (isMounted && settings.liveViewEnabled) {
+            sendWebSocketCommand({ lv: true });
+          }
+        },
+        onClose: () => {
+          logger.log('WebSocket closed for live view');
+          if (isMounted) {
+            setLiveLedData([]); // Clear live data on disconnect
+          }
+        },
+        onError: (error) => {
+          logger.error('WebSocket error for live view:', error);
+          if (isMounted) {
+            setLiveLedData([]); // Clear live data on error
+          }
+        },
+      });
+    } else {
+      disconnectWebSocket();
+      if (isMounted) {
+        setLiveLedData([]); // Clear live data if no active device
+      }
+    }
+
+    
+
+    return () => {
+      isMounted = false; // Set flag to false on unmount
+      disconnectWebSocket();
+    };
+  }, [activeDevice, settings.liveViewEnabled]); // Reconnect if activeDevice or liveViewEnabled changes
+
   const activeDevice = devices.find((d) => d.id === activeDeviceId) || devices[0];
   const isConnected = activeDevice?.isConnected || false;
   const deviceName = activeDevice?.name || 'No Device';

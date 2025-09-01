@@ -110,6 +110,7 @@ export default function PresetGrid({
   liveLedData,
   onLiveViewToggle,
 }: PresetGridProps) {
+  console.log('PresetGrid: liveLedData received:', liveLedData); // Debug log
   
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
@@ -221,16 +222,32 @@ export default function PresetGrid({
             {liveViewEnabled && liveLedData.length > 0 && (
               <View style={styles.ledContainer}>
                 <View style={styles.ledGrid}>
-                  {liveLedData.slice(0, 60).map((color, index) => (
+                  {liveLedData.map((color, index) => (
                     <View
                       key={index}
                       style={[
                         styles.ledPill,
                         {
                           backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+                          shadowColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+                          shadowOpacity: 0.6,
+                          shadowRadius: 4,
                         }
                       ]}
-                    />
+                    >
+                      {/* LED highlight effect */}
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: 0.5,
+                          left: 0.5,
+                          borderRadius: 1,
+                          width: 2,
+                          height: 4,
+                          backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                        }}
+                      />
+                    </View>
                   ))}
                 </View>
                 <Text style={[styles.ledCount, { color: subtextColor }]}>
@@ -490,13 +507,20 @@ const styles = StyleSheet.create({
   ledGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    minHeight: 50, // Increased minHeight
+    backgroundColor: 'lightgray', // Distinct background
+    padding: 5, // Add some padding
   },
   ledPill: {
-    width: 6,
-    height: 12,
-    marginRight: 2,
-    marginBottom: 2,
-    borderRadius: 2,
+    width: 20, // Temporarily larger
+    height: 20, // Temporarily larger
+    marginRight: 5, // More spacing
+    marginBottom: 5,
+    borderRadius: 5, // More rounded
+    backgroundColor: 'red', // Distinct color
+    borderWidth: 1, // Visible border
+    borderColor: 'blue', // Distinct border color
+    elevation: 10, // More prominent shadow
   },
   ledCount: {
     fontSize: 12,

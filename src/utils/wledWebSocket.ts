@@ -62,12 +62,63 @@ class WledWebSocketManager {
 
     this.wledSocket.onmessage = async (event) => {
       try {
+        let processedData: any;
+
         if (event.data instanceof ArrayBuffer) {
-          if (this.onMessageCallback) this.onMessageCallback(event.data);
+          const byteArray = new Uint8Array(event.data);
+          const colors: LEDColor[] = [];
+          let bytesPerLed = 3; // Default to RGB
+
+          // Heuristic: if array length is divisible by 4, it might be RGBW
+          if (byteArray.length > 0 && byteArray.length % 4 === 0) {
+            bytesPerLed = 4;
+          }
+
+          for (let i = 0; i < byteArray.length; i += bytesPerLed) {
+            colors.push({
+              r: byteArray[i + 2], // Red (assuming GRB order from old code)
+              g: byteArray[i],     // Green
+              b: byteArray[i + 1], // Blue
+              w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
+            });
+          }
+          processedData = { type: 'liveLedData', data: colors };
+        } else if (event.data instanceof Blob) {
+          const arrayBuffer = await event.data.arrayBuffer();
+          const byteArray = new Uint8Array(arrayBuffer);
+          const colors: LEDColor[] = [];
+          let bytesPerLed = 3;
+
+          if (byteArray.length > 0 && byteArray.length % 4 === 0) {
+            bytesPerLed = 4;
+          }
+
+          for (let i = 0; i < byteArray.length; i += bytesPerLed) {
+            colors.push({
+              r: byteArray[i + 2],
+              g: byteArray[i],
+              b: byteArray[i + 1],
+              w: bytesPerLed === 4 ? byteArray[i + 3] : undefined,
+            });
+          }
+          processedData = { type: 'liveLedData', data: colors };
         } else if (typeof event.data === 'string') {
-          // Parse JSON data
           const jsonData = JSON.parse(event.data);
-          if (this.onMessageCallback) this.onMessageCallback(jsonData);
+
+          if (jsonData && Array.isArray(jsonData.leds)) {
+            const liveLedData = jsonData.leds.map((led: number[]) => ({
+              r: led[0],
+              g: led[1],
+              b: led[2],
+            }));
+            processedData = { type: 'liveLedData', data: liveLedData };
+          } else {
+            processedData = jsonData; // For other JSON messages
+          }
+        }
+
+        if (this.onMessageCallback && processedData) {
+          this.onMessageCallback(processedData);
         }
       } catch (error) {
         logger.error("Error processing WebSocket message:", error);
@@ -124,8 +175,16 @@ class WledWebSocketManager {
     this.currentProtocol = null;
   };
 
-  sendWebSocketCommand = (command: any): boolean => {
-    if (this.wledSocket && this.wledSocket.readyState === WebSocket.OPEN) {
+  sendWebSocketCommand = (command: any, retries = 0): boolean => {
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 200; // 200ms delay
+
+    if (!this.wledSocket) {
+      logger.warn("WebSocket instance is null. Command not sent:", command);
+      return false;
+    }
+
+    if (this.wledSocket.readyState === WebSocket.OPEN) {
       try {
         const commandString = JSON.stringify(command);
         this.wledSocket.send(commandString);
@@ -135,9 +194,19 @@ class WledWebSocketManager {
         logger.error("Failed to send WebSocket command:", error);
         return false;
       }
+    } else if (this.wledSocket.readyState === WebSocket.CONNECTING) {
+      if (retries < MAX_RETRIES) {
+        logger.warn(`WebSocket connecting (state 0). Retrying command in ${RETRY_DELAY_MS}ms (retry ${retries + 1}/${MAX_RETRIES}):`, command);
+        setTimeout(() => {
+          this.sendWebSocketCommand(command, retries + 1);
+        }, RETRY_DELAY_MS);
+        return true; // Indicate that a retry is scheduled
+      } else {
+        logger.error("WebSocket still connecting after max retries. Command not sent:", command);
+        return false;
+      }
     } else {
-      logger.warn("WebSocket not open. Command not sent:", command);
-      logger.warn("WebSocket state:", this.wledSocket ? this.wledSocket.readyState : "null");
+      logger.warn("WebSocket not open (state " + this.wledSocket.readyState + "). Command not sent:", command);
       return false;
     }
   };
