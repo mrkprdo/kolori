@@ -365,116 +365,99 @@ export const turnWledOff = async (
   }
 };
 
-// Function to fetch all available presets from WLED device
+// Function to fetch all available presets from WLED device (matching old implementation)
 export const fetchWledPresets = async (
   deviceAddress: string,
   protocol = "http"
 ): Promise<{ success: boolean; presets: any[]; playlists: any[]; message: string }> => {
-  // Try multiple endpoints as different WLED versions support different endpoints
-  const presetUrl = buildWledUrl(deviceAddress, protocol, '/json/presets');
-  const mainUrl = buildWledUrl(deviceAddress, protocol, '/json');
+  const url = buildWledUrl(deviceAddress, protocol, '/presets.json');
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Longer timeout for presets
     
-    let response;
-    let endpoint = '/json/presets';
-    
-    // First try the dedicated presets endpoint
-    try {
-      response = await fetch(presetUrl, {
-        method: 'GET',
-        signal: controller.signal
-      });
-      
-      // If we get 404 or 501, try the main endpoint
-      if (!response.ok && (response.status === 404 || response.status === 501)) {
-        endpoint = '/json';
-        response = await fetch(mainUrl, {
-          method: 'GET',
-          signal: controller.signal
-        });
-      }
-    } catch (fetchError) {
-      // If dedicated endpoint fails, try main endpoint
-      endpoint = '/json';
-      response = await fetch(mainUrl, {
-        method: 'GET',
-        signal: controller.signal
-      });
-    }
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal
+    });
     
     clearTimeout(timeoutId);
     
-    if (response.ok) {
-      const jsonData = await response.json();
-      let presetsData;
-      let playlistsData = {};
-      
-      if (endpoint === '/json') {
-        // Extract presets from main JSON response
-        presetsData = jsonData.presets || {};
-        playlistsData = jsonData.playlists || {};
-      } else {
-        // Direct presets response
-        presetsData = jsonData;
-      }
-      
-      // Convert WLED presets object to array format
-      const presets = Object.entries(presetsData)
-        .filter(([id, preset]) => {
-          // Filter out invalid entries and system presets
-          return id !== '-1' && preset && typeof preset === 'object' && 
-                 (preset as any).n && (preset as any).n !== '';
-        })
-        .map(([id, preset]) => {
-          const presetData = preset as any;
-          return {
-            id: parseInt(id),
-            name: presetData.n || `Preset ${id}`,
-            effectName: presetData.effectName || 'Custom Effect',
-            data: presetData
-          };
-        })
-        .sort((a, b) => a.id - b.id);
-      
-      // Convert playlists if available
-      const playlists = Object.entries(playlistsData)
-        .filter(([id, playlist]) => {
-          return id !== '-1' && playlist && typeof playlist === 'object' && 
-                 (playlist as any).n && (playlist as any).n !== '';
-        })
-        .map(([id, playlist]) => {
-          const playlistData = playlist as any;
-          return {
-            id: parseInt(id),
-            name: playlistData.n || `Playlist ${id}`,
-            data: playlistData
-          };
-        })
-        .sort((a, b) => a.id - b.id);
-      
-      logger.log(`Fetched ${presets.length} presets and ${playlists.length} playlists from WLED device using ${endpoint}`);
-      return {
-        success: true,
-        presets,
-        playlists,
-        message: `Found ${presets.length} presets and ${playlists.length} playlists`
-      };
-    } else {
-      return {
-        success: false,
-        presets: [],
-        playlists: [],
-        message: `HTTP Error: ${response.status}`
-      };
+    if (!response.ok) {
+      return { success: false, presets: [], playlists: [], message: `HTTP Error: ${response.status}` };
     }
     
+    const presets = await response.json();
+    
+    logger.log('📡 WLED API: Fetched presets.json:', {
+      presetsType: typeof presets,
+      presetsKeys: presets ? Object.keys(presets) : [],
+      firstFewEntries: presets ? Object.entries(presets).slice(0, 3) : []
+    });
+    
+    // Parse presets object into array format (matching old implementation)
+    const parsedPresets: any[] = [];
+    const playlists: any[] = [];
+    
+    Object.entries(presets).forEach(([presetId, presetData]) => {
+      if (presetData && typeof presetData === 'object') {
+        const preset = {
+          id: `wled_${presetId}`,
+          presetId: parseInt(presetId),
+          name: (presetData as any).n || `Preset ${presetId}`,
+          isWledPreset: true,
+          data: presetData
+        };
+        
+        // Check if this is a playlist
+        if ((presetData as any).playlist && (presetData as any).playlist.ps) {
+          const playlist = {
+            id: `playlist_${presetId}`,
+            presetId: parseInt(presetId),
+            name: (presetData as any).n || `Playlist ${presetId}`,
+            items: (presetData as any).playlist.ps.map((psId: number, index: number) => ({
+              name: `Preset ${psId}`,
+              presetId: psId,
+              duration: (presetData as any).playlist.dur ? Math.floor((presetData as any).playlist.dur[index] / 10) : 30, // Convert tenths to seconds
+              gradient: '#6366f1' // Default gradient
+            })),
+            isWledPlaylist: true,
+            method: 'wled-device'
+          };
+          playlists.push(playlist);
+        } else {
+          // Regular preset - add effect and palette info
+          if ((presetData as any).seg && (presetData as any).seg[0]) {
+            const segment = (presetData as any).seg[0];
+            preset.effectId = segment.fx || 0;
+            preset.effectName = `Effect ${segment.fx || 0}`;
+            preset.paletteId = segment.pal || 0;
+            preset.paletteName = `Palette ${segment.pal || 0}`;
+            
+            // Generate gradient based on palette (matching old implementation)
+            preset.gradient = generatePresetGradient(segment.pal || 0);
+            // Also generate LinearGradient colors for React Native
+            preset.linearGradientColors = generateLinearGradientColors(segment.pal || 0);
+          } else {
+            preset.gradient = '#6366f1';
+          }
+          parsedPresets.push(preset);
+        }
+      }
+    });
+    
+    logger.log(`Fetched ${parsedPresets.length} presets and ${playlists.length} playlists from WLED device`);
+    return { 
+      success: true, 
+      presets: parsedPresets,
+      playlists: playlists,
+      message: `Found ${parsedPresets.length} presets and ${playlists.length} playlists`
+    };
+      
   } catch (error: any) {
     logger.error('Failed to fetch WLED presets:', error);
-    return {
-      success: false,
+    return { 
+      success: false, 
       presets: [],
       playlists: [],
       message: error.name === 'AbortError' ? 'Request timeout' : `Request failed: ${error.message}`
@@ -537,16 +520,16 @@ export const fetchWledEffects = async (
 // Alias for backward compatibility
 export const getWledPresets = fetchWledPresets;
 
-// Helper function to generate gradient based on palette ID
+// Helper function to generate gradient based on palette ID (matching old implementation)
 export const generatePresetGradient = (paletteId: number): string => {
-  // Create array of palette names in order (matching WLED palette IDs)
+  // Use array index approach like the old implementation
   const paletteNames = Object.keys(WLED_PALETTES_DATA);
   const paletteName = paletteNames[paletteId] || paletteNames[0]; // Fallback to first palette
   
   // Get palette color data
   const paletteData = WLED_PALETTES_DATA[paletteName];
   if (!paletteData || paletteData.length === 0) {
-    return `linear-gradient(135deg, #888888, #555555)`;
+    return `linear-gradient(135deg, #888, #555)`;
   }
 
   // Convert color data to RGB strings
@@ -555,4 +538,106 @@ export const generatePresetGradient = (paletteId: number): string => {
     .join(", ");
   
   return `linear-gradient(135deg, ${colorStops})`;
+};
+
+// WLED palette ID to name mapping (from WLED documentation)
+const WLED_PALETTE_ID_MAP: { [id: number]: string } = {
+  0: "Default",
+  1: "Random Cycle",
+  2: "Color 1", 
+  3: "Colors 1&2",
+  4: "Color Gradient",
+  5: "Colors Only",
+  6: "Party",
+  7: "Cloud",
+  8: "Lava", 
+  9: "Ocean",
+  10: "Forest",
+  11: "Rainbow",
+  12: "Rainbow Bands",
+  13: "Sunset",
+  14: "Rivendell",
+  15: "Breeze",
+  16: "Red & Blue",
+  17: "Yellowout",
+  18: "Analogous", 
+  19: "Splash",
+  20: "Pastel",
+  21: "Sunset 2",
+  22: "Beech",
+  23: "Vintage",
+  24: "Departure",
+  25: "Landscape",
+  26: "Beach",
+  27: "Sherbet",
+  28: "Hult",
+  29: "Hult 64",
+  30: "Drywet",
+  31: "Jul",
+  32: "Grintage",
+  33: "Rewhi",
+  34: "Tertiary",
+  35: "Fire",
+  36: "Icefire",
+  37: "Cyane",
+  38: "Light Pink",
+  39: "Autumn",
+  40: "Magenta",
+  41: "Magred",
+  42: "Yelmag",
+  43: "Yelblu",
+  44: "Orange & Teal",
+  45: "Tiamat",
+  46: "April Night",
+  47: "Orangery",
+  48: "C9",
+  49: "Sakura",
+  50: "Aurora",
+  51: "Atlantica",
+  52: "C9 2",
+  53: "C9 New",
+  54: "Temperature",
+  55: "Aurora 2",
+  56: "Retro Clown",
+  57: "Candy",
+  58: "Toxy Reaf",
+  59: "Fairy Reaf",
+  60: "Semi Blue",
+  61: "Pink Candy",
+  62: "Red Reaf",
+  63: "Aqua Flash",
+  64: "Yelblu Hot",
+  65: "Lite Light",
+  66: "Red Flash",
+  67: "Blink Red",
+  68: "Red Shift",
+  69: "Red Tide",
+  70: "Candy2",
+  71: "Traffic Light"
+};
+
+// Helper function to generate LinearGradient-compatible colors for React Native
+export const generateLinearGradientColors = (paletteId: number): string[] => {
+  // Use array index approach like the old implementation
+  const paletteNames = Object.keys(WLED_PALETTES_DATA);
+  const paletteName = paletteNames[paletteId] || paletteNames[0]; // Fallback to first palette
+  
+  
+  // Get palette color data
+  const paletteData = WLED_PALETTES_DATA[paletteName];
+  if (!paletteData || paletteData.length === 0) {
+    return ['#888888', '#555555']; // Default gradient colors
+  }
+
+  // Convert color data to RGB strings for LinearGradient
+  const colors = paletteData.map((color: PaletteColor) => 
+    `rgb(${color.red}, ${color.green}, ${color.blue})`
+  );
+  
+  // Ensure at least 2 colors for LinearGradient
+  if (colors.length === 1) {
+    return [colors[0], colors[0]];
+  }
+  
+  return colors;
 };

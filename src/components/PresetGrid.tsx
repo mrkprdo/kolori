@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Animated
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
 import { SEASONAL_PRESETS } from '../constants/presets';
@@ -21,6 +22,48 @@ import {
   LEDColor 
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
+
+// Helper function to extract primary color from gradient string
+const extractPrimaryColor = (gradient: string): string => {
+  if (!gradient || typeof gradient !== 'string') {
+    return '#6366f1'; // fallback color
+  }
+  
+  // Extract first RGB/hex color from gradient string
+  const colorMatch = gradient.match(/(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\(\d+,\s*\d+,\s*\d+\))/);
+  return colorMatch ? colorMatch[0] : '#6366f1';
+};
+
+// Helper function to parse gradient string and extract colors for LinearGradient
+const parseGradientString = (gradientString: string): { colors: string[], locations?: number[] } => {
+  if (!gradientString || typeof gradientString !== 'string') {
+    return { colors: ['#6366f1', '#8b5cf6'] }; // default gradient
+  }
+
+  // Extract colors from gradient string like "linear-gradient(135deg, rgb(255, 170, 0), rgb(255, 0, 0), rgb(0, 255, 0))"
+  const colorMatches = gradientString.match(/rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/g);
+  
+  if (colorMatches && colorMatches.length > 0) {
+    // Ensure at least 2 colors for LinearGradient
+    if (colorMatches.length === 1) {
+      return { colors: [colorMatches[0], colorMatches[0]] };
+    }
+    return { colors: colorMatches };
+  }
+  
+  // Fallback: try to extract hex colors
+  const hexMatches = gradientString.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/g);
+  if (hexMatches && hexMatches.length > 0) {
+    // Ensure at least 2 colors for LinearGradient
+    if (hexMatches.length === 1) {
+      return { colors: [hexMatches[0], hexMatches[0]] };
+    }
+    return { colors: hexMatches };
+  }
+  
+  // Final fallback
+  return { colors: ['#6366f1', '#8b5cf6'] };
+};
 
 interface DynamicLEDVisualizationProps {
   ledData: LEDColor[];
@@ -145,19 +188,73 @@ interface PresetCardProps {
 function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = false }: PresetCardProps) {
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = (screenWidth - 48) / 3 - 8; // 3 columns with padding
+  
+  // Use LinearGradient colors for device presets if available
+  const shouldUseGradient = preset.isWledPreset && (preset.linearGradientColors || preset.gradient);
+  const gradientColors = preset.linearGradientColors || 
+    (preset.gradient ? parseGradientString(preset.gradient).colors : null);
+  
+  
+  // Ensure gradient colors are valid before using LinearGradient
+  const hasValidGradient = gradientColors && 
+    Array.isArray(gradientColors) && 
+    gradientColors.length >= 2 && 
+    gradientColors.every(color => typeof color === 'string' && color.length > 0);
 
+  const cardStyle = {
+    width: cardWidth,
+    borderColor: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
+    shadowColor: isActive ? '#3b82f6' : '#000',
+    shadowOpacity: isActive ? 0.3 : 0.1,
+    elevation: isActive ? 8 : 2,
+  };
+
+  if (shouldUseGradient && hasValidGradient) {
+    // Use LinearGradient for device presets with gradients
+    return (
+      <TouchableOpacity
+        onPress={() => onClick(preset.id)}
+        style={[styles.presetCard, cardStyle]}
+      >
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.cardOverlay} />
+          <View style={styles.cardContent}>
+            {showIcon && (
+              <Text style={styles.cardIcon}>{preset.icon}</Text>
+            )}
+            <Text style={styles.cardTitle}>
+              {preset.name}
+            </Text>
+            {preset.effectName && (
+              <Text style={styles.cardSubtitle}>
+                {preset.effectName}
+              </Text>
+            )}
+          </View>
+          {isActive && (
+            <View style={styles.activeIndicator}>
+              <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+            </View>
+          )}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
+  // Use solid background for seasonal presets or presets without gradients
   return (
     <TouchableOpacity
       onPress={() => onClick(preset.id)}
       style={[
         styles.presetCard,
         {
-          width: cardWidth,
-          borderColor: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
-          backgroundColor: '#6366f1',
-          shadowColor: isActive ? '#3b82f6' : '#000',
-          shadowOpacity: isActive ? 0.3 : 0.1,
-          elevation: isActive ? 8 : 2,
+          ...cardStyle,
+          backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1',
         }
       ]}
     >
@@ -837,5 +934,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     opacity: 0.75,
+  },
+  gradientBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

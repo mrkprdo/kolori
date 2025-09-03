@@ -20,6 +20,7 @@ import {
   turnWledOn,
   turnWledOff,
   getWledPresets, // Added getWledPresets
+  generatePresetGradient,
 } from '../config/wledApi';
 import { SEASONAL_PRESETS } from '../constants/presets';
 import {
@@ -197,7 +198,7 @@ export default function KoloriApp({
 
     // IMMEDIATELY clear UI state when switching devices to prevent showing old device data
     setLiveLedData([]);
-    setCustomEffects([]);
+    setCustomEffects([]); // Clear device presets when switching devices
     setCurrentWebSocketDeviceId(null); // Clear current WebSocket device tracking
     logger.log('🔄 KoloriApp: Managing global WebSocket for active device:', activeDevice?.name, 'clearing old data');
 
@@ -238,6 +239,17 @@ export default function KoloriApp({
           });
           
           connectWebSocket(deviceAddress, wsProtocol);
+          
+          // Fetch device presets when connecting to device (like old implementation)
+          setTimeout(() => {
+            if (isMounted && activeDeviceRef.current?.id === connectingDeviceId) {
+              logger.log('📡 Attempting to fetch device presets for:', connectingDeviceName, {
+                isConnected: activeDeviceRef.current?.isConnected,
+                hasDeviceAddress: !!getDeviceAddress(activeDeviceRef.current)
+              });
+              loadDevicePresets();
+            }
+          }, 1500); // Increase delay to ensure connection is established
           
           setWebSocketCallbacks({
         onMessage: (message) => {
@@ -355,11 +367,17 @@ export default function KoloriApp({
             logger.log('📡 Step 3: Skipping live view enable (setting is off)');
           }
           
-          // Load device presets and ensure device info is available
+          // Step 4: Load device presets (like old implementation in onOpen)
+          setTimeout(() => {
+            if (isMounted && activeDeviceRef.current?.id === currentActiveDevice.id) {
+              logger.log('📡 Step 4: Loading device presets from onOpen for:', currentActiveDevice.name);
+              loadDevicePresets();
+            }
+          }, 500);
+          
+          // Ensure device info is available via HTTP fallback if needed
           setTimeout(() => {
             if (isMounted) {
-              loadDevicePresets();
-              
               // Backup: If device info is still not available after 3 seconds, try HTTP request
               setTimeout(() => {
                 if (isMounted && activeDevice && !activeDevice.wledInfo) {
@@ -492,17 +510,40 @@ export default function KoloriApp({
 
   // Fetch WLED presets and playlists from device (based on old implementation)
   const loadDevicePresets = async () => {
-    if (!activeDevice?.isConnected) {
-      logger.warn('Device offline - cannot fetch presets');
+    const currentActiveDevice = activeDeviceRef.current || activeDevice;
+    
+    logger.log('🔍 loadDevicePresets called with device:', {
+      deviceName: currentActiveDevice?.name,
+      isConnected: currentActiveDevice?.isConnected,
+      deviceAddress: getDeviceAddress(currentActiveDevice),
+      protocol: currentActiveDevice?.protocol
+    });
+    
+    if (!currentActiveDevice?.isConnected) {
+      logger.warn('❌ Device offline - cannot fetch presets:', currentActiveDevice?.name);
+      return;
+    }
+    
+    const deviceAddress = getDeviceAddress(currentActiveDevice);
+    if (!deviceAddress) {
+      logger.warn('❌ No device address available for preset fetching');
       return;
     }
     
     try {
-      logger.log('Fetching presets from device:', activeDevice.name);
+      logger.log('📡 Fetching presets from device:', currentActiveDevice.name, 'at', deviceAddress);
       const result = await getWledPresets(
-        getDeviceAddress(activeDevice),
-        activeDevice.protocol || "http"
+        deviceAddress,
+        currentActiveDevice.protocol || "http"
       );
+      
+      logger.log('📥 getWledPresets result:', {
+        success: result.success,
+        presetsCount: result.presets?.length || 0,
+        playlistsCount: result.playlists?.length || 0,
+        message: result.message,
+        rawPresets: result.presets
+      });
       
       if (result.success) {
         // Filter out seasonal presets (based on old implementation)
