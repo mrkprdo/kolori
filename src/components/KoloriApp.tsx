@@ -29,12 +29,10 @@ import {
   CustomEffect,
   SavedPlaylist,
   LEDColor,
-  NotificationState,
 } from '../types';
 
 import Header from './Header';
 import PresetGrid from './PresetGrid';
-import Notification from './Notification';
 import PlaylistModal from './PlaylistModal';
 
 interface KoloriAppProps {
@@ -93,7 +91,6 @@ export default function KoloriApp({
   }>({});
   
   const [showPlaylist, setShowPlaylist] = useState(false);
-  const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
   const [currentWebSocketDeviceId, setCurrentWebSocketDeviceId] = useState<number | null>(null);
@@ -159,8 +156,13 @@ export default function KoloriApp({
       currentPlaylistLength: currentPlaylist.length
     });
     
-    // Clear current playlist state
+    // Clear current playlist and active preset state
     setCurrentPlaylist([]);
+    
+    // Clear active preset when switching devices (each device has its own active preset)
+    if (activeDevice?.id) {
+      onDeviceUpdate(activeDevice.id, { activePreset: null });
+    }
     
     // Check if we have cached data for this device
     if (activeDevice?.id && deviceCacheRef.current[activeDevice.id]) {
@@ -672,8 +674,77 @@ export default function KoloriApp({
     }
   };
 
-  const showNotification = (type: NotificationState['type'], title: string, message: string) => {
-    setNotification({ isVisible: true, type, title, message });
+  const showNotification = (type: string, title: string, message: string) => {
+    // Notification removed - using console logging instead
+    console.log(`${type.toUpperCase()}: ${title} - ${message}`);
+  };
+
+  // Handle preset activation on device
+  const handlePresetSelect = async (presetId: string | number) => {
+    if (!activeDevice?.isConnected) {
+      showNotification('error', 'Device Offline', 'Connect to a WLED device to activate presets.');
+      return;
+    }
+
+    try {
+      logger.log('🎯 Activating preset:', presetId, 'on device:', activeDevice.name);
+      
+      // Find the preset to get its details
+      const preset = [...customEffects, ...SEASONAL_PRESETS].find(p => 
+        p.id.toString() === presetId.toString()
+      );
+
+      if (!preset) {
+        showNotification('error', 'Preset Not Found', 'The selected preset could not be found.');
+        return;
+      }
+
+      let result;
+      
+      if (preset.isWledPreset) {
+        // For device presets, use the original WLED preset ID
+        const wledPresetId = parseInt(preset.id.toString().replace('wled_', ''));
+        logger.log('🎯 Activating WLED preset ID:', wledPresetId);
+        
+        result = await activateWledPresetById(
+          getDeviceAddress(activeDevice),
+          wledPresetId,
+          activeDevice.protocol || "http"
+        );
+      } else {
+        // For seasonal presets, use the preset name/data
+        logger.log('🎯 Activating seasonal preset:', preset.name);
+        
+        result = await activateWledPreset(
+          getDeviceAddress(activeDevice),
+          preset,
+          activeDevice.protocol || "http"
+        );
+      }
+
+      if (result.success) {
+        // Update the active device's active preset
+        onDeviceUpdate(activeDevice.id, { activePreset: presetId });
+        
+        showNotification(
+          'success', 
+          'Preset Activated', 
+          `"${preset.name}" is now active on ${activeDevice.name}.`
+        );
+        
+        logger.log('✅ Successfully activated preset:', preset.name);
+      } else {
+        throw new Error(result.message || 'Failed to activate preset');
+      }
+      
+    } catch (error: any) {
+      logger.error('❌ Failed to activate preset:', error.message);
+      showNotification(
+        'error',
+        'Activation Failed',
+        `Could not activate preset: ${error.message}`
+      );
+    }
   };
 
   // Fetch WLED presets and playlists from device
@@ -800,7 +871,7 @@ export default function KoloriApp({
         />
         <PresetGrid
           activePreset={activePreset}
-          onPresetSelect={() => {}}
+          onPresetSelect={handlePresetSelect}
           isDark={isDark}
           currentPlaylist={currentPlaylist}
           onShowPlaylist={() => setShowPlaylist(true)}
@@ -830,13 +901,6 @@ export default function KoloriApp({
           liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
           onLiveLedDataUpdate={setLiveLedData}
-        />
-        <Notification
-          {...notification}
-          onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
-          autoClose={true}
-          duration={4000}
-          isDark={isDark}
         />
         <PlaylistModal
           isVisible={showPlaylist}

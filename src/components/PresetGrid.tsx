@@ -243,12 +243,9 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = (screenWidth - 48) / 3 - 8; // 3 columns with padding
   
-  // Animation values
+  // Simplified animation values - only native driver animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
-  const borderAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
-  const shadowAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
-  const activeScaleAnim = useRef(new Animated.Value(1)).current;
   
   // Entrance animation
   useEffect(() => {
@@ -261,40 +258,24 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
     }).start();
   }, []);
   
-  // Active state animation
+  // Simplified active state - no complex animations for now
   useEffect(() => {
+    // Just a simple scale animation when active
     if (isActive) {
-      // Bounce animation when becoming active
-      Animated.sequence([
-        Animated.spring(activeScaleAnim, {
-          toValue: 1.05,
-          tension: 200,
-          friction: 3,
-          useNativeDriver: true,
-        }),
-        Animated.spring(activeScaleAnim, {
-          toValue: 1,
-          tension: 200,
-          friction: 6,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.spring(pressAnim, {
+        toValue: 1.02,
+        tension: 200,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.spring(pressAnim, {
+        toValue: 1,
+        tension: 200,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
     }
-    
-    Animated.parallel([
-      Animated.timing(borderAnim, {
-        toValue: isActive ? 1 : 0,
-        duration: 300,
-        easing: Easing.bezier(0.4, 0.0, 0.2, 1),
-        useNativeDriver: false,
-      }),
-      Animated.timing(shadowAnim, {
-        toValue: isActive ? 1 : 0,
-        duration: 300,
-        easing: Easing.bezier(0.4, 0.0, 0.2, 1),
-        useNativeDriver: false,
-      }),
-    ]).start();
   }, [isActive]);
   
   const handlePressIn = () => {
@@ -326,32 +307,26 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
     gradientColors.length >= 2 && 
     gradientColors.every(color => typeof color === 'string' && color.length > 0);
 
-  const animatedCardStyle = {
-    width: cardWidth,
-    borderColor: borderAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['rgba(255, 255, 255, 0.2)', '#3b82f6'],
-    }),
-    shadowColor: isActive ? '#3b82f6' : '#000',
-    shadowOpacity: shadowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.1, 0.4],
-    }),
-    elevation: shadowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [2, 8],
-    }),
+  const animatedTransformStyle = {
     transform: [
       { scale: scaleAnim },
-      { scale: pressAnim },
-      { scale: activeScaleAnim }
+      { scale: pressAnim }
     ],
+  };
+
+  const staticCardStyle = {
+    width: cardWidth,
+    borderColor: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
+    shadowColor: isActive ? '#3b82f6' : '#000',
+    shadowOpacity: isActive ? 0.4 : 0.1,
+    elevation: isActive ? 8 : 2,
   };
 
   if (shouldUseGradient && hasValidGradient) {
     // Use LinearGradient for device presets with gradients
     return (
-      <Animated.View style={[styles.presetCard, animatedCardStyle]}>
+      <Animated.View style={[animatedTransformStyle]}>
+        <View style={[styles.presetCard, staticCardStyle]}>
         <TouchableOpacity
           onPress={() => onClick(preset.id)}
           onPressIn={handlePressIn}
@@ -386,21 +361,23 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
           )}
         </LinearGradient>
         </TouchableOpacity>
+        </View>
       </Animated.View>
     );
   }
 
   // Use solid background for seasonal presets or presets without gradients
   return (
-    <Animated.View 
-      style={[
-        styles.presetCard,
-        {
-          ...animatedCardStyle,
-          backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1',
-        }
-      ]}
-    >
+    <Animated.View style={[animatedTransformStyle]}>
+      <View 
+        style={[
+          styles.presetCard,
+          staticCardStyle,
+          {
+            backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1',
+          }
+        ]}
+      >
       <TouchableOpacity
         onPress={() => onClick(preset.id)}
         onPressIn={handlePressIn}
@@ -428,6 +405,7 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
         </View>
       )}
       </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
