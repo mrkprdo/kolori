@@ -74,16 +74,23 @@ export default function KoloriApp({
   
   // Debug logging for playlist state changes
   useEffect(() => {
-    logger.log('📋 Current playlist state changed:', {
-      playlistLength: currentPlaylist.length,
-      activeDeviceId: activeDeviceId,
-      activeDeviceName: activeDevice?.name,
-      playlist: currentPlaylist
-    });
+    logger.log('📋 Current playlist state changed:', 
+      `${currentPlaylist.length} items, device ${activeDeviceId} (${activeDevice?.name})`);
   }, [currentPlaylist, activeDeviceId, activeDevice?.name]);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
+  
+  // Cache for device-specific presets and playlists
+  const deviceCacheRef = useRef<{
+    [deviceId: number]: {
+      presets: CustomEffect[];
+      playlists: SavedPlaylist[];
+      presetsHash: string;
+      playlistsHash: string;
+      lastFetched: number;
+    }
+  }>({});
   
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
@@ -94,6 +101,41 @@ export default function KoloriApp({
   const devicesRef = useRef(devices);
   const settingsRef = useRef(settings);
   const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
+  
+  // Helper function to generate hash for comparing data changes
+  const generateHash = (data: any[]): string => {
+    return JSON.stringify(data.map(item => ({
+      id: item.id,
+      name: item.name,
+      // Include key properties that indicate changes
+      ...(item.items && { itemsLength: item.items.length }),
+      ...(item.gradient && { gradient: item.gradient }),
+      ...(item.isWledPreset !== undefined && { isWledPreset: item.isWledPreset })
+    }))).substring(0, 100); // Use first 100 chars as hash
+  };
+  
+  // Helper function to check if cached data is different from new data
+  const hasDataChanged = (newData: any[], cachedHash: string): boolean => {
+    const newHash = generateHash(newData);
+    return newHash !== cachedHash;
+  };
+  
+  // Helper function to load cached data for device
+  const loadCachedDataForDevice = (deviceId: number | undefined) => {
+    if (!deviceId || !deviceCacheRef.current[deviceId]) {
+      logger.log('📦 No cached data for device:', deviceId);
+      return;
+    }
+    
+    const cached = deviceCacheRef.current[deviceId];
+    const cacheAge = Date.now() - cached.lastFetched;
+    
+    logger.log('📦 Loading cached data for device:', deviceId, 
+      `${cached.presets.length} presets, ${cached.playlists.length} playlists (${Math.round(cacheAge/1000)}s old)`);
+    
+    setCustomEffects(cached.presets);
+    setSavedPlaylists(cached.playlists.map(playlist => ({ ...playlist, isActive: false })));
+  };
   
   useEffect(() => { devicesRef.current = devices; }, [devices]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -109,30 +151,36 @@ export default function KoloriApp({
     });
   }, [activeDevice?.id, activeDevice?.name, activeDevice?.isConnected]); // Only update when meaningful properties change
 
-  // Clear playlist state when device changes (separate from WebSocket connection logic)
+  // Clear playlist state when device changes and load cached data if available
   useEffect(() => {
-    logger.log('🔄 Device ID changed, clearing playlist state:', {
+    logger.log('🔄 Device ID changed, checking cache:', {
       activeDeviceId: activeDevice?.id,
       activeDeviceName: activeDevice?.name,
       currentPlaylistLength: currentPlaylist.length
     });
     
-    // Set loading state and clear current playlist and playlist active states
-    setIsLoadingPlaylists(true);
+    // Clear current playlist state
     setCurrentPlaylist([]);
-    setSavedPlaylists([]); // Temporarily clear playlists for smooth transition
     
-    // Reload playlists after a brief delay for smooth transition
-    setTimeout(async () => {
-      try {
-        const playlists = await storage.loadFromStorage(STORAGE_KEYS.PLAYLISTS, []);
-        setSavedPlaylists(playlists.map((playlist: SavedPlaylist) => ({ ...playlist, isActive: false })));
-        setIsLoadingPlaylists(false);
-      } catch (error) {
-        logger.error('Failed to reload playlists:', error);
-        setIsLoadingPlaylists(false);
-      }
-    }, 500); // 500ms delay for smooth transition like preset cards
+    // Check if we have cached data for this device
+    if (activeDevice?.id && deviceCacheRef.current[activeDevice.id]) {
+      logger.log('📦 Found cached data for device, loading immediately');
+      loadCachedDataForDevice(activeDevice.id);
+      setIsLoadingPlaylists(false);
+    } else {
+      // No cached data, show loading and clear state for smooth transition
+      logger.log('📦 No cached data, clearing state for fresh fetch');
+      setIsLoadingPlaylists(true);
+      setCustomEffects([]);
+      setSavedPlaylists([]);
+      
+      // Brief delay for smooth transition
+      setTimeout(() => {
+        if (!activeDevice?.id || !deviceCacheRef.current[activeDevice.id]) {
+          setIsLoadingPlaylists(false);
+        }
+      }, 300);
+    }
   }, [activeDevice?.id]); // Only trigger when device ID changes
 
   useEffect(() => {
@@ -234,12 +282,8 @@ export default function KoloriApp({
     });
 
     // IMMEDIATELY clear UI state when switching devices to prevent showing old device data
-    logger.log('🧹 Clearing UI state for device switch:', {
-      previousDevice: currentWebSocketDeviceId,
-      newDevice: activeDevice?.id,
-      newDeviceName: activeDevice?.name,
-      currentPlaylistLength: currentPlaylist.length
-    });
+    logger.log('🧹 Clearing UI state for device switch:', 
+      `${currentWebSocketDeviceId}→${activeDevice?.id} (${activeDevice?.name})`);
     setLiveLedData([]);
     setCustomEffects([]); // Clear device presets when switching devices
     setCurrentPlaylist([]); // Clear current playlist when switching devices
@@ -583,13 +627,8 @@ export default function KoloriApp({
         currentActiveDevice.protocol || "http"
       );
       
-      logger.log('📥 getWledPresets result:', {
-        success: result.success,
-        presetsCount: result.presets?.length || 0,
-        playlistsCount: result.playlists?.length || 0,
-        message: result.message,
-        rawPresets: result.presets
-      });
+      logger.log('📥 getWledPresets result:', result.success ? 'SUCCESS' : 'FAILED', 
+        `${result.presets?.length || 0} presets, ${result.playlists?.length || 0} playlists`);
       
       if (result.success) {
         // Filter out seasonal presets (based on old implementation)
@@ -655,7 +694,7 @@ export default function KoloriApp({
       );
 
       if (result.success) {
-        // Update custom effects with fetched presets and save to localStorage
+        // Filter out excluded presets and playlists
         const EXCLUDE_PREFIXES = [
           "preset 0",
           "autumn-",
@@ -669,22 +708,51 @@ export default function KoloriApp({
             effectNameLower.startsWith(prefix)
           );
         });
-        setCustomEffects(fetchedPresets);
-        storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, fetchedPresets); // Save to storage
-
-        // Update saved playlists with fetched playlists and save to localStorage
+        
         const fetchedPlaylists = (result.playlists || []).filter((playlist: any) => {
           const playlistNameLower = playlist.name.toLowerCase();
           return !EXCLUDE_PREFIXES.some((prefix) =>
             playlistNameLower.startsWith(prefix)
           );
         });
-        setSavedPlaylists(fetchedPlaylists);
-        storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, fetchedPlaylists); // Save to storage
 
-        if (fetchedPresets.length > 0 || fetchedPlaylists.length > 0) {
-          const totalItems =
-            (fetchedPresets.length || 0) + (fetchedPlaylists.length || 0);
+        // Check cache for this device
+        const deviceId = activeDevice.id;
+        const currentCache = deviceCacheRef.current[deviceId];
+        
+        const presetsChanged = !currentCache || hasDataChanged(fetchedPresets, currentCache.presetsHash);
+        const playlistsChanged = !currentCache || hasDataChanged(fetchedPlaylists, currentCache.playlistsHash);
+
+        logger.log('📦 Cache comparison:', `Device ${deviceId}:`,
+          presetsChanged ? `presets changed (${currentCache?.presets.length || 0}→${fetchedPresets.length})` : 'presets unchanged',
+          playlistsChanged ? `playlists changed (${currentCache?.playlists.length || 0}→${fetchedPlaylists.length})` : 'playlists unchanged');
+
+        // Update cache
+        deviceCacheRef.current[deviceId] = {
+          presets: fetchedPresets,
+          playlists: fetchedPlaylists,
+          presetsHash: generateHash(fetchedPresets),
+          playlistsHash: generateHash(fetchedPlaylists),
+          lastFetched: Date.now()
+        };
+
+        // Only update UI if data actually changed
+        let updatedCount = 0;
+        if (presetsChanged) {
+          setCustomEffects(fetchedPresets);
+          storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, fetchedPresets);
+          updatedCount += fetchedPresets.length;
+        }
+        
+        if (playlistsChanged) {
+          setSavedPlaylists(fetchedPlaylists.map((playlist: SavedPlaylist) => ({ ...playlist, isActive: false })));
+          storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, fetchedPlaylists);
+          updatedCount += fetchedPlaylists.length;
+        }
+
+        // Show notification only if something actually changed
+        if (presetsChanged || playlistsChanged) {
+          const totalItems = fetchedPresets.length + fetchedPlaylists.length;
           const itemType =
             fetchedPresets.length > 0 && fetchedPlaylists.length > 0
               ? "presets and playlists"
@@ -694,10 +762,15 @@ export default function KoloriApp({
 
           showNotification(
             "success",
-            "Presets Imported",
-            `Successfully imported ${totalItems} ${itemType} from your WLED device.`
+            presetsChanged && playlistsChanged ? "Data Updated" : presetsChanged ? "Presets Updated" : "Playlists Updated",
+            `Successfully updated ${totalItems} ${itemType} from your WLED device.`
           );
+        } else {
+          logger.log('📦 No changes detected, using cached data');
         }
+        
+        // Always clear loading state
+        setIsLoadingPlaylists(false);
       } else {
         throw new Error(result.message);
       }

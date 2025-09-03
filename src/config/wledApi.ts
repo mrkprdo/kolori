@@ -389,11 +389,7 @@ export const fetchWledPresets = async (
     
     const presets = await response.json();
     
-    logger.log('📡 WLED API: Fetched presets.json:', {
-      presetsType: typeof presets,
-      presetsKeys: presets ? Object.keys(presets) : [],
-      firstFewEntries: presets ? Object.entries(presets).slice(0, 3) : []
-    });
+    logger.log('📡 WLED API: Fetched', Object.keys(presets || {}).length, 'presets');
     
     // Parse presets object into array format (matching old implementation)
     const parsedPresets: any[] = [];
@@ -446,7 +442,7 @@ export const fetchWledPresets = async (
       }
     });
     
-    logger.log(`Fetched ${parsedPresets.length} presets and ${playlists.length} playlists from WLED device`);
+    logger.log(`📡 WLED API: Processed ${parsedPresets.length} presets, ${playlists.length} playlists`);
     return { 
       success: true, 
       presets: parsedPresets,
@@ -493,7 +489,7 @@ export const fetchWledEffects = async (
         effectName: effectName
       }));
       
-      logger.log(`Fetched ${effects.length} effects from WLED device`);
+      logger.log(`📡 WLED API: Fetched ${effects.length} effects`);
       return {
         success: true,
         effects,
