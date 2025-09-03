@@ -531,7 +531,6 @@ export default function KoloriApp({
         const success = sendWebSocketCommand(command);
         
         if (!success) {
-          logger.warn('Failed to send live view command, retrying in 1 second...');
           setTimeout(() => {
             sendWebSocketCommand(command);
           }, 1000);

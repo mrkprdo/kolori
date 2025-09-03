@@ -208,7 +208,6 @@ class WledWebSocketManager {
     const RETRY_DELAY_MS = 200; // 200ms delay
 
     if (!this.wledSocket) {
-      logger.warn("WebSocket instance is null. Command not sent:", command);
       return false;
     }
 
