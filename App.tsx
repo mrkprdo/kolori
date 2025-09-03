@@ -146,11 +146,11 @@ export default function App() {
       return newDevices;
     });
     
-    // Set active device when transitioning from onboarding
-    // Note: Navigation happens automatically due to conditional Stack.Screen rendering
-    if (shouldNavigate) {
-      setActiveDeviceId(device.id);
-    }
+    // Always set the newly added device as active device
+    // This ensures WebSocket connection is established and device info is retrieved
+    setActiveDeviceId(device.id);
+    
+    console.log('🔧 Device added and set as active:', device.name, 'ID:', device.id);
   };
 
   const handleUpdateDevice = (deviceId: number, updates: Partial<Device>) => {
@@ -172,8 +172,10 @@ export default function App() {
   };
 
   const handleSetActiveDeviceId = (id: number | null) => {
+    console.log('🔄 Active device changing to ID:', id);
     setActiveDeviceId(id);
     storage.saveToStorage(STORAGE_KEYS.ACTIVE_DEVICE, id);
+    // WebSocket connection will be managed globally by KoloriApp
   };
 
   const handleUpdateSettings = (newSettings: Settings) => {

@@ -77,9 +77,25 @@ export default function KoloriApp({
   const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
+  const [currentWebSocketDeviceId, setCurrentWebSocketDeviceId] = useState<number | null>(null);
   
   const devicesRef = useRef(devices);
+  const settingsRef = useRef(settings);
+  const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
+  
   useEffect(() => { devicesRef.current = devices; }, [devices]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  // Calculate activeDevice first, before any useEffects that depend on it
+  const activeDevice = devices.find((d) => d.id === activeDeviceId) || devices[0];
+  
+  useEffect(() => { 
+    activeDeviceRef.current = activeDevice;
+    logger.log('🔄 activeDeviceRef updated:', {
+      deviceId: activeDevice?.id,
+      deviceName: activeDevice?.name,
+      isConnected: activeDevice?.isConnected
+    });
+  }, [activeDevice?.id, activeDevice?.name, activeDevice?.isConnected]); // Only update when meaningful properties change
 
   useEffect(() => {
     const loadLocalData = async () => {
@@ -123,69 +139,412 @@ export default function KoloriApp({
     };
   }, [devices, onDeviceUpdate]);
 
-  // WebSocket connection and message handling
+  // Clear Live View UI when device changes (WebSocket will handle the rest)
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
+    // Aggressively clear all live data when device changes
+    setLiveLedData([]);
+    logger.log('🧹 KoloriApp: Device changed - CLEARED Live View UI', {
+      deviceId: activeDevice?.id,
+      deviceName: activeDevice?.name,
+      isConnected: activeDevice?.isConnected
+    });
+  }, [activeDevice?.id]);
 
-    if (activeDevice && activeDevice.ip) {
-      connectWebSocket(activeDevice.ip);
+  // Ensure WebSocket connects immediately on app mount if there's an active device
+  useEffect(() => {
+    if (activeDevice && activeDevice.isConnected && devices.length > 0) {
+      const deviceAddress = getDeviceAddress(activeDevice);
+      logger.log('KoloriApp: App mounted with active device, ensuring WebSocket connection', {
+        deviceName: activeDevice.name,
+        deviceAddress,
+        isConnected: activeDevice.isConnected
+      });
+    }
+  }, []); // Empty dependency array - runs once on mount
 
-      setWebSocketCallbacks({
+  // Global WebSocket connection manager - maintains single connection to active device
+  useEffect(() => {
+    let isMounted = true;
+    
+    logger.log('🔄 WebSocket useEffect triggered with:', {
+      activeDeviceId: activeDevice?.id,
+      activeDeviceName: activeDevice?.name,
+      isConnected: activeDevice?.isConnected,
+      currentWebSocketDeviceId: currentWebSocketDeviceId
+    });
+
+    // FIRST: If we have an active connection, disable live view on previous device before switching
+    if (currentWebSocketDeviceId !== null) {
+      logger.log('🔄 Disabling live view on previous device before switching');
+      sendWebSocketCommand({ lv: false });
+      // Small delay to ensure command is sent before disconnecting
+      setTimeout(() => {
+        logger.log('🚫 FORCEFULLY terminating previous WebSocket connection for device switch');
+        disconnectWebSocket();
+      }, 100);
+    } else {
+      logger.log('🚫 FORCEFULLY terminating previous WebSocket connection for device switch');
+      disconnectWebSocket();
+    }
+    
+    // Force clear any lingering callbacks immediately
+    setWebSocketCallbacks({
+      onMessage: () => { logger.log('🚫 Ignoring message from terminated connection'); },
+      onOpen: () => { logger.log('🚫 Ignoring open from terminated connection'); },
+      onClose: () => { logger.log('🚫 Ignoring close from terminated connection'); },
+      onError: () => { logger.log('🚫 Ignoring error from terminated connection'); },
+    });
+
+    // IMMEDIATELY clear UI state when switching devices to prevent showing old device data
+    setLiveLedData([]);
+    setCustomEffects([]);
+    setCurrentWebSocketDeviceId(null); // Clear current WebSocket device tracking
+    logger.log('🔄 KoloriApp: Managing global WebSocket for active device:', activeDevice?.name, 'clearing old data');
+
+    const deviceAddress = getDeviceAddress(activeDevice);
+    logger.log('🔍 KoloriApp: Check reconnection conditions:', {
+      hasActiveDevice: !!activeDevice,
+      deviceId: activeDevice?.id,
+      deviceName: activeDevice?.name,
+      isConnected: activeDevice?.isConnected,
+      hasDeviceAddress: !!deviceAddress,
+      deviceAddress: deviceAddress,
+      protocol: activeDevice?.protocol,
+      bestAddress: activeDevice?.bestAddress,
+      ip: activeDevice?.ip
+    });
+    
+    if (activeDevice && activeDevice.isConnected && deviceAddress) {
+      const wsProtocol = activeDevice.protocol === "https" ? "wss" : "ws";
+      // Adjust delay based on whether we sent lv:false command first
+      const connectionDelay = currentWebSocketDeviceId !== null ? 1200 : 1000; // Extra time if we sent lv:false
+      logger.log('KoloriApp: Will establish NEW WebSocket connection in', connectionDelay + 'ms:', `${wsProtocol}://${deviceAddress}/ws`);
+      
+      // Longer delay to ensure previous connection is COMPLETELY terminated
+      setTimeout(() => {
+        logger.log('⏰ Timeout callback executing after', connectionDelay + 'ms delay');
+        if (isMounted) {
+          logger.log('🔌 NOW connecting to new device:', activeDevice?.name, 'at address:', deviceAddress);
+          
+          // Store the device ID we're connecting to for verification
+          const connectingDeviceId = activeDevice.id;
+          const connectingDeviceName = activeDevice.name;
+          
+          logger.log('🔗 WebSocket connecting with device info:', {
+            connectingDeviceId: connectingDeviceId,
+            connectingDeviceName: connectingDeviceName,
+            deviceAddress: deviceAddress,
+            activeDeviceId: activeDevice.id
+          });
+          
+          connectWebSocket(deviceAddress, wsProtocol);
+          
+          setWebSocketCallbacks({
         onMessage: (message) => {
-          if (isMounted && message.type === 'liveLedData') {
-            setLiveLedData(message.data);
+          if (!isMounted) return;
+          
+          // Get current active device from ref to avoid stale closure
+          const currentActiveDevice = activeDeviceRef.current;
+          
+          // Simple verification: Only process messages if we have an active device
+          if (!currentActiveDevice) {
+            logger.warn('🚫 Ignoring WebSocket message - no active device');
+            return;
           }
-          // Handle other message types if necessary
+          
+          if (message.type === 'liveLedData') {
+            // Get current live view setting from ref to avoid stale closure
+            const currentLiveViewEnabled = settingsRef.current?.liveViewEnabled || false;
+            
+            // Handle live LED data - but verify it's from the correct device AND live view is enabled
+            
+            // Only update if live view is enabled and this is from the active device
+            if (isMounted && currentLiveViewEnabled) {
+              setLiveLedData(message.data);
+            } else {
+              logger.warn('🚫 Ignoring LED data - live view disabled');
+              // Clear any existing data if live view is disabled
+              setLiveLedData([]);
+            }
+          } else if (typeof message === 'object' && message !== null) {
+            // Handle WLED JSON API responses
+            logger.log('WebSocket JSON message received:', Object.keys(message));
+            
+            // Handle device info response (from { info: {} } request)
+            if (message.info) {
+              logger.log('📥 WebSocket: Device info received via WebSocket:', {
+                deviceName: message.info.name,
+                ledCount: message.info.leds?.count,
+                ledMatrix: message.info.leds?.matrix,
+                rgbw: message.info.leds?.rgbw,
+                version: message.info.ver,
+                currentActiveDeviceId: currentActiveDevice.id,
+                currentActiveDeviceName: currentActiveDevice.name
+              });
+              
+              // Update device with info (using the current active device ID)
+              onDeviceUpdate(currentActiveDevice.id, { wledInfo: message.info });
+              logger.log('✅ Device info updated for device ID:', currentActiveDevice.id);
+            }
+            
+            // Handle device state updates
+            if (message.state) {
+              logger.log('WebSocket: Device state received:', {
+                on: message.state.on,
+                brightness: message.state.bri,
+                effect: message.state.seg?.[0]?.fx
+              });
+              // Can update device state here if needed
+            }
+            
+            // Handle effects list response
+            if (message.effects && Array.isArray(message.effects)) {
+              logger.log('WebSocket: Effects list received, count:', message.effects.length);
+            }
+            
+            // Handle presets response
+            if (message.presets) {
+              logger.log('WebSocket: Presets received via WebSocket');
+              // Could handle presets here instead of via HTTP
+            }
+          }
         },
         onOpen: () => {
-          logger.log('WebSocket opened for live view');
-          // Request live LED data when connected and live view is enabled
-          if (isMounted && settings.liveViewEnabled) {
-            sendWebSocketCommand({ lv: true });
+          if (!isMounted) return;
+          
+          // Get current active device from ref
+          const currentActiveDevice = activeDeviceRef.current;
+          if (!currentActiveDevice) {
+            logger.warn('WebSocket opened but no current active device');
+            return;
           }
+          
+          // Set the current WebSocket device ID to track which device we're connected to
+          setCurrentWebSocketDeviceId(currentActiveDevice.id);
+          logger.log('✅ Global WebSocket CONNECTED for device:', currentActiveDevice.name, 'ID:', currentActiveDevice.id);
+          
+          // Sequence: 1. Request device info, 2. Request state, 3. Enable live view if needed
+          logger.log('📡 Starting device initialization sequence for:', currentActiveDevice.name);
+          
+          // Step 1: Request device info immediately upon connection
+          logger.log('📡 Step 1: Requesting device info for:', currentActiveDevice.name);
+          const infoSuccess = sendWebSocketCommand({ info: {} });
+          logger.log('📡 Device info request result:', infoSuccess);
+          
+          // Step 2: Request current state
+          logger.log('📡 Step 2: Requesting device state for:', currentActiveDevice.name);
+          const stateSuccess = sendWebSocketCommand({ state: {} });
+          logger.log('📡 Device state request result:', stateSuccess);
+          
+          // Step 3: Enable live view if setting is on
+          const currentLiveViewEnabled = settingsRef.current?.liveViewEnabled || false;
+          if (currentLiveViewEnabled) {
+            logger.log('📡 Step 3: Enabling live view for new device:', currentActiveDevice.name);
+            const enableLiveView = () => {
+              const success = sendWebSocketCommand({ lv: true });
+              if (success) {
+                logger.log('✅ Live view enabled for new device:', currentActiveDevice.name);
+              } else {
+                logger.warn('❌ Failed to enable live view on new device, retrying...');
+                setTimeout(() => sendWebSocketCommand({ lv: true }), 500);
+              }
+            };
+            // Small delay to ensure WebSocket is fully ready
+            setTimeout(enableLiveView, 150);
+          } else {
+            logger.log('📡 Step 3: Skipping live view enable (setting is off)');
+          }
+          
+          // Load device presets and ensure device info is available
+          setTimeout(() => {
+            if (isMounted) {
+              loadDevicePresets();
+              
+              // Backup: If device info is still not available after 3 seconds, try HTTP request
+              setTimeout(() => {
+                if (isMounted && activeDevice && !activeDevice.wledInfo) {
+                  logger.warn('⚠️ Device info not received via WebSocket after 3s, trying HTTP fallback for:', activeDevice.name);
+                  fetchDeviceInfoViaHttp();
+                }
+              }, 3000);
+            }
+          }, 500);
         },
         onClose: () => {
-          logger.log('WebSocket closed for live view');
+          const currentActiveDevice = activeDeviceRef.current;
+          logger.log('❌ Global WebSocket CLOSED for device:', currentActiveDevice?.name || 'unknown', 'ID:', currentActiveDevice?.id || 'unknown');
+          setCurrentWebSocketDeviceId(null); // Clear WebSocket device tracking
           if (isMounted) {
-            setLiveLedData([]); // Clear live data on disconnect
+            setLiveLedData([]);
           }
         },
         onError: (error) => {
-          logger.error('WebSocket error for live view:', error);
+          const currentActiveDevice = activeDeviceRef.current;
+          logger.error('Global WebSocket error for device:', currentActiveDevice?.name || 'unknown', error);
           if (isMounted) {
-            setLiveLedData([]); // Clear live data on error
+            setLiveLedData([]);
           }
         },
-      });
+          });
+        } else {
+          logger.warn('⚠️ Component unmounted, skipping WebSocket reconnection');
+        }
+      }, connectionDelay);
     } else {
+      logger.log('KoloriApp: Cannot reconnect WebSocket - missing requirements:', {
+        noActiveDevice: !activeDevice,
+        notConnected: activeDevice ? !activeDevice.isConnected : 'no device',
+        noDeviceAddress: !deviceAddress
+      });
       disconnectWebSocket();
       if (isMounted) {
-        setLiveLedData([]); // Clear live data if no active device
+        setLiveLedData([]);
       }
     }
 
-    
-
     return () => {
-      isMounted = false; // Set flag to false on unmount
+      isMounted = false;
+      logger.log('KoloriApp: Global WebSocket cleanup');
+      setCurrentWebSocketDeviceId(null);
       disconnectWebSocket();
     };
-  }, [activeDevice, settings.liveViewEnabled]); // Reconnect if activeDevice or liveViewEnabled changes
+  }, [activeDevice?.id, activeDevice?.isConnected]); // Reconnect on device change or connection status change
 
-  // Fetch presets and playlists when active device changes or becomes connected
+  // Handle live view toggle for existing connection
   useEffect(() => {
-    if (activeDevice && activeDevice.ip && activeDevice.isConnected) {
-      fetchWledPresets();
-    }
-  }, [activeDevice?.id, activeDevice?.ip, activeDevice?.isConnected]);
+    if (activeDevice?.isConnected) {
+      logger.log('KoloriApp: Live view toggle ->', settings.liveViewEnabled, 'for device:', activeDevice.name, 'ID:', activeDevice.id);
+      
+      // Add a small delay to ensure WebSocket is ready
+      const sendLiveViewCommand = () => {
+        const command = { lv: settings.liveViewEnabled };
+        const success = sendWebSocketCommand(command);
+        
+        if (!success) {
+          logger.warn('Failed to send live view command, retrying in 1 second...');
+          setTimeout(() => {
+            sendWebSocketCommand(command);
+          }, 1000);
+        }
+        
+        if (!settings.liveViewEnabled) {
+          setLiveLedData([]);
+        }
+      };
 
-  const activeDevice = devices.find((d) => d.id === activeDeviceId) || devices[0];
+      // Delay the command slightly to ensure WebSocket is ready
+      setTimeout(sendLiveViewCommand, 100);
+    } else if (!settings.liveViewEnabled) {
+      // Always clear live LED data when live view is disabled
+      setLiveLedData([]);
+    }
+  }, [settings.liveViewEnabled, activeDevice?.isConnected, activeDevice?.id]);
+
   const isConnected = activeDevice?.isConnected || false;
   const deviceName = activeDevice?.name || 'No Device';
   const activePreset = activeDevice?.activePreset || null;
   const isDark = settings.theme === 'dark';
 
-  const getDeviceAddress = (device: WledDevice | undefined): string | null => device?.bestAddress || device?.ip || null;
+  const getDeviceAddress = (device: WledDevice | undefined): string | null => {
+    const address = device?.bestAddress || device?.ip || null;
+    logger.log('🔍 getDeviceAddress for device:', {
+      deviceId: device?.id,
+      deviceName: device?.name,
+      bestAddress: device?.bestAddress,
+      ip: device?.ip,
+      resolvedAddress: address
+    });
+    return address;
+  };
+
+  
+  // Fallback function to fetch device info via HTTP if WebSocket fails
+  const fetchDeviceInfoViaHttp = async () => {
+    if (!activeDevice?.isConnected) {
+      logger.warn('Cannot fetch device info via HTTP - device not connected');
+      return;
+    }
+    
+    try {
+      const deviceAddress = getDeviceAddress(activeDevice);
+      const protocol = activeDevice.protocol || 'http';
+      const url = `${protocol}://${deviceAddress}/json/info`;
+      
+      logger.log('🌐 Fetching device info via HTTP:', url);
+      
+      const response = await fetch(url);
+      const deviceInfo = await response.json();
+      
+      logger.log('📥 Device info received via HTTP:', {
+        deviceName: deviceInfo.name,
+        ledCount: deviceInfo.leds?.count,
+        version: deviceInfo.ver
+      });
+      
+      // Update device with HTTP-fetched info
+      onDeviceUpdate(activeDevice.id, { wledInfo: deviceInfo });
+      logger.log('✅ Device info updated via HTTP fallback for device ID:', activeDevice.id);
+      
+    } catch (error) {
+      logger.error('❌ Failed to fetch device info via HTTP:', error);
+    }
+  };
+
+  // Fetch WLED presets and playlists from device (based on old implementation)
+  const loadDevicePresets = async () => {
+    if (!activeDevice?.isConnected) {
+      logger.warn('Device offline - cannot fetch presets');
+      return;
+    }
+    
+    try {
+      logger.log('Fetching presets from device:', activeDevice.name);
+      const result = await getWledPresets(
+        getDeviceAddress(activeDevice),
+        activeDevice.protocol || "http"
+      );
+      
+      if (result.success) {
+        // Filter out seasonal presets (based on old implementation)
+        const EXCLUDE_PREFIXES = [
+          "preset 0",
+          "autumn-",
+          "xmas-", 
+          "canada day-",
+        ];
+        
+        const filteredPresets = (result.presets || []).filter((preset) => {
+          const presetNameLower = preset.name.toLowerCase();
+          return !EXCLUDE_PREFIXES.some((prefix) =>
+            presetNameLower.startsWith(prefix)
+          );
+        });
+        
+        logger.log(`Fetched ${filteredPresets.length} device presets`);
+        setCustomEffects(filteredPresets);
+        
+        // Update saved playlists if any
+        const filteredPlaylists = (result.playlists || []).filter((playlist) => {
+          const playlistNameLower = playlist.name.toLowerCase();
+          return !EXCLUDE_PREFIXES.some((prefix) =>
+            playlistNameLower.startsWith(prefix)
+          );
+        });
+        
+        if (filteredPlaylists.length > 0) {
+          setSavedPlaylists(filteredPlaylists);
+          logger.log(`Fetched ${filteredPlaylists.length} device playlists`);
+        }
+        
+      } else {
+        logger.error('Failed to fetch presets:', result.message);
+        setCustomEffects([]); // Clear if failed
+      }
+    } catch (error) {
+      logger.error('Error fetching WLED presets:', error);
+      setCustomEffects([]); // Clear if error
+    }
+  };
 
   const showNotification = (type: NotificationState['type'], title: string, message: string) => {
     setNotification({ isVisible: true, type, title, message });
@@ -296,7 +655,9 @@ export default function KoloriApp({
           onPlaylistSelect={(id) => {}}
           setShowSettings={onShowSettings}
           liveLedData={liveLedData}
+          liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
+          onLiveLedDataUpdate={setLiveLedData}
         />
         <Notification
           {...notification}

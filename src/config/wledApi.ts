@@ -365,6 +365,178 @@ export const turnWledOff = async (
   }
 };
 
+// Function to fetch all available presets from WLED device
+export const fetchWledPresets = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<{ success: boolean; presets: any[]; playlists: any[]; message: string }> => {
+  // Try multiple endpoints as different WLED versions support different endpoints
+  const presetUrl = buildWledUrl(deviceAddress, protocol, '/json/presets');
+  const mainUrl = buildWledUrl(deviceAddress, protocol, '/json');
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    
+    let response;
+    let endpoint = '/json/presets';
+    
+    // First try the dedicated presets endpoint
+    try {
+      response = await fetch(presetUrl, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      // If we get 404 or 501, try the main endpoint
+      if (!response.ok && (response.status === 404 || response.status === 501)) {
+        endpoint = '/json';
+        response = await fetch(mainUrl, {
+          method: 'GET',
+          signal: controller.signal
+        });
+      }
+    } catch (fetchError) {
+      // If dedicated endpoint fails, try main endpoint
+      endpoint = '/json';
+      response = await fetch(mainUrl, {
+        method: 'GET',
+        signal: controller.signal
+      });
+    }
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const jsonData = await response.json();
+      let presetsData;
+      let playlistsData = {};
+      
+      if (endpoint === '/json') {
+        // Extract presets from main JSON response
+        presetsData = jsonData.presets || {};
+        playlistsData = jsonData.playlists || {};
+      } else {
+        // Direct presets response
+        presetsData = jsonData;
+      }
+      
+      // Convert WLED presets object to array format
+      const presets = Object.entries(presetsData)
+        .filter(([id, preset]) => {
+          // Filter out invalid entries and system presets
+          return id !== '-1' && preset && typeof preset === 'object' && 
+                 (preset as any).n && (preset as any).n !== '';
+        })
+        .map(([id, preset]) => {
+          const presetData = preset as any;
+          return {
+            id: parseInt(id),
+            name: presetData.n || `Preset ${id}`,
+            effectName: presetData.effectName || 'Custom Effect',
+            data: presetData
+          };
+        })
+        .sort((a, b) => a.id - b.id);
+      
+      // Convert playlists if available
+      const playlists = Object.entries(playlistsData)
+        .filter(([id, playlist]) => {
+          return id !== '-1' && playlist && typeof playlist === 'object' && 
+                 (playlist as any).n && (playlist as any).n !== '';
+        })
+        .map(([id, playlist]) => {
+          const playlistData = playlist as any;
+          return {
+            id: parseInt(id),
+            name: playlistData.n || `Playlist ${id}`,
+            data: playlistData
+          };
+        })
+        .sort((a, b) => a.id - b.id);
+      
+      logger.log(`Fetched ${presets.length} presets and ${playlists.length} playlists from WLED device using ${endpoint}`);
+      return {
+        success: true,
+        presets,
+        playlists,
+        message: `Found ${presets.length} presets and ${playlists.length} playlists`
+      };
+    } else {
+      return {
+        success: false,
+        presets: [],
+        playlists: [],
+        message: `HTTP Error: ${response.status}`
+      };
+    }
+    
+  } catch (error: any) {
+    logger.error('Failed to fetch WLED presets:', error);
+    return {
+      success: false,
+      presets: [],
+      playlists: [],
+      message: error.name === 'AbortError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Function to fetch available effects from WLED device
+export const fetchWledEffects = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<{ success: boolean; effects: any[]; message: string }> => {
+  const url = buildWledUrl(deviceAddress, protocol, '/json/effects');
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const effectsArray = await response.json();
+      
+      // Convert to custom effect format
+      const effects = effectsArray.map((effectName: string, index: number) => ({
+        id: index,
+        name: effectName,
+        effectName: effectName
+      }));
+      
+      logger.log(`Fetched ${effects.length} effects from WLED device`);
+      return {
+        success: true,
+        effects,
+        message: `Found ${effects.length} effects`
+      };
+    } else {
+      return {
+        success: false,
+        effects: [],
+        message: `HTTP Error: ${response.status}`
+      };
+    }
+    
+  } catch (error: any) {
+    logger.error('Failed to fetch WLED effects:', error);
+    return {
+      success: false,
+      effects: [],
+      message: error.name === 'AbortError' ? 'Request timeout' : `Request failed: ${error.message}`
+    };
+  }
+};
+
+// Alias for backward compatibility
+export const getWledPresets = fetchWledPresets;
+
 // Helper function to generate gradient based on palette ID
 export const generatePresetGradient = (paletteId: number): string => {
   // Create array of palette names in order (matching WLED palette IDs)

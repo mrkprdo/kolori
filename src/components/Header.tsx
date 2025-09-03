@@ -54,11 +54,29 @@ export default function Header({
         cancelButtonTintColor: isDark ? '#9ca3af' : '#6b7280',
       },
       (selectedIndex) => {
+        logger.log('Header: Device selection callback', { 
+          selectedIndex, 
+          deviceNamesLength: deviceNames.length,
+          currentActiveDeviceId: activeDeviceId 
+        });
+        
         if (selectedIndex !== undefined && selectedIndex < deviceNames.length) {
           const selectedDevice = devices[selectedIndex];
+          logger.log('Header: Selected device', {
+            selectedDevice: selectedDevice ? {
+              id: selectedDevice.id,
+              name: selectedDevice.name,
+              isConnected: selectedDevice.isConnected
+            } : null,
+            currentActiveDeviceId: activeDeviceId
+          });
+          
           if (selectedDevice && selectedDevice.id !== activeDeviceId) {
+            logger.log('Header: Calling setActiveDeviceId with:', selectedDevice.id);
             setActiveDeviceId(selectedDevice.id);
             logger.log('Switched to device:', selectedDevice.name);
+          } else {
+            logger.log('Header: Not switching - same device or invalid device');
           }
         }
       }

@@ -3,6 +3,7 @@ import { Modal, View, Text, ScrollView, TouchableOpacity, TextInput, ActivityInd
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Device } from '../types';
+import { ipToDeviceId } from '../utils/deviceId';
 
 interface AddDeviceManuallyModalProps {
   isVisible: boolean;
@@ -32,10 +33,11 @@ export default function AddDeviceManuallyModal({
     setIsValidating(true);
     // This is a simplified validation. A real app should verify the connection.
     setTimeout(() => {
+      const deviceIp = deviceIP.trim();
       const newDevice: Device = {
-        id: Date.now(),
-        name: deviceName.trim() || `WLED (${deviceIP.trim()})`,
-        ip: deviceIP.trim(),
+        id: ipToDeviceId(deviceIp),
+        name: deviceName.trim() || `WLED (${deviceIp})`,
+        ip: deviceIp,
         protocol: 'http',
         isConnected: true,
         isPlaying: false,

@@ -21,6 +21,118 @@ import {
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 
+interface DynamicLEDVisualizationProps {
+  ledData: LEDColor[];
+  subtextColor: string;
+}
+
+function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizationProps) {
+  const screenWidth = Dimensions.get('window').width - 48; // Account for padding
+  const ledCount = ledData.length;
+  
+  // Calculate optimal LED size and layout based on count
+  const getOptimalLayout = (count: number) => {
+    if (count <= 20) {
+      // Linear layout for small counts
+      return {
+        type: 'linear',
+        ledSize: Math.min(Math.floor(screenWidth / count) - 2, 12),
+        columns: count,
+        spacing: 2
+      };
+    } else if (count <= 100) {
+      // Grid layout for medium counts
+      const columns = Math.ceil(Math.sqrt(count));
+      const ledSize = Math.min(Math.floor(screenWidth / columns) - 2, 8);
+      return {
+        type: 'grid',
+        ledSize,
+        columns,
+        spacing: 2
+      };
+    } else if (count <= 300) {
+      // Dense grid for larger counts
+      const columns = Math.ceil(Math.sqrt(count));
+      const ledSize = Math.min(Math.floor(screenWidth / columns) - 1, 4);
+      return {
+        type: 'dense',
+        ledSize,
+        columns,
+        spacing: 1
+      };
+    } else {
+      // Matrix visualization for very large counts
+      const columns = Math.min(Math.ceil(Math.sqrt(count)), 40);
+      const ledSize = Math.max(Math.floor(screenWidth / columns) - 1, 2);
+      return {
+        type: 'matrix',
+        ledSize,
+        columns,
+        spacing: 0.5
+      };
+    }
+  };
+  
+  const layout = getOptimalLayout(ledCount);
+  
+  const renderLED = (color: LEDColor, index: number) => {
+    const brightness = (color.r + color.g + color.b) / 3 / 255;
+    const isActive = brightness > 0.1; // Consider LED "active" if it's not very dim
+    
+    return (
+      <View
+        key={index}
+        style={[
+          {
+            width: layout.ledSize,
+            height: layout.ledSize,
+            marginRight: layout.spacing,
+            marginBottom: layout.spacing,
+            borderRadius: layout.type === 'matrix' ? 0.5 : Math.min(layout.ledSize / 3, 2),
+            backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+            shadowColor: isActive ? `rgb(${color.r}, ${color.g}, ${color.b})` : 'transparent',
+            shadowOpacity: isActive ? Math.min(brightness * 0.8, 0.6) : 0,
+            shadowRadius: Math.min(layout.ledSize / 2, 3),
+            elevation: isActive ? 2 : 0,
+          }
+        ]}
+      >
+        {/* LED highlight effect for active LEDs */}
+        {isActive && layout.ledSize > 4 && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0.5,
+              left: 0.5,
+              borderRadius: Math.min(layout.ledSize / 4, 1),
+              height: Math.min(layout.ledSize / 3, 3),
+              width: Math.min(layout.ledSize / 2, 2),
+              backgroundColor: 'rgba(255, 255, 255, 0.4)',
+            }}
+          />
+        )}
+      </View>
+    );
+  };
+  
+  return (
+    <View style={styles.ledContainer}>
+      <View style={[
+        styles.dynamicLedGrid, 
+        { 
+          flexDirection: layout.type === 'linear' ? 'row' : 'row',
+          maxWidth: screenWidth,
+        }
+      ]}>
+        {ledData.map((color, index) => renderLED(color, index))}
+      </View>
+      <Text style={[styles.ledCount, { color: subtextColor }]}>
+        {ledCount} LED{ledCount !== 1 ? 's' : ''} live
+      </Text>
+    </View>
+  );
+}
+
 interface PresetCardProps {
   preset: any;
   isActive: boolean;
@@ -88,7 +200,9 @@ interface PresetGridProps {
   onPlaylistSelect: (playlistId: number) => void;
   setShowSettings: (show: boolean) => void;
   liveLedData: LEDColor[];
+  liveViewEnabled: boolean;
   onLiveViewToggle: (enabled: boolean) => void;
+  onLiveLedDataUpdate?: (ledData: LEDColor[]) => void;
 }
 
 export default function PresetGrid({
@@ -108,13 +222,17 @@ export default function PresetGrid({
   onPlaylistSelect,
   setShowSettings,
   liveLedData,
+  liveViewEnabled,
   onLiveViewToggle,
+  onLiveLedDataUpdate,
 }: PresetGridProps) {
   
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
-  const [liveViewEnabled, setLiveViewEnabled] = useState(true);
+  // Device presets are now passed via customEffects prop from parent
+  const devicePresets = customEffects; // Use customEffects directly
+  const loadingPresets = customEffects.length === 0 && activeDevice?.isConnected;
 
   // Theme colors
   const backgroundColor = isDark ? '#111827' : '#f9fafb';
@@ -127,17 +245,15 @@ export default function PresetGrid({
   useEffect(() => {
     const loadCollapseStates = async () => {
       try {
-        const [seasonal, customEffectsState, playlists, liveView] = await Promise.all([
+        const [seasonal, customEffectsState, playlists] = await Promise.all([
           storage.loadFromStorage(STORAGE_KEYS.SEASONAL_COLLAPSED, true),
           storage.loadFromStorage(STORAGE_KEYS.CUSTOM_EFFECTS_COLLAPSED, true),
           storage.loadFromStorage(STORAGE_KEYS.PLAYLISTS_COLLAPSED, false),
-          storage.loadFromStorage(STORAGE_KEYS.LIVE_VIEW_ENABLED, true),
         ]);
 
         setIsSeasonalCollapsed(seasonal);
         setIsCustomEffectsCollapsed(customEffectsState);
         setIsPlaylistsCollapsed(playlists);
-        setLiveViewEnabled(liveView);
       } catch (error) {
         logger.error('Failed to load collapse states:', error);
       }
@@ -159,14 +275,18 @@ export default function PresetGrid({
     storage.saveToStorage(STORAGE_KEYS.PLAYLISTS_COLLAPSED, isPlaylistsCollapsed);
   }, [isPlaylistsCollapsed]);
 
+  // Device presets are now loaded by the parent KoloriApp component
+  // This component receives them via the customEffects prop
+
+  // Note: WebSocket connection is handled by the parent KoloriApp component
+  // Live LED data is passed down via props and updated through onLiveLedDataUpdate
+
   const activePresetData = [...SEASONAL_PRESETS, ...customEffects].find(
     (p) => p.id.toString() === activePreset?.toString()
   );
 
   const handleLiveViewToggle = () => {
     const newValue = !liveViewEnabled;
-    setLiveViewEnabled(newValue);
-    storage.saveToStorage(STORAGE_KEYS.LIVE_VIEW_ENABLED, newValue);
     if (onLiveViewToggle) {
       onLiveViewToggle(newValue);
     }
@@ -203,7 +323,7 @@ export default function PresetGrid({
                   styles.toggleThumb,
                   { 
                     backgroundColor: '#ffffff',
-                    transform: [{ translateX: liveViewEnabled ? 20 : 2 }] 
+                    marginLeft: liveViewEnabled ? 22 : 2
                   }
                 ]}
               />
@@ -219,47 +339,38 @@ export default function PresetGrid({
             
             {/* Live LED Data */}
             {liveViewEnabled && liveLedData.length > 0 && (
-              <View style={styles.ledContainer}>
-                <View style={styles.ledGrid}>
-                  {liveLedData.map((color, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.ledPill,
-                        {
-                          backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-                          shadowColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-                          shadowOpacity: 0.6,
-                          shadowRadius: 4,
-                        }
-                      ]}
-                    >
-                      {/* LED highlight effect */}
-                      <View
-                        style={{
-                          position: 'absolute',
-                          top: 0.5,
-                          left: 0.5,
-                          borderRadius: 1,
-                          height: 4,
-                          backgroundColor: 'rgba(255, 255, 255, 0.4)',
-                          flex: 1,
-                          maxWidth: 2,
-                        }}
-                      />
-                    </View>
-                  ))}
-                </View>
-                <Text style={[styles.ledCount, { color: subtextColor }]}>
-                  {liveLedData.length} LED{liveLedData.length !== 1 ? 's' : ''} live
-                </Text>
-              </View>
+              <DynamicLEDVisualization 
+                ledData={liveLedData} 
+                subtextColor={subtextColor}
+              />
             )}
             
             {!liveViewEnabled && (
-              <Text style={[styles.disabledText, { color: subtextColor }]}>
-                Live view disabled
-              </Text>
+              <View>
+                <Text style={[styles.disabledText, { color: subtextColor }]}>
+                  Live view disabled
+                </Text>
+                {activeDevice?.wledInfo?.leds?.count ? (
+                  <View>
+                    <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
+                      {activeDevice.wledInfo.leds.count} LED{activeDevice.wledInfo.leds.count !== 1 ? 's' : ''} available
+                    </Text>
+                    {activeDevice.wledInfo.leds.rgbw && (
+                      <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
+                        RGBW LEDs supported
+                      </Text>
+                    )}
+                  </View>
+                ) : activeDevice?.isConnected ? (
+                  <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                    Device connected - LED count not available
+                  </Text>
+                ) : (
+                  <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                    Device offline
+                  </Text>
+                )}
+              </View>
             )}
           </View>
         </View>
@@ -327,6 +438,13 @@ export default function PresetGrid({
                     Connect to a WLED device to load available effects
                   </Text>
                 </View>
+              ) : loadingPresets ? (
+                <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                  <Ionicons name="refresh" size={24} color={subtextColor} style={styles.infoIcon} />
+                  <Text style={[styles.infoText, { color: subtextColor }]}>
+                    Loading presets from device...
+                  </Text>
+                </View>
               ) : (
                 <View>
                   {/* Add Effect Button */}
@@ -342,24 +460,33 @@ export default function PresetGrid({
                     </Text>
                   </TouchableOpacity>
 
+                  {/* Device Presets (from WLED device) */}
                   {customEffects.length > 0 ? (
-                    <View style={styles.presetGrid}>
-                      {customEffects.map((effect) => (
-                        <PresetCard
-                          key={effect.id}
-                          preset={effect}
-                          isActive={activePreset?.toString() === effect.id.toString()}
-                          onClick={onPresetSelect}
-                          showIcon={false}
-                          isDark={isDark}
-                        />
-                      ))}
+                    <View>
+                      <Text style={[styles.sectionSubtitle, { color: subtextColor, marginBottom: 8 }]}>
+                        Device Presets ({customEffects.length})
+                      </Text>
+                      <View style={styles.presetGrid}>
+                        {customEffects.map((preset) => (
+                          <PresetCard
+                            key={`device-${preset.id}`}
+                            preset={preset}
+                            isActive={activePreset?.toString() === preset.id.toString()}
+                            onClick={onPresetSelect}
+                            showIcon={false}
+                            isDark={isDark}
+                          />
+                        ))}
+                      </View>
                     </View>
                   ) : (
                     <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
                       <Ionicons name="color-palette-outline" size={24} color={subtextColor} style={styles.infoIcon} />
                       <Text style={[styles.infoText, { color: subtextColor }]}>
-                        No custom effects found.
+                        No presets or custom effects found.
+                      </Text>
+                      <Text style={[styles.infoSubtext, { color: subtextColor }]}>
+                        Save presets on your WLED device or create custom effects here.
                       </Text>
                     </View>
                   )}
@@ -479,6 +606,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+  },
   toggleSwitch: {
     width: 44,
     height: 24,
@@ -522,6 +654,13 @@ const styles = StyleSheet.create({
   ledCount: {
     fontSize: 12,
     marginTop: 8,
+  },
+  dynamicLedGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    minHeight: 20,
   },
   disabledText: {
     fontSize: 14,

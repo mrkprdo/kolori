@@ -182,8 +182,9 @@ export default function Notification({
                 backgroundColor: config.iconColor,
                 width: opacityAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
+                  outputRange: [0, 300], // Use numeric values instead of percentages
                 }),
+                maxWidth: '100%',
               }}
             />
           </View>

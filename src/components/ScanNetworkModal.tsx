@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 import { Device } from '../types';
+import { ipToDeviceId } from '../utils/deviceId';
 
 interface ScanNetworkModalProps {
   isVisible: boolean;
@@ -103,7 +104,7 @@ export default function ScanNetworkModal({
       onError: (error: string) => Alert.alert('mDNS Error', error),
     });
     await wledMdnsDiscovery.startScan();
-    const timeout = setTimeout(() => wledMdnsDiscovery.stopScan(), 5000);
+    const timeout = setTimeout(() => wledMdnsDiscovery.stopScan(), 2000);
     setScanTimeout(timeout);
   };
 
@@ -119,7 +120,7 @@ export default function ScanNetworkModal({
       if (validation.isValid) {
         const primaryIP = device.addresses?.[0] || device.host;
         const newDevice: Device = {
-          id: Date.now(),
+          id: ipToDeviceId(primaryIP),
           name: device.name,
           ip: primaryIP,
           protocol: 'http',

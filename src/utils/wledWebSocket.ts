@@ -3,6 +3,13 @@
 
 import { logger } from './logger';
 
+interface LEDColor {
+  r: number;
+  g: number;
+  b: number;
+  w?: number;
+}
+
 interface WebSocketCallbacks {
   onOpen?: (event: Event) => void;
   onMessage?: (data: any) => void;
@@ -22,9 +29,12 @@ class WledWebSocketManager {
   private isManualDisconnect = false;
 
   connectWebSocket = (ip: string, protocol = 'ws') => {
+    logger.log('🔌 Connecting WebSocket to:', `${protocol}://${ip}/ws`);
+    
     // Clean up any existing connection first
     if (this.wledSocket) {
       if (this.wledSocket.readyState === WebSocket.OPEN || this.wledSocket.readyState === WebSocket.CONNECTING) {
+        logger.log('🔌 Closing existing WebSocket before connecting to new device');
         this.isManualDisconnect = true;
         this.wledSocket.close();
       }
@@ -151,7 +161,7 @@ class WledWebSocketManager {
   };
 
   disconnectWebSocket = () => {
-    logger.log('Manually disconnecting WebSocket');
+    logger.log('🔌 Manually disconnecting WebSocket from:', this.currentIp);
     
     // Set flag to prevent reconnection
     this.isManualDisconnect = true;
@@ -162,17 +172,35 @@ class WledWebSocketManager {
       this.reconnectTimeout = null;
     }
     
-    // Close the socket
+    // Close the socket FORCEFULLY
     if (this.wledSocket) {
-      if (this.wledSocket.readyState === WebSocket.OPEN || this.wledSocket.readyState === WebSocket.CONNECTING) {
-        this.wledSocket.close(1000, "Manual disconnect");
+      const currentState = this.wledSocket.readyState;
+      logger.log('🔌 FORCE Closing WebSocket connection (state:', currentState, ')');
+      
+      // Remove all event listeners to stop any callbacks
+      this.wledSocket.onopen = null;
+      this.wledSocket.onmessage = null;
+      this.wledSocket.onclose = null;
+      this.wledSocket.onerror = null;
+      
+      if (currentState === WebSocket.OPEN || currentState === WebSocket.CONNECTING) {
+        this.wledSocket.close(1000, "FORCE Manual disconnect");
       }
       this.wledSocket = null;
+      logger.log('🔌 WebSocket FORCEFULLY terminated and nullified');
     }
     
     // Clear stored connection info
     this.currentIp = null;
     this.currentProtocol = null;
+    
+    // Clear all callback references
+    this.onMessageCallback = null;
+    this.onOpenCallback = null;
+    this.onCloseCallback = null;
+    this.onErrorCallback = null;
+    
+    logger.log('🔌 All WebSocket callbacks cleared');
   };
 
   sendWebSocketCommand = (command: any, retries = 0): boolean => {

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { WledDevice, DeviceValidationResult } from '../types';
 import { testDeviceConnectivity } from '../config/wledApi';
 import { logger } from '../utils/logger';
+import { ipToDeviceId } from '../utils/deviceId';
 
 interface DeviceFormProps {
   isVisible: boolean;
@@ -123,12 +124,13 @@ export default function DeviceForm({
       return;
     }
 
+    const deviceIp = formData.ip.trim();
     const newDevice: WledDevice = {
-      id: Date.now(),
+      id: ipToDeviceId(deviceIp),
       name: formData.name.trim(),
-      ip: formData.ip.trim(),
+      ip: deviceIp,
       protocol: formData.protocol,
-      bestAddress: validationResult.bestAddress || formData.ip,
+      bestAddress: validationResult.bestAddress || deviceIp,
       isConnected: true,
       isPlaying: false,
       autoBrightness: false,
