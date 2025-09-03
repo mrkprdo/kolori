@@ -91,6 +91,8 @@ export default function App() {
 
   useEffect(() => {
     const loadInitialData = async () => {
+      const startTime = Date.now();
+      
       try {
         const [loadedDevices, loadedSettings, agreementResult, loadedActiveId] = await Promise.all([
           loadDevices(),
@@ -128,7 +130,14 @@ export default function App() {
         setHasAgreed(false);
         transitionToScreen('agreement');
       } finally {
-        setIsLoading(false);
+        // Ensure loading screen shows for at least 2 seconds
+        const elapsedTime = Date.now() - startTime;
+        const minLoadTime = 2000; // 2 seconds
+        const remainingTime = Math.max(0, minLoadTime - elapsedTime);
+        
+        setTimeout(() => {
+          setIsLoading(false);
+        }, remainingTime);
       }
     };
     loadInitialData();

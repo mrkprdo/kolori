@@ -331,47 +331,49 @@ export default function PresetGrid({
           </View>
           
           <View style={[styles.card, { backgroundColor: cardBackground, borderColor }]}>
-            {activePresetData && (
-              <Text style={[styles.activePresetText, { color: textColor }]}>
-                Active: {activePresetData.name}
-              </Text>
-            )}
-            
-            {/* Live LED Data */}
-            {liveViewEnabled && liveLedData.length > 0 && (
-              <DynamicLEDVisualization 
-                ledData={liveLedData} 
-                subtextColor={subtextColor}
-              />
-            )}
-            
-            {!liveViewEnabled && (
-              <View>
-                <Text style={[styles.disabledText, { color: subtextColor }]}>
-                  Live view disabled
+            <View style={styles.cardContent}>
+              {activePresetData && (
+                <Text style={[styles.activePresetText, { color: textColor }]}>
+                  Active: {activePresetData.name}
                 </Text>
-                {activeDevice?.wledInfo?.leds?.count ? (
-                  <View>
-                    <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
-                      {activeDevice.wledInfo.leds.count} LED{activeDevice.wledInfo.leds.count !== 1 ? 's' : ''} available
-                    </Text>
-                    {activeDevice.wledInfo.leds.rgbw && (
-                      <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
-                        RGBW LEDs supported
+              )}
+              
+              {/* Live LED Data */}
+              {liveViewEnabled && liveLedData.length > 0 && (
+                <DynamicLEDVisualization 
+                  ledData={liveLedData} 
+                  subtextColor={subtextColor}
+                />
+              )}
+              
+              {!liveViewEnabled && (
+                <View style={styles.disabledContainer}>
+                  <Text style={[styles.disabledText, { color: subtextColor }]}>
+                    Live view disabled
+                  </Text>
+                  {activeDevice?.wledInfo?.leds?.count ? (
+                    <View>
+                      <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
+                        {activeDevice.wledInfo.leds.count} LED{activeDevice.wledInfo.leds.count !== 1 ? 's' : ''} available
                       </Text>
-                    )}
-                  </View>
-                ) : activeDevice?.isConnected ? (
-                  <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
-                    Device connected - LED count not available
-                  </Text>
-                ) : (
-                  <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
-                    Device offline
-                  </Text>
-                )}
-              </View>
-            )}
+                      {activeDevice.wledInfo.leds.rgbw && (
+                        <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
+                          RGBW LEDs supported
+                        </Text>
+                      )}
+                    </View>
+                  ) : activeDevice?.isConnected ? (
+                    <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                      Device connected - LED count not available
+                    </Text>
+                  ) : (
+                    <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                      Device offline
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -626,7 +628,8 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
+    minHeight: 80,
   },
   activePresetText: {
     fontWeight: '500',
@@ -692,8 +695,10 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-    padding: 12,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  disabledContainer: {
     alignItems: 'center',
   },
   cardIcon: {
