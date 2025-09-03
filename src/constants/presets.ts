@@ -1,14 +1,11 @@
-// Seasonal Presets Configuration
-// Migrated from kolori_old/src/constants/presets.js
-
 export interface SeasonalPreset {
-  id: number;
-  name: string;
-  icon: string;
-  gradient: string;
+  readonly id: number;
+  readonly name: string;
+  readonly icon: string;
+  readonly gradient: string;
 }
 
-export const SEASONAL_PRESETS: SeasonalPreset[] = [
+export const SEASONAL_PRESETS: readonly SeasonalPreset[] = [
   {
     id: 1,
     name: "Autumn",

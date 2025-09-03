@@ -1,6 +1,3 @@
-// WelcomePage Component for React Native
-// Migrated from kolori_old/src/components/WelcomePage.jsx
-
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

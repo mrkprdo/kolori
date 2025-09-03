@@ -1,7 +1,4 @@
-// Header Component for React Native
-// Converted to use StyleSheet instead of TailwindCSS
-
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useActionSheet } from '@expo/react-native-action-sheet';
@@ -19,7 +16,10 @@ interface HeaderProps {
   scheduleMode: ScheduleMode;
 }
 
-export default function Header({
+/**
+ * Optimized Header component with memoization and performance enhancements
+ */
+const Header = React.memo(function Header({
   deviceName,
   isConnected,
   devices,
@@ -31,15 +31,22 @@ export default function Header({
 }: HeaderProps) {
   const { showActionSheetWithOptions } = useActionSheet();
 
-  const backgroundColor = isDark ? '#1f2937' : '#ffffff';
-  const borderColor = isDark ? '#374151' : '#e5e7eb';
-  const textColor = isDark ? '#ffffff' : '#111827';
-  const subtextColor = isDark ? '#9ca3af' : '#6b7280';
+  // Memoize theme colors to prevent recalculation
+  const themeColors = useMemo(() => ({
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderColor: isDark ? '#374151' : '#e5e7eb',
+    textColor: isDark ? '#ffffff' : '#111827',
+    subtextColor: isDark ? '#9ca3af' : '#6b7280',
+    dropdownBg: isDark ? '#374151' : '#f3f4f6',
+    dropdownBorder: isDark ? '#4b5563' : '#d1d5db',
+  }), [isDark]);
 
-  const handleDeviceSwitch = () => {
+  // Memoize device names to prevent recalculation
+  const deviceNames = useMemo(() => devices.map(d => d.name), [devices]);
+
+  const handleDeviceSwitch = useCallback(() => {
     if (devices.length <= 1) return;
 
-    const deviceNames = devices.map(d => d.name);
     const options = [...deviceNames, 'Cancel'];
     const cancelButtonIndex = options.length - 1;
 
@@ -48,10 +55,10 @@ export default function Header({
         options,
         cancelButtonIndex,
         title: 'Select a Device',
-        titleTextStyle: { color: isDark ? '#ffffff' : '#000000' },
-        containerStyle: { backgroundColor: isDark ? '#1f2937' : '#ffffff' },
+        titleTextStyle: { color: themeColors.textColor },
+        containerStyle: { backgroundColor: themeColors.backgroundColor },
         textStyle: { color: isDark ? '#60a5fa' : '#3b82f6' },
-        cancelButtonTintColor: isDark ? '#9ca3af' : '#6b7280',
+        cancelButtonTintColor: themeColors.subtextColor,
       },
       (selectedIndex) => {
         logger.log('Header: Device selection callback', { 
@@ -81,10 +88,14 @@ export default function Header({
         }
       }
     );
-  };
+  }, [devices, deviceNames, themeColors, isDark, activeDeviceId, setActiveDeviceId, showActionSheetWithOptions]);
+
+  const handleSettingsPress = useCallback(() => {
+    setShowSettings(true);
+  }, [setShowSettings]);
 
   return (
-    <View style={[styles.header, { backgroundColor, borderBottomColor: borderColor }]}>
+    <View style={[styles.header, { backgroundColor: themeColors.backgroundColor, borderBottomColor: themeColors.borderColor }]}>
       <View style={styles.headerContent}>
         {/* Logo */}
         <Text style={styles.logo}>
@@ -100,8 +111,8 @@ export default function Header({
               style={[
                 styles.deviceDropdown,
                 { 
-                  backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                  borderColor: isDark ? '#4b5563' : '#d1d5db'
+                  backgroundColor: themeColors.dropdownBg,
+                  borderColor: themeColors.dropdownBorder
                 }
               ]}
             >
@@ -112,11 +123,11 @@ export default function Header({
                     { backgroundColor: isConnected ? '#10b981' : '#ef4444' }
                   ]} 
                 />
-                <Text style={[styles.deviceName, { color: textColor }]} numberOfLines={1}>
+                <Text style={[styles.deviceName, { color: themeColors.textColor }]} numberOfLines={1}>
                   {deviceName}
                 </Text>
                 {devices.length > 1 && (
-                  <Ionicons name="chevron-down" size={16} color={subtextColor} style={styles.dropdownIcon} />
+                  <Ionicons name="chevron-down" size={16} color={themeColors.subtextColor} style={styles.dropdownIcon} />
                 )}
               </View>
             </TouchableOpacity>
@@ -125,15 +136,33 @@ export default function Header({
         
         {/* Settings Button */}
         <TouchableOpacity 
-          onPress={() => setShowSettings(true)}
+          onPress={handleSettingsPress}
           style={styles.settingsButton}
         >
-          <Ionicons name="settings" size={24} color={textColor} />
+          <Ionicons name="settings" size={24} color={themeColors.textColor} />
         </TouchableOpacity>
       </View>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.deviceName === nextProps.deviceName &&
+    prevProps.isConnected === nextProps.isConnected &&
+    prevProps.activeDeviceId === nextProps.activeDeviceId &&
+    prevProps.isDark === nextProps.isDark &&
+    prevProps.scheduleMode === nextProps.scheduleMode &&
+    prevProps.devices.length === nextProps.devices.length &&
+    prevProps.devices.every((device, index) => {
+      const nextDevice = nextProps.devices[index];
+      return device?.id === nextDevice?.id && 
+             device?.name === nextDevice?.name &&
+             device?.isConnected === nextDevice?.isConnected;
+    })
+  );
+});
+
+export default Header;
 
 const styles = StyleSheet.create({
   header: {

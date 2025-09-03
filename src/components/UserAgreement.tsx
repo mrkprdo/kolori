@@ -1,6 +1,3 @@
-// UserAgreement Component for React Native
-// Migrated from kolori_old/src/components/UserAgreement.jsx
-
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

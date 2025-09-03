@@ -1,18 +1,21 @@
-// Main Kolori App Component for React Native
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+// Utilities
 import { logger } from '../utils/logger';
 import { storage, STORAGE_KEYS } from '../utils/storage';
+
+// Services
 import { deviceMonitor, DeviceStatus } from '../services/deviceMonitor';
 import {
   connectWebSocket,
   disconnectWebSocket,
   setWebSocketCallbacks,
   sendWebSocketCommand,
-  savePlaylistViaWebSocket,
 } from '../utils/wledWebSocket';
+
+// API & Config
 import {
   activateWledPreset,
   activateWledPresetById,
@@ -20,10 +23,12 @@ import {
   checkWledHeartbeat,
   turnWledOn,
   turnWledOff,
-  getWledPresets, // Added getWledPresets
+  getWledPresets,
   generatePresetGradient,
 } from '../config/wledApi';
 import { SEASONAL_PRESETS } from '../constants/presets';
+
+// Types
 import {
   Device as WledDevice,
   Settings,
@@ -32,10 +37,14 @@ import {
   LEDColor,
 } from '../types';
 
+// Components
 import Header from './Header';
 import PresetGrid from './PresetGrid';
 import PlaylistModal from './PlaylistModal';
 
+/**
+ * Props for the main KoloriApp component
+ */
 interface KoloriAppProps {
   navigation: any;
   devices: WledDevice[];
@@ -53,7 +62,15 @@ interface KoloriAppProps {
   onScanFromMain: () => void;
 }
 
-export default function KoloriApp({
+/**
+ * Main Kolori App Component - Optimized React Native component
+ * Handles WLED device management, preset activation, and playlist functionality
+ * 
+ * @component
+ * @param {KoloriAppProps} props - Component properties
+ * @returns {JSX.Element} The main application interface
+ */
+const KoloriApp = React.memo(function KoloriApp({
   navigation,
   devices,
   activeDeviceId,
@@ -71,11 +88,11 @@ export default function KoloriApp({
 }: KoloriAppProps) {
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
   
-  // Debug logging for playlist state changes
+  // Debug logging for playlist state changes - memoized to prevent unnecessary logging
   useEffect(() => {
     logger.log('📋 Current playlist state changed:', 
       `${currentPlaylist.length} items, device ${activeDeviceId} (${activeDevice?.name})`);
-  }, [currentPlaylist, activeDeviceId, activeDevice?.name]);
+  }, [currentPlaylist.length, activeDeviceId, activeDevice?.name]); // Only log on meaningful changes
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
@@ -100,8 +117,8 @@ export default function KoloriApp({
   const settingsRef = useRef(settings);
   const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
   
-  // Helper function to generate hash for comparing data changes
-  const generateHash = (data: any[]): string => {
+  // Memoized helper function to generate hash for comparing data changes
+  const generateHash = useCallback((data: any[]): string => {
     return JSON.stringify(data.map(item => ({
       id: item.id,
       name: item.name,
@@ -110,16 +127,16 @@ export default function KoloriApp({
       ...(item.gradient && { gradient: item.gradient }),
       ...(item.isWledPreset !== undefined && { isWledPreset: item.isWledPreset })
     }))).substring(0, 100); // Use first 100 chars as hash
-  };
+  }, []);
   
-  // Helper function to check if cached data is different from new data
-  const hasDataChanged = (newData: any[], cachedHash: string): boolean => {
+  // Memoized helper function to check if cached data is different from new data
+  const hasDataChanged = useCallback((newData: any[], cachedHash: string): boolean => {
     const newHash = generateHash(newData);
     return newHash !== cachedHash;
-  };
+  }, [generateHash]);
   
-  // Helper function to load cached data for device
-  const loadCachedDataForDevice = (deviceId: number | undefined) => {
+  // Memoized helper function to load cached data for device
+  const loadCachedDataForDevice = useCallback((deviceId: number | undefined) => {
     if (!deviceId || !deviceCacheRef.current[deviceId]) {
       logger.log('📦 No cached data for device:', deviceId);
       return;
@@ -133,12 +150,21 @@ export default function KoloriApp({
     
     setCustomEffects(cached.presets);
     setSavedPlaylists(cached.playlists.map(playlist => ({ ...playlist, isActive: false })));
-  };
+  }, []);
   
   useEffect(() => { devicesRef.current = devices; }, [devices]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
-  // Calculate activeDevice first, before any useEffects that depend on it
-  const activeDevice = devices.find((d) => d.id === activeDeviceId) || devices[0];
+  
+  // Calculate activeDevice with memoization to prevent unnecessary re-renders
+  const activeDevice = useMemo(() => {
+    const device = devices.find((d) => d.id === activeDeviceId) || devices[0];
+    logger.log('🔄 activeDevice recalculated:', {
+      deviceId: device?.id,
+      deviceName: device?.name,
+      isConnected: device?.isConnected
+    });
+    return device;
+  }, [devices, activeDeviceId]);
   
   useEffect(() => { 
     activeDeviceRef.current = activeDevice;
@@ -164,6 +190,12 @@ export default function KoloriApp({
     if (activeDevice?.id) {
       onDeviceUpdate(activeDevice.id, { activePreset: null });
     }
+    
+    // Clear any active playlist when switching devices
+    setSavedPlaylists(prev => prev.map(playlist => ({ 
+      ...playlist, 
+      isActive: false 
+    })));
     
     // Check if we have cached data for this device
     if (activeDevice?.id && deviceCacheRef.current[activeDevice.id]) {
@@ -227,6 +259,24 @@ export default function KoloriApp({
       deviceMonitor.stop();
     };
   }, [devices, onDeviceUpdate]);
+
+  // Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Clear all timeouts and intervals
+      disconnectWebSocket();
+      deviceMonitor.stop();
+      // Clear all state to free memory
+      setCurrentPlaylist([]);
+      setSavedPlaylists([]);
+      setCustomEffects([]);
+      setLiveLedData([]);
+      setDeviceStatuses([]);
+      // Clear cache
+      deviceCacheRef.current = {};
+      logger.log('🧹 KoloriApp: Cleanup completed on unmount');
+    };
+  }, []); // Only run on unmount
 
   // Clear Live View UI when device changes (WebSocket will handle the rest)
   useEffect(() => {
@@ -367,7 +417,6 @@ export default function KoloriApp({
             if (isMounted && currentLiveViewEnabled) {
               setLiveLedData(message.data);
             } else {
-              logger.warn('🚫 Ignoring LED data - live view disabled');
               // Clear any existing data if live view is disabled
               setLiveLedData([]);
             }
@@ -550,22 +599,24 @@ export default function KoloriApp({
     }
   }, [settings.liveViewEnabled, activeDevice?.isConnected, activeDevice?.id]);
 
-  const isConnected = activeDevice?.isConnected || false;
-  const deviceName = activeDevice?.name || 'No Device';
-  const activePreset = activeDevice?.activePreset || null;
-  const isDark = settings.theme === 'dark';
+  // Memoize computed values to prevent unnecessary re-renders
+  const isConnected = useMemo(() => activeDevice?.isConnected || false, [activeDevice?.isConnected]);
+  const deviceName = useMemo(() => activeDevice?.name || 'No Device', [activeDevice?.name]);
+  const activePreset = useMemo(() => activeDevice?.activePreset || null, [activeDevice?.activePreset]);
+  const isDark = useMemo(() => settings.theme === 'dark', [settings.theme]);
 
-  const getDeviceAddress = (device: WledDevice | undefined): string | null => {
-    const address = device?.bestAddress || device?.ip || null;
+  const getDeviceAddress = useCallback((device: WledDevice | undefined): string | null => {
+    if (!device) return null;
+    const address = device.bestAddress || device.ip || null;
     logger.log('🔍 getDeviceAddress for device:', {
-      deviceId: device?.id,
-      deviceName: device?.name,
-      bestAddress: device?.bestAddress,
-      ip: device?.ip,
+      deviceId: device.id,
+      deviceName: device.name,
+      bestAddress: device.bestAddress,
+      ip: device.ip,
       resolvedAddress: address
     });
     return address;
-  };
+  }, []);
 
   
   // Fallback function to fetch device info via HTTP if WebSocket fails
@@ -679,8 +730,8 @@ export default function KoloriApp({
     console.log(`${type.toUpperCase()}: ${title} - ${message}`);
   };
 
-  // Handle preset activation on device
-  const handlePresetSelect = async (presetId: string | number) => {
+  // Handle preset activation on device - memoized to prevent unnecessary re-creation
+  const handlePresetSelect = useCallback(async (presetId: string | number) => {
     if (!activeDevice?.isConnected) {
       showNotification('error', 'Device Offline', 'Connect to a WLED device to activate presets.');
       return;
@@ -726,6 +777,12 @@ export default function KoloriApp({
         // Update the active device's active preset
         onDeviceUpdate(activeDevice.id, { activePreset: presetId });
         
+        // Clear any active playlist when a preset is selected
+        setSavedPlaylists(prev => prev.map(playlist => ({ 
+          ...playlist, 
+          isActive: false 
+        })));
+        
         showNotification(
           'success', 
           'Preset Activated', 
@@ -745,10 +802,10 @@ export default function KoloriApp({
         `Could not activate preset: ${error.message}`
       );
     }
-  };
+  }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, customEffects, getDeviceAddress, onDeviceUpdate]);
 
-  // Fetch WLED presets and playlists from device
-  const fetchWledPresets = async () => {
+  // Fetch WLED presets and playlists from device - memoized
+  const fetchWledPresets = useCallback(async () => {
     if (!activeDevice?.isConnected) {
       showNotification(
         "error",
@@ -853,11 +910,11 @@ export default function KoloriApp({
         `Could not fetch presets: ${error.message}`
       );
     }
-  };
+  }, [activeDevice?.isConnected, activeDevice?.id, activeDevice?.name, activeDevice?.protocol, getDeviceAddress, generateHash, hasDataChanged]);
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111827' : '#f9fafb' }]}>
+      <SafeAreaView style={[styles.container, isDark ? styles.statusBarDark : styles.statusBarLight]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <Header
           deviceName={deviceName}
@@ -884,7 +941,7 @@ export default function KoloriApp({
           isLoadingPlaylists={isLoadingPlaylists}
           onPlaylistEdit={(playlist) => {}}
           onPlaylistRemove={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
-          onPlaylistSelect={async (id) => {
+          onPlaylistSelect={useCallback(async (id: number) => {
             const selectedPlaylist = savedPlaylists.find(p => p.id === id);
             if (selectedPlaylist) {
               logger.log('📋 Setting playlist as current:', selectedPlaylist.name, selectedPlaylist.items?.length, 'effects');
@@ -898,7 +955,6 @@ export default function KoloriApp({
               })));
 
               // Now actually activate the playlist on the WLED device
-              const activeDevice = devices.find(device => device.id === activeDeviceId);
               if (activeDevice?.isConnected && selectedPlaylist.presetId) {
                 logger.log('🎯 Activating playlist on WLED device with preset ID:', selectedPlaylist.presetId);
                 
@@ -911,8 +967,9 @@ export default function KoloriApp({
                   
                   if (result.success) {
                     logger.log('✅ Playlist activated successfully on WLED device');
+                    // Clear the preset activePreset when playlist is activated (they use different systems)
                     onDeviceUpdate(activeDeviceId!, {
-                      activePreset: selectedPlaylist.id,
+                      activePreset: null,
                       isPlaying: true,
                     });
                   } else {
@@ -927,7 +984,7 @@ export default function KoloriApp({
                 logger.warn('❌ Playlist has no preset ID - cannot activate on WLED device');
               }
             }
-          }}
+          }, [savedPlaylists, activeDevice?.isConnected, activeDevice?.protocol, activeDeviceId, getDeviceAddress, onDeviceUpdate])}
           setShowSettings={onShowSettings}
           liveLedData={liveLedData}
           liveViewEnabled={settings.liveViewEnabled}
@@ -943,156 +1000,81 @@ export default function KoloriApp({
           onSavePlaylist={(playlist) => setSavedPlaylists(prev => [...prev, playlist])}
           onEditPlaylist={(playlist) => setSavedPlaylists(prev => prev.map(p => p.id === playlist.id ? playlist : p))}
           onDeletePlaylist={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
-          onPlayPlaylist={async (playlistId) => {
-            const playlist = savedPlaylists.find(p => p.id === playlistId);
-            if (!playlist || playlist.items.length === 0) {
-              logger.warn('Playlist not found or empty:', playlistId);
-              return;
-            }
-            
-            const activeDevice = devices.find(device => device.id === activeDeviceId);
-            if (!activeDevice || !activeDevice.isConnected) {
-              logger.warn('No active device found or device is offline for playlist activation');
+          onPlayPlaylist={useCallback(async (playlistId: number) => {
+            // Use the same logic as onPlaylistSelect since it's working
+            const selectedPlaylist = savedPlaylists.find(p => p.id === playlistId);
+            if (!selectedPlaylist) {
+              logger.warn('Playlist not found:', playlistId);
               return;
             }
 
-            logger.log('🎵 Playing playlist:', playlist.name, 'with', playlist.items.length, 'items');
+            logger.log('🎵 Playing playlist via PlaylistModal:', selectedPlaylist.name, selectedPlaylist.items?.length, 'effects');
+            logger.log('📱 Playlist preset ID:', selectedPlaylist.presetId || 'NOT SET');
             
-            try {
-              // First, try to fetch current playlists from WLED device to get the correct preset ID
-              logger.log('🔍 Fetching current playlists from WLED device to find preset ID...');
-              const wledResult = await getWledPresets(
-                getDeviceAddress(activeDevice),
-                activeDevice.protocol || "http"
-              );
+            if (activeDevice?.isConnected && selectedPlaylist.presetId) {
+              logger.log('🎯 Activating playlist on WLED device with preset ID:', selectedPlaylist.presetId);
               
-              let wledPlaylistPresetId = playlist.presetId; // Use stored preset ID as fallback
-              
-              if (wledResult.success && wledResult.playlists) {
-                logger.log('📋 Available playlists on WLED device:', wledResult.playlists.map(p => `"${p.name}" (ID: ${p.presetId})`));
-                
-                // Try to find the playlist on the WLED device by name
-                const wledPlaylist = wledResult.playlists.find(p => 
-                  p.name.toLowerCase() === playlist.name.toLowerCase()
-                );
-                
-                if (wledPlaylist && wledPlaylist.presetId) {
-                  wledPlaylistPresetId = wledPlaylist.presetId;
-                  logger.log('🎯 Found playlist on WLED device:', `"${wledPlaylist.name}" with preset ID: ${wledPlaylistPresetId}`);
-                } else {
-                  logger.log('📝 Playlist not found on WLED device, will need to create it');
-                  logger.log('🔍 Looking for playlist name:', `"${playlist.name}"`);
-                }
-              } else {
-                logger.log('❌ Failed to fetch playlists from WLED device or no playlists found');
-              }
-              
-              // Check if we have a valid preset ID to activate
-              if (wledPlaylistPresetId) {
-                logger.log('📋 Setting playlist as current:', playlist.name, playlist.items.length, 'effects');
-                logger.log('🎯 ACTIVATING PLAYLIST WITH PRESET ID:', wledPlaylistPresetId);
-                logger.log('📱 Calling activateWledPresetById with ID:', wledPlaylistPresetId);
-                
-                // Use HTTP API to activate the playlist preset (same as old app)
+              try {
                 const result = await activateWledPresetById(
                   getDeviceAddress(activeDevice),
-                  wledPlaylistPresetId,
+                  selectedPlaylist.presetId,
                   activeDevice.protocol || "http"
                 );
                 
                 if (result.success) {
-                  logger.log('✅ WLED playlist activated successfully');
-                  // Update device state
+                  logger.log('✅ Playlist activated successfully on WLED device');
+                  // Clear the preset activePreset when playlist is activated (they use different systems)
                   onDeviceUpdate(activeDeviceId!, {
-                    activePreset: playlist.id,
+                    activePreset: null,
                     isPlaying: true,
                   });
-                  
-                  // Update local playlist with the correct preset ID if it was fetched from device
-                  if (wledPlaylistPresetId !== playlist.presetId) {
-                    const updatedPlaylist = { ...playlist, presetId: wledPlaylistPresetId };
-                    setSavedPlaylists(prev => prev.map(p => p.id === playlist.id ? updatedPlaylist : p));
-                  }
                 } else {
-                  logger.error('❌ Failed to activate WLED playlist:', result.message);
-                  throw new Error(result.message);
+                  logger.error('❌ Failed to activate playlist on WLED device:', result.message);
                 }
-              } else {
-                // Playlist not saved to WLED device - create and save it first
-                logger.log('📝 Playlist not saved to WLED device, creating it first...');
-                
-                // Generate a unique preset ID for the playlist
-                const timestamp = Date.now();
-                const randomComponent = Math.floor(Math.random() * 100);
-                const playlistPresetId = 50 + ((timestamp + randomComponent) % 200);
-                
-                // Save playlist to WLED device
-                const saved = savePlaylistViaWebSocket(
-                  playlistPresetId,
-                  playlist.name,
-                  playlist.items,
-                  {
-                    transition: 7, // 0.7 seconds transition
-                    repeat: 0 // Infinite repeat
-                  }
-                );
-                
-                if (saved) {
-                  logger.log('✅ Playlist saved to WLED device with preset ID:', playlistPresetId);
-                  
-                  // Update local playlist with the preset ID
-                  const updatedPlaylist = { ...playlist, presetId: playlistPresetId };
-                  setSavedPlaylists(prev => prev.map(p => p.id === playlist.id ? updatedPlaylist : p));
-                  
-                  // Now activate the playlist using HTTP API
-                  logger.log('📋 Setting newly created playlist as current:', playlist.name, playlist.items.length, 'effects');
-                  logger.log('📱 Activating newly created WLED playlist preset ID:', playlistPresetId);
-                  
-                  const activateResult = await activateWledPresetById(
-                    getDeviceAddress(activeDevice),
-                    playlistPresetId,
-                    activeDevice.protocol || "http"
-                  );
-                  
-                  if (activateResult.success) {
-                    logger.log('✅ Newly created WLED playlist activated successfully');
-                    onDeviceUpdate(activeDeviceId!, {
-                      activePreset: playlist.id,
-                      isPlaying: true,
-                    });
-                  } else {
-                    logger.warn('❌ Failed to activate newly created WLED playlist:', activateResult.message);
-                  }
-                } else {
-                  logger.error('❌ Failed to save playlist to WLED device');
-                  // Fallback: just activate the first preset
-                  const firstItem = playlist.items[0];
-                  logger.log('🔄 Fallback: activating first preset in playlist:', firstItem.name);
-                  const result = await activateWledPresetById(
-                    getDeviceAddress(activeDevice),
-                    firstItem.presetId,
-                    activeDevice.protocol || "http"
-                  );
-                  
-                  if (result.success) {
-                    logger.log('✅ First preset activated as fallback');
-                  } else {
-                    logger.error('❌ Fallback preset activation also failed:', result.message);
-                  }
-                }
+              } catch (error) {
+                logger.error('❌ Error activating playlist:', error);
               }
-            } catch (error) {
-              logger.error('Error playing playlist:', error);
+            } else if (!activeDevice?.isConnected) {
+              logger.warn('❌ Device offline - cannot activate playlist');
+            } else if (!selectedPlaylist.presetId) {
+              logger.warn('❌ Playlist has no preset ID - cannot activate on WLED device');
+              logger.log('💡 Tip: Try refreshing playlists from the device to get preset IDs');
             }
-          }}
+          }, [savedPlaylists, activeDevice?.isConnected, activeDevice?.protocol, activeDeviceId, getDeviceAddress, onDeviceUpdate])}
         />
       </SafeAreaView>
     </SafeAreaProvider>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.activeDeviceId === nextProps.activeDeviceId &&
+    prevProps.devices.length === nextProps.devices.length &&
+    prevProps.devices.every((device, index) => {
+      const nextDevice = nextProps.devices[index];
+      return device.id === nextDevice?.id &&
+             device.isConnected === nextDevice?.isConnected &&
+             device.name === nextDevice?.name &&
+             device.activePreset === nextDevice?.activePreset;
+    }) &&
+    prevProps.settings.theme === nextProps.settings.theme &&
+    prevProps.settings.liveViewEnabled === nextProps.settings.liveViewEnabled &&
+    prevProps.settings.scheduleMode === nextProps.settings.scheduleMode &&
+    prevProps.showScanNetworkModal === nextProps.showScanNetworkModal
+  );
+});
 
+export default KoloriApp;
+
+// Memoize styles to prevent recreation on every render
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  statusBarLight: {
+    backgroundColor: '#f9fafb',
+  },
+  statusBarDark: {
+    backgroundColor: '#111827',
   },
 });

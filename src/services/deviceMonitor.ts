@@ -1,6 +1,3 @@
-// Device Monitoring Service for WLED devices
-// Provides background monitoring of device connectivity status
-
 import { checkWledHeartbeat } from '../config/wledApi';
 import { logger } from '../utils/logger';
 import { WledDevice } from '../types';
@@ -17,9 +14,9 @@ export type DeviceStatusCallback = (statuses: DeviceStatus[]) => void;
 
 class DeviceMonitorService {
   private monitoringInterval: NodeJS.Timeout | null = null;
-  private devices: WledDevice[] = [];
-  private statusCallbacks: DeviceStatusCallback[] = [];
-  private currentStatuses: Map<number, DeviceStatus> = new Map();
+  private devices: readonly WledDevice[] = [];
+  private readonly statusCallbacks: DeviceStatusCallback[] = [];
+  private readonly currentStatuses = new Map<number, DeviceStatus>();
   private readonly CHECK_INTERVAL = 10000; // 10 seconds
   private readonly REQUEST_TIMEOUT = 5000; // 5 seconds
   private readonly MAX_CONSECUTIVE_FAILURES = 3; // 3 failures before marking offline
@@ -28,7 +25,7 @@ class DeviceMonitorService {
   /**
    * Start monitoring devices
    */
-  public start(devices: WledDevice[]): void {
+  readonly start = (devices: readonly WledDevice[]): void => {
     if (this.isMonitoring) {
       this.stop();
     }
@@ -45,78 +42,78 @@ class DeviceMonitorService {
     this.monitoringInterval = setInterval(() => {
       this.checkAllDevices();
     }, this.CHECK_INTERVAL);
-  }
+  };
 
   /**
    * Stop monitoring devices
    */
-  public stop(): void {
+  readonly stop = (): void => {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
     }
     this.isMonitoring = false;
     logger.log('⏹️ Device monitor stopped');
-  }
+  };
 
   /**
    * Update the device list being monitored
    */
-  public updateDevices(devices: WledDevice[]): void {
+  readonly updateDevices = (devices: readonly WledDevice[]): void => {
     this.devices = devices;
     if (this.isMonitoring) {
       // Trigger immediate check for new devices
       this.checkAllDevices();
     }
-  }
+  };
 
   /**
    * Add a callback to receive status updates
    */
-  public addStatusCallback(callback: DeviceStatusCallback): void {
+  readonly addStatusCallback = (callback: DeviceStatusCallback): void => {
     this.statusCallbacks.push(callback);
     // Send current statuses immediately
     if (this.currentStatuses.size > 0) {
       callback(Array.from(this.currentStatuses.values()));
     }
-  }
+  };
 
   /**
    * Remove a status callback
    */
-  public removeStatusCallback(callback: DeviceStatusCallback): void {
+  readonly removeStatusCallback = (callback: DeviceStatusCallback): void => {
     const index = this.statusCallbacks.indexOf(callback);
     if (index > -1) {
       this.statusCallbacks.splice(index, 1);
     }
-  }
+  };
 
   /**
    * Get current status for a specific device
    */
-  public getDeviceStatus(deviceId: number): DeviceStatus | null {
+  readonly getDeviceStatus = (deviceId: number): DeviceStatus | null => {
     return this.currentStatuses.get(deviceId) || null;
-  }
+  };
 
   /**
    * Get all current statuses
    */
-  public getAllStatuses(): DeviceStatus[] {
+  readonly getAllStatuses = (): DeviceStatus[] => {
     return Array.from(this.currentStatuses.values());
-  }
+  };
 
   /**
    * Force an immediate check of all devices
    */
-  public async forceCheck(): Promise<DeviceStatus[]> {
+  readonly forceCheck = async (): Promise<DeviceStatus[]> => {
     await this.checkAllDevices();
     return this.getAllStatuses();
-  }
+  };
 
   /**
    * Check connectivity for all devices
    */
-  private async checkAllDevices(): Promise<void> {
+  private readonly checkAllDevices = async (): Promise<void> => {
     if (this.devices.length === 0) {
       return;
     }
@@ -170,7 +167,7 @@ class DeviceMonitorService {
   /**
    * Check connectivity for a single device with retry logic
    */
-  private async checkSingleDevice(device: WledDevice): Promise<DeviceStatus> {
+  private readonly checkSingleDevice = async (device: WledDevice): Promise<DeviceStatus> => {
     const startTime = Date.now();
     const deviceAddress = device.bestAddress || device.ip;
     const previousStatus = this.currentStatuses.get(device.id);
@@ -237,30 +234,29 @@ class DeviceMonitorService {
   /**
    * Notify all registered callbacks with status updates
    */
-  private notifyCallbacks(statuses: DeviceStatus[]): void {
+  private readonly notifyCallbacks = (statuses: readonly DeviceStatus[]): void => {
     this.statusCallbacks.forEach(callback => {
       try {
-        callback(statuses);
+        callback([...statuses]);
       } catch (error) {
         logger.error('Status callback error:', error);
       }
     });
-  }
+  };
 
   /**
    * Get monitoring statistics
    */
-  public getStats(): {
+  readonly getStats = (): {
     isMonitoring: boolean;
     deviceCount: number;
     onlineCount: number;
     lastCheckTime: number | null;
-  } {
-    const onlineCount = Array.from(this.currentStatuses.values())
-      .filter(status => status.isOnline).length;
+  } => {
+    const statuses = Array.from(this.currentStatuses.values());
+    const onlineCount = statuses.filter(status => status.isOnline).length;
     
-    const lastCheckTimes = Array.from(this.currentStatuses.values())
-      .map(status => status.lastChecked);
+    const lastCheckTimes = statuses.map(status => status.lastChecked);
     
     const lastCheckTime = lastCheckTimes.length > 0 
       ? Math.max(...lastCheckTimes) 
@@ -272,7 +268,7 @@ class DeviceMonitorService {
       onlineCount,
       lastCheckTime
     };
-  }
+  };
 }
 
 // Export singleton instance

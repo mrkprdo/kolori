@@ -1,7 +1,4 @@
-// PresetGrid Component for React Native
-// Clean implementation with consistent theming
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -31,7 +28,11 @@ interface AnimatedPlaylistItemProps {
   onPress: (id: number) => void;
 }
 
-function AnimatedPlaylistItem({ playlist, index, onPress }: AnimatedPlaylistItemProps) {
+const AnimatedPlaylistItem = React.memo(function AnimatedPlaylistItem({ 
+  playlist, 
+  index, 
+  onPress 
+}: AnimatedPlaylistItemProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   
   // Animate in when playlist appears
@@ -43,7 +44,17 @@ function AnimatedPlaylistItem({ playlist, index, onPress }: AnimatedPlaylistItem
       delay: index * 50, // Staggered animation
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [scaleAnim, index]);
+
+  const handlePress = useCallback(() => {
+    onPress(playlist.id);
+  }, [playlist.id, onPress]);
+
+  const cardStyle = useMemo(() => [
+    styles.playlistCard,
+    { backgroundColor: '#8b5cf6' },
+    playlist.isActive && { borderWidth: 2, borderColor: '#3b82f6' }
+  ], [playlist.isActive]);
   
   return (
     <Animated.View
@@ -55,29 +66,34 @@ function AnimatedPlaylistItem({ playlist, index, onPress }: AnimatedPlaylistItem
       ]}
     >
       <TouchableOpacity
-        onPress={() => onPress(playlist.id)}
+        onPress={handlePress}
         style={styles.touchableArea}
       >
-        <View
-          style={[
-            styles.playlistCard,
-            { backgroundColor: '#8b5cf6' },
-            playlist.isActive && { borderWidth: 2, borderColor: '#3b82f6' }
-          ]}
-        >
+        <View style={cardStyle}>
           <Text style={styles.playlistName}>
             {playlist.name}
           </Text>
           <Text style={styles.playlistCount}>
             {playlist.items?.length || 0} effects
           </Text>
+          {playlist.isActive && (
+            <View style={styles.activeIndicator}>
+              <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     </Animated.View>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.playlist.id === nextProps.playlist.id &&
+         prevProps.playlist.name === nextProps.playlist.name &&
+         prevProps.playlist.isActive === nextProps.playlist.isActive &&
+         prevProps.playlist.items?.length === nextProps.playlist.items?.length &&
+         prevProps.index === nextProps.index;
+});
 
-// Helper function to extract primary color from gradient string
+// Helper function to extract primary color from gradient string - pure function for reusability
 const extractPrimaryColor = (gradient: string): string => {
   if (!gradient || typeof gradient !== 'string') {
     return '#6366f1'; // fallback color
@@ -88,7 +104,7 @@ const extractPrimaryColor = (gradient: string): string => {
   return colorMatch ? colorMatch[0] : '#6366f1';
 };
 
-// Helper function to parse gradient string and extract colors for LinearGradient
+// Helper function to parse gradient string and extract colors for LinearGradient - pure function
 const parseGradientString = (gradientString: string): { colors: string[], locations?: number[] } => {
   if (!gradientString || typeof gradientString !== 'string') {
     return { colors: ['#6366f1', '#8b5cf6'] }; // default gradient

@@ -1,6 +1,3 @@
-// DeviceForm Component for React Native
-// Migrated from kolori_old/src/components/DeviceForm.jsx
-
 import React, { useState, useEffect } from 'react';
 import { 
   View, 

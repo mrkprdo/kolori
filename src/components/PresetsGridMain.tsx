@@ -1,4 +1,3 @@
-// Main Presets Grid Component for React Native - Main Screen
 import React, { useState, useEffect } from 'react';
 import { 
   View, 

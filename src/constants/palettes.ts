@@ -1,7 +1,3 @@
-// WLED Color Palettes Data
-// Migrated and simplified from kolori_old/src/constants/palettes.js
-// Each palette entry is [position, red, green, blue] where position is 0-255
-
 export interface PaletteColor {
   position: number;
   red: number;

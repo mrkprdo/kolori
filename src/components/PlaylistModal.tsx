@@ -1,6 +1,3 @@
-// PlaylistModal Component for React Native
-// Migrated from kolori_old/src/components/PlaylistModal.jsx
-
 import React, { useState, useEffect } from 'react';
 import { 
   View, 

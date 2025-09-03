@@ -1,6 +1,3 @@
-// Notification Component for React Native
-// Migrated from kolori_old/src/components/Notification.jsx
-
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

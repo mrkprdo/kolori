@@ -1,52 +1,49 @@
-// TypeScript type definitions for Kolori React Native app
-// Based on the original React app structures
-
 export interface WledDevice {
-  id: number;
-  name: string;
-  ip: string;
-  mdns?: string;
-  protocol: 'http' | 'https';
-  bestAddress?: string;
-  isConnected: boolean;
-  activePreset?: string | null;
-  isPlaying: boolean;
-  wledInfo?: any;
-  lastHeartbeat?: string;
-  autoBrightness: boolean;
-  maxBrightness: number;
-  responseTime?: number;
+  readonly id: number;
+  readonly name: string;
+  readonly ip: string;
+  readonly mdns?: string;
+  readonly protocol: 'http' | 'https';
+  readonly bestAddress?: string;
+  readonly isConnected: boolean;
+  readonly activePreset?: string | null;
+  readonly isPlaying: boolean;
+  readonly wledInfo?: any;
+  readonly lastHeartbeat?: string;
+  readonly autoBrightness: boolean;
+  readonly maxBrightness: number;
+  readonly responseTime?: number;
 }
 
 export interface CustomEffect {
-  id: number;
-  name: string;
-  effectId: number;
-  effectName: string;
-  paletteId: number;
-  paletteName: string;
-  presetId?: number;
-  gradient: string;
-  isCustom: boolean;
-  isWledPreset?: boolean;
+  readonly id: number;
+  readonly name: string;
+  readonly effectId: number;
+  readonly effectName: string;
+  readonly paletteId: number;
+  readonly paletteName: string;
+  readonly presetId?: number;
+  readonly gradient: string;
+  readonly isCustom: boolean;
+  readonly isWledPreset?: boolean;
 }
 
 export interface PlaylistItem {
-  name: string;
-  presetId: number;
-  duration: number;
-  gradient: string;
-  playlistItemId?: string;
+  readonly name: string;
+  readonly presetId: number;
+  readonly duration: number;
+  readonly gradient: string;
+  readonly playlistItemId?: string;
 }
 
 export interface SavedPlaylist {
-  id: number;
-  name: string;
-  items: PlaylistItem[];
-  presetId?: number;
-  method?: string;
-  isWledPlaylist?: boolean;
-  isActive?: boolean;
+  readonly id: number;
+  readonly name: string;
+  readonly items: PlaylistItem[];
+  readonly presetId?: number;
+  readonly method?: string;
+  readonly isWledPlaylist?: boolean;
+  readonly isActive?: boolean;
 }
 
 export interface WledEffect {
@@ -76,13 +73,13 @@ export interface NotificationState {
 }
 
 export interface DeviceValidationResult {
-  success: boolean;
-  bestAddress?: string;
-  responseTime?: number;
-  deviceInfo?: any;
-  message: string;
-  allResults?: any[];
-  details?: string;
+  readonly success: boolean;
+  readonly bestAddress?: string;
+  readonly responseTime?: number;
+  readonly deviceInfo?: unknown;
+  readonly message: string;
+  readonly allResults?: readonly unknown[];
+  readonly details?: string;
 }
 
 export interface ApiResponse {
@@ -98,13 +95,13 @@ export type Theme = 'light' | 'dark' | 'system';
 export type Device = WledDevice;
 
 export interface Settings {
-  theme: Theme;
-  scheduleMode: ScheduleMode;
-  liveViewEnabled: boolean;
-  autoScan: boolean;
-  debugLogs: boolean;
-  scanTimeout: number;
-  maxDevices: number;
-  backgroundScanEnabled: boolean;
-  [key: string]: any;
+  readonly theme: Theme;
+  readonly scheduleMode: ScheduleMode;
+  readonly liveViewEnabled: boolean;
+  readonly autoScan: boolean;
+  readonly debugLogs: boolean;
+  readonly scanTimeout: number;
+  readonly maxDevices: number;
+  readonly backgroundScanEnabled: boolean;
+  readonly [key: string]: unknown;
 }
