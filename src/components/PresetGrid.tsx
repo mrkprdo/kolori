@@ -20,6 +20,7 @@ import {
   LEDColor 
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
+import CustomEffectsModal from './CustomEffectsModal';
 
 // Animated playlist item component
 interface AnimatedPlaylistItemProps {
@@ -475,6 +476,7 @@ export default function PresetGrid({
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
+  const [showCustomEffectsModal, setShowCustomEffectsModal] = useState(false);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
@@ -729,7 +731,7 @@ export default function PresetGrid({
                   {/* Add Effect Button */}
                   <TouchableOpacity
                     onPress={() => {
-                      logger.log('Effect creation modal not yet implemented');
+                      setShowCustomEffectsModal(true);
                     }}
                     style={[styles.addButton, { backgroundColor: cardBackground, borderColor: subtextColor }]}
                   >
@@ -842,6 +844,14 @@ export default function PresetGrid({
           )}
         </View>
       </ScrollView>
+
+      {/* Custom Effects Modal */}
+      <CustomEffectsModal
+        visible={showCustomEffectsModal}
+        isDark={isDark}
+        onClose={() => setShowCustomEffectsModal(false)}
+        selectedDevices={activeDevice ? [activeDevice] : []}
+      />
     </View>
   );
 }

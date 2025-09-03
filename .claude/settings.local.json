@@ -16,7 +16,8 @@
       "Bash(npx expo prebuild:*)",
       "Bash(adb:*)",
       "Bash(npx expo run:android:*)",
-      "Bash(npx expo logs:*)"
+      "Bash(npx expo logs:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []
