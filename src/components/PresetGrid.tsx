@@ -448,6 +448,7 @@ interface PresetGridProps {
   liveViewEnabled: boolean;
   onLiveViewToggle: (enabled: boolean) => void;
   onLiveLedDataUpdate?: (ledData: LEDColor[]) => void;
+  onRefreshPresets?: () => Promise<void>;
 }
 
 export default function PresetGrid({
@@ -471,6 +472,7 @@ export default function PresetGrid({
   liveViewEnabled,
   onLiveViewToggle,
   onLiveLedDataUpdate,
+  onRefreshPresets,
 }: PresetGridProps) {
   
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
@@ -851,6 +853,10 @@ export default function PresetGrid({
         isDark={isDark}
         onClose={() => setShowCustomEffectsModal(false)}
         selectedDevices={activeDevice ? [activeDevice] : []}
+        liveLedData={liveLedData}
+        liveViewEnabled={liveViewEnabled}
+        onLiveViewToggle={onLiveViewToggle}
+        onRefreshPresets={onRefreshPresets}
       />
     </View>
   );

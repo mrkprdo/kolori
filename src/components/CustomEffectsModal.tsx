@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { createWledPreset } from '../config/wledApi';
 
 interface Effect {
   id: number;
@@ -28,6 +29,10 @@ interface CustomEffectsModalProps {
   isDark?: boolean;
   onClose: () => void;
   selectedDevices?: any[];
+  liveLedData?: any[];
+  liveViewEnabled?: boolean;
+  onLiveViewToggle?: (enabled: boolean) => void;
+  onRefreshPresets?: () => Promise<void>;
 }
 
 interface SavePresetModalProps {
@@ -189,6 +194,10 @@ export default function CustomEffectsModal({
   isDark = false,
   onClose,
   selectedDevices = [],
+  liveLedData = [],
+  liveViewEnabled = false,
+  onLiveViewToggle,
+  onRefreshPresets,
 }: CustomEffectsModalProps) {
   const [effects, setEffects] = useState<Effect[]>([]);
   const [palettes, setPalettes] = useState<Palette[]>([]);
@@ -199,8 +208,6 @@ export default function CustomEffectsModal({
   const [isTesting, setIsTesting] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [liveViewEnabled, setLiveViewEnabled] = useState(false);
-  const [liveLedData, setLiveLedData] = useState<any[]>([]);
 
   const containerStyle = {
     flex: 1,
@@ -370,39 +377,43 @@ export default function CustomEffectsModal({
     setIsSaving(true);
     try {
       const device = selectedDevices[0];
+      console.log('Saving preset:', presetName, 'with effect:', selectedEffect, 'palette:', selectedPalette);
       
-      // First, apply the effect to create the preset state
-      await fetch(`http://${device.ip}/json/state`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          seg: [{
-            fx: selectedEffect,
-            pal: selectedPalette,
-          }],
-        }),
-      });
-
-      // Then save it as a preset with the given name
-      const saveResponse = await fetch(`http://${device.ip}/json/state`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          psave: -1, // Save to next available slot
-          n: presetName, // Preset name
-        }),
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error(`HTTP ${saveResponse.status}: ${saveResponse.statusText}`);
+      // Use the new createWledPreset function from wledApi
+      const result = await createWledPreset(
+        device.ip,
+        selectedEffect,
+        selectedPalette,
+        presetName,
+        undefined, // Let it auto-generate preset ID
+        device.protocol || 'http'
+      );
+      
+      if (result.success) {
+        console.log('Preset saved successfully:', result);
+        setShowSaveModal(false);
+        
+        // Refresh the preset list from the device
+        if (onRefreshPresets) {
+          try {
+            await onRefreshPresets();
+          } catch (error) {
+            console.error('Failed to refresh presets:', error);
+          }
+        }
+        
+        Alert.alert('Preset Saved', `"${presetName}" has been saved to your WLED device!`, [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Close modal after refresh
+              onClose();
+            }
+          }
+        ]);
+      } else {
+        throw new Error(result.message);
       }
-
-      setShowSaveModal(false);
-      Alert.alert('Preset Saved', `"${presetName}" has been saved to your WLED device!`);
     } catch (error) {
       console.error('Failed to save preset:', error);
       Alert.alert(
@@ -487,6 +498,143 @@ export default function CustomEffectsModal({
 
           {selectedDevices.length > 0 && (
             <>
+              {/* Live View Section */}
+              <View style={sectionStyle}>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 12,
+                }}>
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: isDark ? '#ffffff' : '#111827',
+                  }}>
+                    Live View
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => onLiveViewToggle?.(!liveViewEnabled)}
+                    style={{
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: liveViewEnabled 
+                        ? '#3b82f6' 
+                        : isDark ? '#4b5563' : '#d1d5db',
+                      justifyContent: 'center',
+                      paddingHorizontal: 2,
+                    }}
+                  >
+                    <View style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: '#ffffff',
+                      transform: [{ translateX: liveViewEnabled ? 20 : 0 }],
+                    }} />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={{
+                  backgroundColor: isDark ? '#374151' : '#f9fafb',
+                  borderRadius: 8,
+                  padding: 12,
+                  minHeight: 60,
+                }}>
+                  {liveViewEnabled && liveLedData.length > 0 ? (
+                    <View>
+                      <View style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        maxWidth: 300, // Account for modal width
+                      }}>
+                        {liveLedData.map((color: any, index: number) => {
+                          // Calculate optimal LED size based on count (same logic as PresetGrid)
+                          const ledCount = liveLedData.length;
+                          const screenWidth = 300; // Modal content width
+                          
+                          const getOptimalSize = (count: number) => {
+                            if (count <= 20) {
+                              return Math.min(Math.floor(screenWidth / count) - 2, 12);
+                            } else if (count <= 100) {
+                              const columns = Math.ceil(Math.sqrt(count));
+                              return Math.min(Math.floor(screenWidth / columns) - 2, 8);
+                            } else if (count <= 300) {
+                              const columns = Math.ceil(Math.sqrt(count));
+                              return Math.min(Math.floor(screenWidth / columns) - 1, 4);
+                            } else {
+                              const columns = Math.min(Math.ceil(Math.sqrt(count)), 40);
+                              return Math.max(Math.floor(screenWidth / columns) - 1, 2);
+                            }
+                          };
+                          
+                          const ledSize = getOptimalSize(ledCount);
+                          const brightness = (color.r + color.g + color.b) / 3 / 255;
+                          const isActive = brightness > 0.1;
+                          
+                          return (
+                            <View
+                              key={index}
+                              style={{
+                                width: ledSize,
+                                height: ledSize,
+                                marginRight: 2,
+                                marginBottom: 2,
+                                borderRadius: Math.min(ledSize / 3, 2),
+                                backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+                                shadowColor: isActive ? `rgb(${color.r}, ${color.g}, ${color.b})` : 'transparent',
+                                shadowOpacity: isActive ? Math.min(brightness * 0.8, 0.6) : 0,
+                                shadowRadius: Math.min(ledSize / 2, 3),
+                                elevation: isActive ? 2 : 0,
+                              }}
+                            >
+                              {/* LED highlight effect for active LEDs */}
+                              {isActive && ledSize > 4 && (
+                                <View
+                                  style={{
+                                    position: 'absolute',
+                                    top: 0.5,
+                                    left: 0.5,
+                                    borderRadius: Math.min(ledSize / 4, 1),
+                                    height: Math.min(ledSize / 3, 3),
+                                    width: Math.min(ledSize / 2, 2),
+                                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                                  }}
+                                />
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                      <Text style={{
+                        fontSize: 12,
+                        color: isDark ? '#9ca3af' : '#6b7280',
+                        marginTop: 8,
+                      }}>
+                        {liveLedData.length} LED{liveLedData.length !== 1 ? 's' : ''} live
+                      </Text>
+                    </View>
+                  ) : liveViewEnabled ? (
+                    <Text style={{
+                      fontSize: 14,
+                      color: isDark ? '#9ca3af' : '#6b7280',
+                      textAlign: 'center',
+                    }}>
+                      No live data available
+                    </Text>
+                  ) : (
+                    <Text style={{
+                      fontSize: 14,
+                      color: isDark ? '#9ca3af' : '#6b7280',
+                      textAlign: 'center',
+                    }}>
+                      Live view disabled
+                    </Text>
+                  )}
+                </View>
+              </View>
+
               {/* Effects Dropdown */}
               <View style={sectionStyle}>
                 <Text style={{

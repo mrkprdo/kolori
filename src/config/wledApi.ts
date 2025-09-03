@@ -681,6 +681,90 @@ const WLED_PALETTE_ID_MAP: { [id: number]: string } = {
   71: "Traffic Light",
 };
 
+// Function to create/save a WLED preset
+export const createWledPreset = async (
+  deviceAddress: string,
+  effectId: number,
+  paletteId: number,
+  presetName: string,
+  presetId?: number,
+  protocol = "http"
+): Promise<ApiResponse & { presetId?: number }> => {
+  // Generate a preset ID if not provided
+  const targetPresetId = presetId || (50 + Math.floor(Math.random() * 200));
+  
+  // First, apply the effect and palette
+  try {
+    const applyUrl = buildWledUrl(deviceAddress, protocol, `/json/state`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    // Apply effect and palette to all segments
+    const applyResponse = await fetch(applyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seg: { fx: effectId, pal: paletteId }
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!applyResponse.ok) {
+      return {
+        success: false,
+        message: `Failed to apply effect: ${applyResponse.status}`,
+      };
+    }
+
+    // Wait a moment for effect to be applied
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Now save as preset
+    const saveUrl = buildWledUrl(deviceAddress, protocol, `/json/state`);
+    const saveController = new AbortController();
+    const saveTimeoutId = setTimeout(() => saveController.abort(), 10000);
+
+    const saveResponse = await fetch(saveUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        psave: targetPresetId,
+        n: presetName,
+        // Include current brightness and segment settings
+        ib: true, // Include brightness
+        sb: true, // Include segment brightness
+      }),
+      signal: saveController.signal,
+    });
+
+    clearTimeout(saveTimeoutId);
+
+    if (saveResponse.ok) {
+      return {
+        success: true,
+        message: 'Preset saved successfully',
+        presetId: targetPresetId,
+      };
+    } else {
+      return {
+        success: false,
+        message: `Failed to save preset: ${saveResponse.status}`,
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to create WLED preset:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
 // Helper function to generate LinearGradient-compatible colors for React Native - Optimized
 export const generateLinearGradientColors = (
   paletteId: number

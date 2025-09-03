@@ -990,6 +990,7 @@ const KoloriApp = React.memo(function KoloriApp({
           liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
           onLiveLedDataUpdate={setLiveLedData}
+          onRefreshPresets={fetchWledPresets}
         />
         <PlaylistModal
           isVisible={showPlaylist}
