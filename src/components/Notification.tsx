@@ -29,9 +29,13 @@ export default function Notification({
 }: NotificationProps) {
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
+  const progressAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isVisible) {
+      // Reset progress
+      progressAnim.setValue(0);
+      
       // Slide in and fade in
       Animated.parallel([
         Animated.timing(slideAnim, {
@@ -46,8 +50,14 @@ export default function Notification({
         }),
       ]).start();
 
-      // Auto close after duration
+      // Start progress animation if auto close
       if (autoClose) {
+        Animated.timing(progressAnim, {
+          toValue: 1,
+          duration: duration,
+          useNativeDriver: false, // Width animations need JS driver
+        }).start();
+
         const timer = setTimeout(() => {
           handleClose();
         }, duration);
@@ -180,11 +190,10 @@ export default function Notification({
               className="h-full rounded-full"
               style={{
                 backgroundColor: config.iconColor,
-                width: opacityAnim.interpolate({
+                width: progressAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, 300], // Use numeric values instead of percentages
+                  outputRange: ['0%', '100%'],
                 }),
-                maxWidth: '100%',
               }}
             />
           </View>
