@@ -1,14 +1,15 @@
 // PresetGrid Component for React Native
 // Clean implementation with consistent theming
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   ScrollView,
   Dimensions,
-  StyleSheet
+  StyleSheet,
+  Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
@@ -230,6 +231,10 @@ export default function PresetGrid({
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   // Device presets are now passed via customEffects prop from parent
   const devicePresets = customEffects; // Use customEffects directly
   const loadingPresets = customEffects.length === 0 && activeDevice?.isConnected;
@@ -287,9 +292,38 @@ export default function PresetGrid({
 
   const handleLiveViewToggle = () => {
     const newValue = !liveViewEnabled;
-    if (onLiveViewToggle) {
-      onLiveViewToggle(newValue);
-    }
+    
+    // Animate the content transition
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0.3,
+        duration: 150,
+        useNativeDriver: false,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      if (onLiveViewToggle) {
+        onLiveViewToggle(newValue);
+      }
+      
+      // Animate back to normal
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    });
   };
 
   return (
@@ -331,7 +365,13 @@ export default function PresetGrid({
           </View>
           
           <View style={[styles.card, { backgroundColor: cardBackground, borderColor }]}>
-            <View style={styles.cardContent}>
+            <Animated.View style={[
+              styles.cardContent,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }]
+              }
+            ]}>
               {activePresetData && (
                 <Text style={[styles.activePresetText, { color: textColor }]}>
                   Active: {activePresetData.name}
@@ -373,7 +413,7 @@ export default function PresetGrid({
                   )}
                 </View>
               )}
-            </View>
+            </Animated.View>
           </View>
         </View>
 
