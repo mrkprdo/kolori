@@ -520,7 +520,6 @@ export default function SettingsScreen({
         Alert.alert('Connection Failed', validation.error || 'Could not connect to device');
       }
     } catch (error) {
-      console.error('Connection error:', error);
       Alert.alert('Connection Error', 'Failed to connect to device');
     }
   };
