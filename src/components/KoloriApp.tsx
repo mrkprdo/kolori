@@ -71,8 +71,19 @@ export default function KoloriApp({
   onScanFromMain,
 }: KoloriAppProps) {
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
+  
+  // Debug logging for playlist state changes
+  useEffect(() => {
+    logger.log('📋 Current playlist state changed:', {
+      playlistLength: currentPlaylist.length,
+      activeDeviceId: activeDeviceId,
+      activeDeviceName: activeDevice?.name,
+      playlist: currentPlaylist
+    });
+  }, [currentPlaylist, activeDeviceId, activeDevice?.name]);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
   
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({ isVisible: false, type: 'success', title: '', message: '' });
@@ -97,6 +108,32 @@ export default function KoloriApp({
       isConnected: activeDevice?.isConnected
     });
   }, [activeDevice?.id, activeDevice?.name, activeDevice?.isConnected]); // Only update when meaningful properties change
+
+  // Clear playlist state when device changes (separate from WebSocket connection logic)
+  useEffect(() => {
+    logger.log('🔄 Device ID changed, clearing playlist state:', {
+      activeDeviceId: activeDevice?.id,
+      activeDeviceName: activeDevice?.name,
+      currentPlaylistLength: currentPlaylist.length
+    });
+    
+    // Set loading state and clear current playlist and playlist active states
+    setIsLoadingPlaylists(true);
+    setCurrentPlaylist([]);
+    setSavedPlaylists([]); // Temporarily clear playlists for smooth transition
+    
+    // Reload playlists after a brief delay for smooth transition
+    setTimeout(async () => {
+      try {
+        const playlists = await storage.loadFromStorage(STORAGE_KEYS.PLAYLISTS, []);
+        setSavedPlaylists(playlists.map((playlist: SavedPlaylist) => ({ ...playlist, isActive: false })));
+        setIsLoadingPlaylists(false);
+      } catch (error) {
+        logger.error('Failed to reload playlists:', error);
+        setIsLoadingPlaylists(false);
+      }
+    }, 500); // 500ms delay for smooth transition like preset cards
+  }, [activeDevice?.id]); // Only trigger when device ID changes
 
   useEffect(() => {
     const loadLocalData = async () => {
@@ -197,8 +234,17 @@ export default function KoloriApp({
     });
 
     // IMMEDIATELY clear UI state when switching devices to prevent showing old device data
+    logger.log('🧹 Clearing UI state for device switch:', {
+      previousDevice: currentWebSocketDeviceId,
+      newDevice: activeDevice?.id,
+      newDeviceName: activeDevice?.name,
+      currentPlaylistLength: currentPlaylist.length
+    });
     setLiveLedData([]);
     setCustomEffects([]); // Clear device presets when switching devices
+    setCurrentPlaylist([]); // Clear current playlist when switching devices
+    // Clear active state from all saved playlists when switching devices
+    setSavedPlaylists(prev => prev.map(playlist => ({ ...playlist, isActive: false })));
     setCurrentWebSocketDeviceId(null); // Clear current WebSocket device tracking
     logger.log('🔄 KoloriApp: Managing global WebSocket for active device:', activeDevice?.name, 'clearing old data');
 
@@ -691,9 +737,21 @@ export default function KoloriApp({
           onRemoveCustomEffect={(id) => setCustomEffects(prev => prev.filter(e => e.id !== id))}
           onCustomEffectUpdate={setCustomEffects}
           savedPlaylists={savedPlaylists}
+          isLoadingPlaylists={isLoadingPlaylists}
           onPlaylistEdit={(playlist) => {}}
           onPlaylistRemove={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
-          onPlaylistSelect={(id) => {}}
+          onPlaylistSelect={(id) => {
+            const selectedPlaylist = savedPlaylists.find(p => p.id === id);
+            if (selectedPlaylist) {
+              logger.log('📋 Setting playlist as current:', selectedPlaylist.name, selectedPlaylist.items?.length, 'effects');
+              setCurrentPlaylist(selectedPlaylist.items || []);
+              // Mark this playlist as active and others as inactive
+              setSavedPlaylists(prev => prev.map(playlist => ({ 
+                ...playlist, 
+                isActive: playlist.id === id 
+              })));
+            }
+          }}
           setShowSettings={onShowSettings}
           liveLedData={liveLedData}
           liveViewEnabled={settings.liveViewEnabled}

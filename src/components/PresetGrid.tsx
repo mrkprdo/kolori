@@ -9,7 +9,8 @@ import {
   ScrollView,
   Dimensions,
   StyleSheet,
-  Animated
+  Animated,
+  Easing
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,59 @@ import {
   LEDColor 
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
+
+// Animated playlist item component
+interface AnimatedPlaylistItemProps {
+  playlist: SavedPlaylist;
+  index: number;
+  onPress: (id: number) => void;
+}
+
+function AnimatedPlaylistItem({ playlist, index, onPress }: AnimatedPlaylistItemProps) {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  
+  // Animate in when playlist appears
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 100,
+      friction: 8,
+      delay: index * 50, // Staggered animation
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  return (
+    <Animated.View
+      style={[
+        styles.playlistItem,
+        {
+          transform: [{ scale: scaleAnim }]
+        }
+      ]}
+    >
+      <TouchableOpacity
+        onPress={() => onPress(playlist.id)}
+        style={styles.touchableArea}
+      >
+        <View
+          style={[
+            styles.playlistCard,
+            { backgroundColor: '#8b5cf6' },
+            playlist.isActive && { borderWidth: 2, borderColor: '#3b82f6' }
+          ]}
+        >
+          <Text style={styles.playlistName}>
+            {playlist.name}
+          </Text>
+          <Text style={styles.playlistCount}>
+            {playlist.items?.length || 0} effects
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 // Helper function to extract primary color from gradient string
 const extractPrimaryColor = (gradient: string): string => {
@@ -189,11 +243,82 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = (screenWidth - 48) / 3 - 8; // 3 columns with padding
   
+  // Animation values
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const pressAnim = useRef(new Animated.Value(1)).current;
+  const borderAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+  const shadowAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+  const activeScaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Entrance animation
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 100,
+      friction: 8,
+      delay: (preset as any)._animationDelay || Math.random() * 200, // Staggered animation
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  // Active state animation
+  useEffect(() => {
+    if (isActive) {
+      // Bounce animation when becoming active
+      Animated.sequence([
+        Animated.spring(activeScaleAnim, {
+          toValue: 1.05,
+          tension: 200,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+        Animated.spring(activeScaleAnim, {
+          toValue: 1,
+          tension: 200,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    
+    Animated.parallel([
+      Animated.timing(borderAnim, {
+        toValue: isActive ? 1 : 0,
+        duration: 300,
+        easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+        useNativeDriver: false,
+      }),
+      Animated.timing(shadowAnim, {
+        toValue: isActive ? 1 : 0,
+        duration: 300,
+        easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [isActive]);
+  
+  const handlePressIn = () => {
+    Animated.spring(pressAnim, {
+      toValue: 0.95,
+      tension: 200,
+      friction: 4,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const handlePressOut = () => {
+    Animated.spring(pressAnim, {
+      toValue: 1,
+      tension: 200,
+      friction: 4,
+      useNativeDriver: true,
+    }).start();
+  };
+  
   // Use LinearGradient colors for device presets if available
   const shouldUseGradient = preset.isWledPreset && (preset.linearGradientColors || preset.gradient);
   const gradientColors = preset.linearGradientColors || 
     (preset.gradient ? parseGradientString(preset.gradient).colors : null);
-  
   
   // Ensure gradient colors are valid before using LinearGradient
   const hasValidGradient = gradientColors && 
@@ -201,21 +326,39 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
     gradientColors.length >= 2 && 
     gradientColors.every(color => typeof color === 'string' && color.length > 0);
 
-  const cardStyle = {
+  const animatedCardStyle = {
     width: cardWidth,
-    borderColor: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
+    borderColor: borderAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['rgba(255, 255, 255, 0.2)', '#3b82f6'],
+    }),
     shadowColor: isActive ? '#3b82f6' : '#000',
-    shadowOpacity: isActive ? 0.3 : 0.1,
-    elevation: isActive ? 8 : 2,
+    shadowOpacity: shadowAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.1, 0.4],
+    }),
+    elevation: shadowAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [2, 8],
+    }),
+    transform: [
+      { scale: scaleAnim },
+      { scale: pressAnim },
+      { scale: activeScaleAnim }
+    ],
   };
 
   if (shouldUseGradient && hasValidGradient) {
     // Use LinearGradient for device presets with gradients
     return (
-      <TouchableOpacity
-        onPress={() => onClick(preset.id)}
-        style={[styles.presetCard, cardStyle]}
-      >
+      <Animated.View style={[styles.presetCard, animatedCardStyle]}>
+        <TouchableOpacity
+          onPress={() => onClick(preset.id)}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={styles.touchableArea}
+          activeOpacity={0.8}
+        >
         <LinearGradient
           colors={gradientColors}
           start={{ x: 0, y: 0 }}
@@ -242,22 +385,29 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
             </View>
           )}
         </LinearGradient>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     );
   }
 
   // Use solid background for seasonal presets or presets without gradients
   return (
-    <TouchableOpacity
-      onPress={() => onClick(preset.id)}
+    <Animated.View 
       style={[
         styles.presetCard,
         {
-          ...cardStyle,
+          ...animatedCardStyle,
           backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1',
         }
       ]}
     >
+      <TouchableOpacity
+        onPress={() => onClick(preset.id)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.touchableArea}
+        activeOpacity={0.8}
+      >
       <View style={styles.cardOverlay} />
       <View style={styles.cardContent}>
         {showIcon && (
@@ -277,7 +427,8 @@ function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = fals
           <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         </View>
       )}
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -293,6 +444,7 @@ interface PresetGridProps {
   onRemoveCustomEffect: (effectId: number) => void;
   onCustomEffectUpdate: (effects: CustomEffect[]) => void;
   savedPlaylists: SavedPlaylist[];
+  isLoadingPlaylists: boolean;
   onPlaylistEdit: (playlist: SavedPlaylist) => void;
   onPlaylistRemove: (playlistId: number) => void;
   onPlaylistSelect: (playlistId: number) => void;
@@ -315,6 +467,7 @@ export default function PresetGrid({
   onRemoveCustomEffect,
   onCustomEffectUpdate,
   savedPlaylists = [],
+  isLoadingPlaylists,
   onPlaylistEdit,
   onPlaylistRemove,
   onPlaylistSelect,
@@ -535,10 +688,10 @@ export default function PresetGrid({
           
           {!isSeasonalCollapsed && (
             <View style={styles.presetGrid}>
-              {SEASONAL_PRESETS.map((preset) => (
+              {SEASONAL_PRESETS.map((preset, index) => (
                 <PresetCard
                   key={preset.id}
-                  preset={preset}
+                  preset={{...preset, _animationDelay: index * 50}}
                   isActive={activePreset?.toString() === preset.id.toString()}
                   onClick={onPresetSelect}
                   showIcon={true}
@@ -577,13 +730,6 @@ export default function PresetGrid({
                     Connect to a WLED device to load available effects
                   </Text>
                 </View>
-              ) : loadingPresets ? (
-                <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
-                  <Ionicons name="refresh" size={24} color={subtextColor} style={styles.infoIcon} />
-                  <Text style={[styles.infoText, { color: subtextColor }]}>
-                    Loading presets from device...
-                  </Text>
-                </View>
               ) : (
                 <View>
                   {/* Add Effect Button */}
@@ -606,10 +752,10 @@ export default function PresetGrid({
                         Device Presets ({customEffects.length})
                       </Text>
                       <View style={styles.presetGrid}>
-                        {customEffects.map((preset) => (
+                        {customEffects.map((preset, index) => (
                           <PresetCard
                             key={`device-${preset.id}`}
-                            preset={preset}
+                            preset={{...preset, _animationDelay: index * 50}}
                             isActive={activePreset?.toString() === preset.id.toString()}
                             onClick={onPresetSelect}
                             showIcon={false}
@@ -669,29 +815,20 @@ export default function PresetGrid({
                 </TouchableOpacity>
               )}
 
-              {savedPlaylists && savedPlaylists.length > 0 ? (
+              {isLoadingPlaylists ? (
+                // Loading state - brief empty state for smooth transition
+                <View style={{ height: 120, justifyContent: 'center', alignItems: 'center' }}>
+                  {/* Empty space during loading for smooth transition */}
+                </View>
+              ) : savedPlaylists && savedPlaylists.length > 0 ? (
                 <View style={styles.playlistGrid}>
-                  {savedPlaylists.map((playlist) => (
-                    <TouchableOpacity
+                  {savedPlaylists.map((playlist, index) => (
+                    <AnimatedPlaylistItem
                       key={playlist.id}
-                      onPress={() => onPlaylistSelect(playlist.id)}
-                      style={styles.playlistItem}
-                    >
-                      <View
-                        style={[
-                          styles.playlistCard,
-                          { backgroundColor: '#8b5cf6' },
-                          playlist.isActive && { borderWidth: 2, borderColor: '#3b82f6' }
-                        ]}
-                      >
-                        <Text style={styles.playlistName}>
-                          {playlist.name}
-                        </Text>
-                        <Text style={styles.playlistCount}>
-                          {playlist.items?.length || 0} effects
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                      playlist={playlist}
+                      index={index}
+                      onPress={onPlaylistSelect}
+                    />
                   ))}
                 </View>
               ) : (
@@ -939,5 +1076,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  touchableArea: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
 });
