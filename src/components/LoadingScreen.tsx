@@ -1,25 +1,26 @@
 // Loading Screen Component for React Native
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Animated, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { getWledPresets } from '../config/wledApi';
+import { logger } from '../utils/logger';
+import { Device as WledDevice } from '../types';
 
 interface LoadingScreenProps {
   isDark?: boolean;
-  loadingText?: string;
-  progress?: number;
+  onLoadingComplete?: () => void;
+  activeDevice?: WledDevice;
 }
 
-const { width } = Dimensions.get('window');
 
 export default function LoadingScreen({
   isDark = false,
-  loadingText = 'Loading...',
-  progress = 0,
+  onLoadingComplete,
+  activeDevice,
 }: LoadingScreenProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Pulsing animation for logo
@@ -56,23 +57,64 @@ export default function LoadingScreen({
     };
   }, []);
 
+  // Fetch device data during loading
   useEffect(() => {
-    // Progress bar animation
-    Animated.timing(progressAnim, {
-      toValue: progress,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [progress]);
+    let isMounted = true;
+
+    const initializeDevice = async () => {
+      if (!activeDevice?.isConnected) {
+        logger.log('⏳ LoadingScreen: No active device or not connected, skipping data fetch');
+        if (onLoadingComplete && isMounted) {
+          setTimeout(onLoadingComplete, 1500); // Brief delay for visual effect
+        }
+        return;
+      }
+
+      const deviceAddress = activeDevice.bestAddress || activeDevice.ip;
+      if (!deviceAddress) {
+        logger.warn('⏳ LoadingScreen: No device address available');
+        if (onLoadingComplete && isMounted) {
+          setTimeout(onLoadingComplete, 1500);
+        }
+        return;
+      }
+
+      try {
+        logger.log('⏳ LoadingScreen: Fetching device data for:', activeDevice.name);
+        
+        // Fetch presets in the background during loading
+        const result = await getWledPresets(
+          deviceAddress,
+          activeDevice.protocol || "http"
+        );
+
+        if (result.success && isMounted) {
+          logger.log('⏳ LoadingScreen: Successfully fetched device data:', 
+            `${result.presets?.length || 0} presets, ${result.playlists?.length || 0} playlists`);
+        } else {
+          logger.warn('⏳ LoadingScreen: Failed to fetch device data:', result.message);
+        }
+
+      } catch (error) {
+        logger.error('⏳ LoadingScreen: Error fetching device data:', error);
+      } finally {
+        // Complete loading after a minimum delay for smooth UX
+        if (isMounted && onLoadingComplete) {
+          setTimeout(onLoadingComplete, 2000);
+        }
+      }
+    };
+
+    initializeDevice();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeDevice?.id, activeDevice?.isConnected, onLoadingComplete]);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
-  });
-
-  const progressWidth = progressAnim.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, width - 64],
   });
 
   const backgroundColor = isDark ? '#111827' : '#f9fafb';
@@ -112,30 +154,6 @@ export default function LoadingScreen({
             />
           </Animated.View>
 
-          {/* Loading Text */}
-          <Text style={[styles.loadingText, { color: textColor }]}>
-            {loadingText}
-          </Text>
-
-          {/* Progress Bar */}
-          {progress > 0 && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { backgroundColor: isDark ? '#374151' : '#e5e7eb' }]}>
-                <Animated.View 
-                  style={[
-                    styles.progressFill,
-                    { 
-                      width: progressWidth,
-                      backgroundColor: isDark ? '#60a5fa' : '#3b82f6'
-                    }
-                  ]} 
-                />
-              </View>
-              <Text style={[styles.progressText, { color: subtextColor }]}>
-                {Math.round(progress)}%
-              </Text>
-            </View>
-          )}
 
           {/* Loading Details */}
           <View style={styles.detailsContainer}>
@@ -195,31 +213,6 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginBottom: 24,
-  },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 32,
-  },
-  progressContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  progressBar: {
-    width: '100%',
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   detailsContainer: {
     alignItems: 'center',
