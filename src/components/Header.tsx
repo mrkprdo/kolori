@@ -112,15 +112,9 @@ const Header = React.memo(function Header({
 
   return (
     <View style={[styles.header, { backgroundColor: themeColors.backgroundColor, borderBottomColor: themeColors.borderColor }]}>
-      <View style={styles.headerContent}>
-        {/* Logo */}
-        <Text style={styles.logo}>
-          <Text style={styles.logoBlue}>Ko</Text>
-          <Text style={styles.logoPurple}>lori</Text>
-        </Text>
-        
-        {/* Device Dropdown - Centered */}
-        <View style={styles.centerContainer}>
+      <View style={styles.headerContent}>        
+        {/* Device Dropdown - Left Aligned */}
+        <View style={styles.leftContainer}>
           {devices.length > 0 && (
             <TouchableOpacity 
               onPress={handleDeviceSwitch}
@@ -210,33 +204,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 44,
   },
-  logo: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  logoBlue: {
-    color: '#2563eb',
-  },
-  logoPurple: {
-    color: '#7c3aed',
-  },
-  centerContainer: {
+  leftContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   deviceDropdown: {
     borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 120,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minWidth: 180,
   },
   deviceContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   statusDot: {
     width: 8,
@@ -245,9 +228,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   deviceName: {
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'left',
+    flex: 1,
   },
   dropdownIcon: {
     marginLeft: 4,
