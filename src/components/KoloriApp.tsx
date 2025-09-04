@@ -38,7 +38,6 @@ import {
 } from '../types';
 
 // Components
-import Header from './Header';
 import PresetGrid from './PresetGrid';
 import PlaylistModal from './PlaylistModal';
 
@@ -923,16 +922,6 @@ const KoloriApp = React.memo(function KoloriApp({
     <SafeAreaProvider>
       <SafeAreaView style={[styles.container, isDark ? styles.statusBarDark : styles.statusBarLight]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <Header
-          deviceName={deviceName}
-          isConnected={isConnected}
-          devices={devices}
-          activeDeviceId={activeDeviceId}
-          setActiveDeviceId={onSetActiveDeviceId}
-          setShowSettings={onShowSettings}
-          isDark={isDark}
-          scheduleMode={settings.scheduleMode}
-        />
         <PresetGrid
           activePreset={activePreset}
           onPresetSelect={handlePresetSelect}
@@ -940,6 +929,9 @@ const KoloriApp = React.memo(function KoloriApp({
           currentPlaylist={currentPlaylist}
           onShowPlaylist={() => setShowPlaylist(true)}
           activeDevice={activeDevice}
+          devices={devices}
+          activeDeviceId={activeDeviceId}
+          onSetActiveDeviceId={onSetActiveDeviceId}
           customEffects={customEffects}
           onAddCustomEffect={(effect) => setCustomEffects(prev => [...prev, effect])}
           onRemoveCustomEffect={(id) => setCustomEffects(prev => prev.filter(e => e.id !== id))}

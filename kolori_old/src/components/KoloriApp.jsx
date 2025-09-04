@@ -8,7 +8,6 @@ import { logger } from "../utils/logger";
 import { useState, useEffect, useRef } from "react";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { Capacitor } from "@capacitor/core";
-import Header from "./Header";
 import PresetGrid from "./PresetGrid";
 import PlaylistModal from "./PlaylistModal";
 import SettingsModal from "./SettingsModal";
@@ -108,7 +107,6 @@ export default function KoloriApp() {
     devicesRef.current = devices;
   }, [devices]);
 
-
   // One-time startup log and mixed content detection
   useEffect(() => {
     logger.log("🎉 KoloriApp initialized in development mode");
@@ -171,8 +169,8 @@ export default function KoloriApp() {
           });
 
           // Set background color to match app theme
-          await StatusBar.setBackgroundColor({ 
-            color: isDark ? "#111827" : "#F9FAFB" 
+          await StatusBar.setBackgroundColor({
+            color: isDark ? "#111827" : "#F9FAFB",
           });
         } catch {
           // StatusBar not available in non-mobile environments
@@ -282,7 +280,7 @@ export default function KoloriApp() {
               d.id === activeDevice.id ? { ...d, isConnected: true } : d
             )
           );
-          
+
           // Set live view state when WebSocket connects (with small delay)
           setTimeout(() => {
             sendWebSocketCommand({ lv: liveViewEnabled });
@@ -303,7 +301,7 @@ export default function KoloriApp() {
             for (let i = 0; i < byteArray.length; i += bytesPerLed) {
               colors.push({
                 r: byteArray[i + 2], // Red
-                g: byteArray[i],     // Green  
+                g: byteArray[i], // Green
                 b: byteArray[i + 1], // Blue
                 w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
               });
@@ -1167,31 +1165,33 @@ export default function KoloriApp() {
 
   // Auto-add device handler (used by both welcome page and settings modal)
   const handleAutoAddDevice = async (deviceData) => {
-    logger.log("🚀 Auto-adding discovered device:", deviceData.name, deviceData.ip);
-    
+    logger.log(
+      "🚀 Auto-adding discovered device:",
+      deviceData.name,
+      deviceData.ip
+    );
+
     try {
       // Check for duplicate IP only
-      const duplicateIP = devices.find(
-        (device) => device.ip === deviceData.ip
-      );
-      
+      const duplicateIP = devices.find((device) => device.ip === deviceData.ip);
+
       if (duplicateIP) {
         logger.warn("Device already exists with IP:", deviceData.ip);
         return;
       }
-      
+
       // Validate device connection
       const validation = await validateDevice(
         deviceData.ip,
         deviceData.mdns || "",
         deviceData.protocol || "http"
       );
-      
+
       if (!validation.success) {
         logger.error("Device validation failed:", validation.message);
         return;
       }
-      
+
       // Create device object
       const device = {
         id: Date.now(),
@@ -1206,18 +1206,17 @@ export default function KoloriApp() {
         bestAddress: validation.bestAddress,
         wledInfo: validation.info,
       };
-      
+
       // Add device to list
       const updatedDevices = [...devices, device];
       setDevices(updatedDevices);
-      
+
       // Set as active device if it's the first one
       if (devices.length === 0) {
         setActiveDeviceId(device.id);
       }
-      
+
       logger.log("✅ Device auto-added successfully:", device.name);
-      
     } catch (error) {
       logger.error("❌ Error auto-adding device:", error);
     }
@@ -1319,14 +1318,18 @@ export default function KoloriApp() {
     try {
       // Try to delete from WLED device via WebSocket if it has a preset ID
       if (effect.presetId) {
-        logger.log(`Attempting to delete WLED preset ${effect.presetId} via WebSocket for effect "${effect.name}"`);
+        logger.log(
+          `Attempting to delete WLED preset ${effect.presetId} via WebSocket for effect "${effect.name}"`
+        );
         const result = await deleteWledPlaylistViaWebSocket(
           effect.presetId,
           effect.name
         );
 
         if (result.success) {
-          logger.log(`Successfully deleted WLED preset ${effect.presetId} via WebSocket`);
+          logger.log(
+            `Successfully deleted WLED preset ${effect.presetId} via WebSocket`
+          );
         } else {
           logger.warn(`WebSocket deletion failed: ${result.message}`);
         }
@@ -1448,7 +1451,11 @@ export default function KoloriApp() {
   if (devices.length === 0) {
     return (
       <>
-        <WelcomePage isDark={isDark} onAddDevice={handleAddFirstDevice} devices={devices} />
+        <WelcomePage
+          isDark={isDark}
+          onAddDevice={handleAddFirstDevice}
+          devices={devices}
+        />
 
         {/* Settings Modal for adding first device */}
         <SettingsModal
@@ -1504,21 +1511,7 @@ export default function KoloriApp() {
   }
 
   return (
-    <div
-      className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}
-    >
-      {/* Header */}
-      <Header
-        deviceName={deviceName}
-        isConnected={isConnected}
-        devices={devices}
-        activeDeviceId={activeDeviceId}
-        setActiveDeviceId={setActiveDeviceId}
-        setShowSettings={setShowSettings}
-        isDark={isDark}
-        scheduleMode={scheduleMode}
-      />
-
+    <div className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <PresetGrid

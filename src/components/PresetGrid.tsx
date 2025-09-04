@@ -260,7 +260,7 @@ interface PresetCardProps {
 
 function PresetCard({ preset, isActive, onClick, showIcon = false, isDark = false }: PresetCardProps) {
   const screenWidth = Dimensions.get('window').width;
-  const cardWidth = (screenWidth - 48) / 3 - 8; // 3 columns with padding
+  const cardWidth = (screenWidth - 64) / 4 - 8; // 4 columns with padding
   
   // Simplified animation values - only native driver animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -436,6 +436,9 @@ interface PresetGridProps {
   currentPlaylist: any[];
   onShowPlaylist: () => void;
   activeDevice: WledDevice | undefined;
+  devices?: WledDevice[];
+  activeDeviceId?: number | null;
+  onSetActiveDeviceId?: (id: number) => void;
   customEffects: CustomEffect[];
   onAddCustomEffect: (effect: CustomEffect) => void;
   onRemoveCustomEffect: (effectId: number) => void;
@@ -461,6 +464,9 @@ export default function PresetGrid({
   currentPlaylist,
   onShowPlaylist,
   activeDevice,
+  devices = [],
+  activeDeviceId,
+  onSetActiveDeviceId,
   customEffects = [],
   onAddCustomEffect,
   onRemoveCustomEffect,
@@ -485,11 +491,17 @@ export default function PresetGrid({
   const [showCustomEffectsModal, setShowCustomEffectsModal] = useState(false);
   const [showPlaylistCreationModal, setShowPlaylistCreationModal] = useState(false);
   const [showFabOptions, setShowFabOptions] = useState(false);
+  const [showCreateNewOptions, setShowCreateNewOptions] = useState(false);
+  const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fabRotateAnim = useRef(new Animated.Value(0)).current;
+  const fabScaleAnim1 = useRef(new Animated.Value(0)).current;
+  const fabScaleAnim2 = useRef(new Animated.Value(0)).current;
+  const fabScaleAnim3 = useRef(new Animated.Value(0)).current;
   // Device presets are now passed via customEffects prop from parent
   const devicePresets = customEffects; // Use customEffects directly
   const loadingPresets = customEffects.length === 0 && activeDevice?.isConnected;
@@ -594,6 +606,68 @@ export default function PresetGrid({
     }
   }, [onRefreshPresets, isRefreshing]);
 
+  const toggleFabOptions = useCallback(() => {
+    const newValue = !showFabOptions;
+    setShowFabOptions(newValue);
+    
+    if (newValue) {
+      // Expand animation - faster
+      Animated.parallel([
+        Animated.timing(fabRotateAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.stagger(50, [
+          Animated.spring(fabScaleAnim1, {
+            toValue: 1,
+            tension: 200,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+          Animated.spring(fabScaleAnim2, {
+            toValue: 1,
+            tension: 200,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+          Animated.spring(fabScaleAnim3, {
+            toValue: 1,
+            tension: 200,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    } else {
+      // Collapse animation
+      Animated.parallel([
+        Animated.timing(fabRotateAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.parallel([
+          Animated.timing(fabScaleAnim1, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fabScaleAnim2, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fabScaleAnim3, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    }
+  }, [showFabOptions, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3]);
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <ScrollView 
@@ -612,7 +686,7 @@ export default function PresetGrid({
       >
         
         {/* Live View Section */}
-        <View style={styles.section}>
+        <View style={[styles.sectionCard, { backgroundColor: cardBackground, borderColor }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.headerLeft}>
               <Ionicons name="play" size={20} color={textColor} />
@@ -641,61 +715,63 @@ export default function PresetGrid({
             </TouchableOpacity>
           </View>
           
-          <View style={[styles.card, { backgroundColor: cardBackground, borderColor }]}>
-            <Animated.View style={[
-              styles.cardContent,
-              {
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }]
-              }
-            ]}>
-              {activePresetData && (
-                <Text style={[styles.activePresetText, { color: textColor }]}>
-                  Active: {activePresetData.name}
-                </Text>
-              )}
-              
-              {/* Live LED Data */}
-              {liveViewEnabled && liveLedData.length > 0 && (
-                <DynamicLEDVisualization 
-                  ledData={liveLedData} 
-                  subtextColor={subtextColor}
-                />
-              )}
-              
-              {!liveViewEnabled && (
-                <View style={styles.disabledContainer}>
-                  <Text style={[styles.disabledText, { color: subtextColor }]}>
-                    Live view disabled
+          <View style={styles.sectionContent}>
+            <View style={[styles.innerCard, { backgroundColor: isDark ? '#374151' : '#f9fafb', borderColor: isDark ? '#4b5563' : '#e5e7eb' }]}>
+              <Animated.View style={[
+                styles.cardContent,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }]
+                }
+              ]}>
+                {activePresetData && (
+                  <Text style={[styles.activePresetText, { color: textColor }]}>
+                    Active: {activePresetData.name}
                   </Text>
-                  {activeDevice?.wledInfo?.leds?.count ? (
-                    <View>
-                      <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
-                        {activeDevice.wledInfo.leds.count} LED{activeDevice.wledInfo.leds.count !== 1 ? 's' : ''} available
-                      </Text>
-                      {activeDevice.wledInfo.leds.rgbw && (
-                        <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
-                          RGBW LEDs supported
+                )}
+                
+                {/* Live LED Data */}
+                {liveViewEnabled && liveLedData.length > 0 && (
+                  <DynamicLEDVisualization 
+                    ledData={liveLedData} 
+                    subtextColor={subtextColor}
+                  />
+                )}
+                
+                {!liveViewEnabled && (
+                  <View style={styles.disabledContainer}>
+                    <Text style={[styles.disabledText, { color: subtextColor }]}>
+                      Live view disabled
+                    </Text>
+                    {activeDevice?.wledInfo?.leds?.count ? (
+                      <View>
+                        <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
+                          {activeDevice.wledInfo.leds.count} LED{activeDevice.wledInfo.leds.count !== 1 ? 's' : ''} available
                         </Text>
-                      )}
-                    </View>
-                  ) : activeDevice?.isConnected ? (
-                    <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
-                      Device connected - LED count not available
-                    </Text>
-                  ) : (
-                    <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
-                      Device offline
-                    </Text>
-                  )}
-                </View>
-              )}
-            </Animated.View>
+                        {activeDevice.wledInfo.leds.rgbw && (
+                          <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
+                            RGBW LEDs supported
+                          </Text>
+                        )}
+                      </View>
+                    ) : activeDevice?.isConnected ? (
+                      <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                        Device connected - LED count not available
+                      </Text>
+                    ) : (
+                      <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                        Device offline
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </Animated.View>
+            </View>
           </View>
         </View>
 
         {/* Seasonal Presets */}
-        <View style={styles.section}>
+        <View style={[styles.sectionCard, { backgroundColor: cardBackground, borderColor }]}>
           <TouchableOpacity
             onPress={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
             style={styles.sectionHeader}
@@ -714,23 +790,25 @@ export default function PresetGrid({
           </TouchableOpacity>
           
           {!isSeasonalCollapsed && (
-            <View style={styles.presetGrid}>
-              {SEASONAL_PRESETS.map((preset, index) => (
-                <PresetCard
-                  key={preset.id}
-                  preset={{...preset, _animationDelay: index * 50}}
-                  isActive={activePreset?.toString() === preset.id.toString()}
-                  onClick={onPresetSelect}
-                  showIcon={true}
-                  isDark={isDark}
-                />
-              ))}
+            <View style={styles.sectionContent}>
+              <View style={styles.presetGrid}>
+                {SEASONAL_PRESETS.map((preset, index) => (
+                  <PresetCard
+                    key={preset.id}
+                    preset={{...preset, _animationDelay: index * 50}}
+                    isActive={activePreset?.toString() === preset.id.toString()}
+                    onClick={onPresetSelect}
+                    showIcon={true}
+                    isDark={isDark}
+                  />
+                ))}
+              </View>
             </View>
           )}
         </View>
 
         {/* Custom Effects */}
-        <View style={styles.section}>
+        <View style={[styles.sectionCard, { backgroundColor: cardBackground, borderColor }]}>
           <TouchableOpacity
             onPress={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
             style={styles.sectionHeader}
@@ -749,9 +827,9 @@ export default function PresetGrid({
           </TouchableOpacity>
           
           {!isCustomEffectsCollapsed && (
-            <View>
+            <View style={styles.sectionContent}>
               {!activeDevice?.isConnected ? (
-                <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                <View style={styles.infoCard}>
                   <Ionicons name="wifi-outline" size={24} color={subtextColor} style={styles.infoIcon} />
                   <Text style={[styles.infoText, { color: subtextColor }]}>
                     Connect to a WLED device to load available effects
@@ -759,7 +837,6 @@ export default function PresetGrid({
                 </View>
               ) : (
                 <View>
-
                   {customEffects.length > 0 ? (
                     <View style={styles.presetGrid}>
                       {customEffects.map((preset, index) => (
@@ -774,7 +851,7 @@ export default function PresetGrid({
                       ))}
                     </View>
                   ) : (
-                    <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                    <View style={styles.infoCard}>
                       <Ionicons name="color-palette-outline" size={24} color={subtextColor} style={styles.infoIcon} />
                       <Text style={[styles.infoText, { color: subtextColor }]}>
                         No presets or custom effects found.
@@ -791,7 +868,7 @@ export default function PresetGrid({
         </View>
 
         {/* Playlists */}
-        <View style={styles.section}>
+        <View style={[styles.sectionCard, { backgroundColor: cardBackground, borderColor }]}>
           <TouchableOpacity
             onPress={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
             style={styles.sectionHeader}
@@ -810,8 +887,7 @@ export default function PresetGrid({
           </TouchableOpacity>
 
           {!isPlaylistsCollapsed && (
-            <View>
-
+            <View style={styles.sectionContent}>
               {isLoadingPlaylists ? (
                 // Loading state - brief empty state for smooth transition
                 <View style={{ height: 120, justifyContent: 'center', alignItems: 'center' }}>
@@ -830,7 +906,7 @@ export default function PresetGrid({
                 </View>
               ) : (
                 customEffects.length === 0 && (
-                  <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
+                  <View style={styles.infoCard}>
                     <Ionicons name="play-outline" size={24} color={subtextColor} style={styles.infoIcon} />
                     <Text style={[styles.infoText, { color: subtextColor }]}>
                       No playlists saved yet
@@ -846,25 +922,192 @@ export default function PresetGrid({
         </View>
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        onPress={() => setShowFabOptions(true)}
-        style={[
-          styles.floatingButton,
-          { 
-            backgroundColor: '#3b82f6',
-            shadowColor: isDark ? '#000' : '#3b82f6'
-          }
-        ]}
-      >
-        <Ionicons name="add" size={24} color="white" />
-      </TouchableOpacity>
+      {/* Floating Device Dropdown */}
+      <View style={[styles.floatingDropdown, { backgroundColor: `${cardBackground}CC`, borderColor }]}>
+        <TouchableOpacity
+          onPress={() => setShowDeviceDropdown(!showDeviceDropdown)}
+          style={styles.dropdownButton}
+        >
+          <View style={styles.dropdownContent}>
+            <View 
+              style={[
+                styles.statusDot, 
+                { backgroundColor: activeDevice?.isConnected ? '#10b981' : '#ef4444' }
+              ]} 
+            />
+            <Text style={[styles.dropdownText, { color: textColor }]} numberOfLines={1}>
+              {activeDevice?.name || 'No Device'}
+            </Text>
+            <Ionicons 
+              name={showDeviceDropdown ? 'chevron-up' : 'chevron-down'} 
+              size={16} 
+              color={subtextColor} 
+            />
+          </View>
+        </TouchableOpacity>
+      </View>
 
-      {/* FAB Options Modal */}
-      {showFabOptions && (
+      {/* Device Selection Modal */}
+      {showDeviceDropdown && devices.length > 1 && (
         <TouchableOpacity
           activeOpacity={1}
-          onPress={() => setShowFabOptions(false)}
+          onPress={() => setShowDeviceDropdown(false)}
+          style={styles.dropdownOverlay}
+        >
+          <View style={[styles.dropdownModal, { backgroundColor: cardBackground }]}>
+            <Text style={[styles.dropdownTitle, { color: textColor }]}>Select Device</Text>
+            {devices.map((device, index) => (
+              <TouchableOpacity
+                key={device.id}
+                onPress={() => {
+                  if (onSetActiveDeviceId) {
+                    onSetActiveDeviceId(device.id);
+                  }
+                  setShowDeviceDropdown(false);
+                }}
+                style={[
+                  styles.deviceOption,
+                  index < devices.length - 1 ? { borderBottomWidth: 1, borderBottomColor: borderColor } : { borderBottomWidth: 0 },
+                  device.id === activeDeviceId && { backgroundColor: isDark ? '#374151' : '#f3f4f6' }
+                ]}
+              >
+                <View 
+                  style={[
+                    styles.statusDot, 
+                    { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }
+                  ]} 
+                />
+                <Text style={[styles.deviceOptionText, { color: textColor }]}>
+                  {device.name}
+                </Text>
+                {device.id === activeDeviceId && (
+                  <Ionicons name="checkmark" size={20} color="#3b82f6" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Floating Action Buttons */}
+      <View style={styles.fabContainer}>
+        {/* Mini FAB 1 - Create New */}
+        <Animated.View
+          style={[
+            styles.miniFab,
+            {
+              transform: [{ scale: fabScaleAnim1 }],
+              bottom: 80,
+            }
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              toggleFabOptions();
+              setShowCreateNewOptions(true);
+            }}
+            style={[
+              styles.miniFabButton,
+              { 
+                backgroundColor: '#10b981',
+                shadowColor: isDark ? '#000' : '#10b981'
+              }
+            ]}
+          >
+            <Ionicons name="add" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Mini FAB 2 - Delete */}
+        <Animated.View
+          style={[
+            styles.miniFab,
+            {
+              transform: [{ scale: fabScaleAnim2 }],
+              bottom: 140,
+            }
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              toggleFabOptions();
+              // Delete functionality to be implemented later
+            }}
+            style={[
+              styles.miniFabButton,
+              { 
+                backgroundColor: '#ef4444',
+                shadowColor: isDark ? '#000' : '#ef4444',
+                opacity: 0.5
+              }
+            ]}
+            disabled={true}
+          >
+            <Ionicons name="trash" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Mini FAB 3 - Settings */}
+        <Animated.View
+          style={[
+            styles.miniFab,
+            {
+              transform: [{ scale: fabScaleAnim3 }],
+              bottom: 200,
+            }
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              toggleFabOptions();
+              setShowSettings(true);
+            }}
+            style={[
+              styles.miniFabButton,
+              { 
+                backgroundColor: '#6b7280',
+                shadowColor: isDark ? '#000' : '#6b7280'
+              }
+            ]}
+          >
+            <Ionicons name="settings" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Main FAB */}
+        <Animated.View
+          style={[
+            styles.floatingButton,
+            {
+              transform: [{
+                rotate: fabRotateAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '45deg']
+                })
+              }]
+            }
+          ]}
+        >
+          <TouchableOpacity
+            onPress={toggleFabOptions}
+            style={[
+              styles.mainFabButton,
+              { 
+                backgroundColor: '#3b82f6',
+                shadowColor: isDark ? '#000' : '#3b82f6'
+              }
+            ]}
+          >
+            <Ionicons name="ellipsis-vertical" size={24} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      {/* Create New Options Modal */}
+      {showCreateNewOptions && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowCreateNewOptions(false)}
           style={styles.fabOverlay}
         >
           <View style={[styles.fabOptionsContainer, { backgroundColor: cardBackground }]}>
@@ -872,7 +1115,7 @@ export default function PresetGrid({
             
             <TouchableOpacity
               onPress={() => {
-                setShowFabOptions(false);
+                setShowCreateNewOptions(false);
                 setShowCustomEffectsModal(true);
               }}
               style={styles.fabOption}
@@ -886,7 +1129,7 @@ export default function PresetGrid({
             {customEffects.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
-                  setShowFabOptions(false);
+                  setShowCreateNewOptions(false);
                   setShowPlaylistCreationModal(true);
                 }}
                 style={styles.fabOption}
@@ -954,6 +1197,25 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+  },
+  sectionCard: {
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionContent: {
+    marginTop: 12,
+  },
+  innerCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    minHeight: 80,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1039,10 +1301,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   presetCard: {
-    borderRadius: 12,
+    borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
-    margin: 4,
+    margin: 2,
     aspectRatio: 1,
     borderWidth: 2,
     shadowOffset: { width: 0, height: 2 },
@@ -1065,21 +1327,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 20,
+    marginBottom: 2,
   },
   cardTitle: {
     fontWeight: '500',
-    fontSize: 12,
+    fontSize: 10,
     color: 'white',
     textAlign: 'center',
   },
   cardSubtitle: {
-    fontSize: 10,
+    fontSize: 8,
     opacity: 0.75,
     color: 'white',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   activeIndicator: {
     position: 'absolute',
@@ -1087,8 +1349,6 @@ const styles = StyleSheet.create({
     right: 4,
   },
   infoCard: {
-    borderWidth: 1,
-    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
@@ -1111,26 +1371,26 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   playlistItem: {
-    width: '30%',
-    margin: '1.66%',
+    width: '22%',
+    margin: '1.5%',
   },
   playlistCard: {
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 8,
+    padding: 8,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   playlistName: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 10,
     textAlign: 'center',
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   playlistCount: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 8,
     opacity: 0.75,
   },
   gradientBackground: {
@@ -1143,20 +1403,117 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  floatingButton: {
+  floatingDropdown: {
+    position: 'absolute',
+    bottom: 24,
+    left: 24,
+    right: 100,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    zIndex: 999,
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  dropdownButton: {
+    flex: 1,
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dropdownText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
+  },
+  menuButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1002,
+  },
+  dropdownModal: {
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 250,
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  deviceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+  },
+  deviceOptionText: {
+    fontSize: 16,
+    marginLeft: 8,
+    flex: 1,
+  },
+  fabContainer: {
     position: 'absolute',
     bottom: 24,
     right: 24,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  floatingButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  mainFabButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    zIndex: 1000,
+  },
+  miniFab: {
+    position: 'absolute',
+    right: 8,
+  },
+  miniFabButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
   fabOverlay: {
     position: 'absolute',
