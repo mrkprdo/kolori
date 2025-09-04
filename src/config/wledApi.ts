@@ -429,11 +429,15 @@ export const fetchWledPresets = async (
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      const errorMessage = response.status === 404 
+        ? `WLED device not found at ${deviceAddress}. Check device connection and IP address.`
+        : `HTTP Error: ${response.status} - ${response.statusText}`;
+      
       return {
         success: false,
         presets: [],
         playlists: [],
-        message: `HTTP Error: ${response.status}`,
+        message: errorMessage,
       };
     }
 
@@ -461,6 +465,7 @@ export const fetchWledPresets = async (
 
         // Check if this is a playlist
         if ((presetData as any).playlist && (presetData as any).playlist.ps) {
+          logger.log(`🎵 Found playlist in preset ${presetId}:`, (presetData as any).n, 'with', (presetData as any).playlist.ps.length, 'items');
           const playlist = {
             id: `playlist_${presetId}`,
             presetId: parseInt(presetId),
@@ -473,14 +478,17 @@ export const fetchWledPresets = async (
                   ? Math.floor((presetData as any).playlist.dur[index] / 10)
                   : 30, // Convert tenths to seconds
                 gradient: "#6366f1", // Default gradient
+                playlistItemId: `${psId}_${index}`,
               })
             ),
+            isActive: false,
             isWledPlaylist: true,
             method: "wled-device",
           };
           playlists.push(playlist);
         } else {
           // Regular preset - add effect and palette info
+          logger.log(`⚙️ Categorizing as regular preset ${presetId}:`, (presetData as any).n, 'has playlist data?', !!(presetData as any).playlist);
           if ((presetData as any).seg && (presetData as any).seg[0]) {
             const segment = (presetData as any).seg[0];
             preset.effectId = segment.fx || 0;
@@ -581,6 +589,7 @@ export const fetchWledEffects = async (
 
 // Alias for backward compatibility
 export const getWledPresets = fetchWledPresets;
+
 
 // Helper function to generate gradient based on palette ID (matching old implementation) - Optimized
 export const generatePresetGradient = (paletteId: number): string => {
@@ -790,4 +799,86 @@ export const generateLinearGradientColors = (
   }
 
   return colors;
+};
+
+// Function to create/save a WLED playlist
+export const createWledPlaylist = async (
+  deviceAddress: string,
+  playlistItems: { presetId: number; duration: number }[],
+  playlistName: string,
+  protocol = "http"
+): Promise<ApiResponse & { presetId?: number }> => {
+  if (!playlistItems || playlistItems.length === 0) {
+    return { success: false, message: 'Playlist cannot be empty' };
+  }
+  
+  // Ensure all playlist items have valid preset IDs
+  for (const item of playlistItems) {
+    if (!item.presetId || item.presetId < 1 || item.presetId > 250) {
+      return { 
+        success: false, 
+        message: `Invalid preset ID: ${item.presetId}. Must be between 1 and 250.` 
+      };
+    }
+  }
+  
+  // Generate a unique preset ID for the playlist (typically in range 51-250)
+  const playlistPresetId = 51 + Math.floor(Math.random() * 199);
+  
+  // Create playlist data in WLED format (matching WebSocket implementation)
+  const playlistData = {
+    psave: playlistPresetId,
+    n: playlistName,
+    playlist: {
+      ps: playlistItems.map(item => item.presetId), // Array of preset IDs
+      dur: playlistItems.map(item => item.duration * 10), // Convert seconds to tenths of seconds
+      transition: playlistItems.map(() => 7), // Array of transition times (0.7 seconds each)
+      repeat: 0, // 0 = infinite repeat
+      r: true, // Enable playlist repeat/cycling
+      end: 0, // End behavior
+    },
+    on: true, // Turn on lights
+    o: true, // Save on state
+    v: true, // Preset is visible/valid
+    time: Math.floor(Date.now() / 1000)
+  };
+
+  try {
+    logger.log("📡 WLED API: Sending playlist creation request to", deviceAddress, ":", JSON.stringify(playlistData, null, 2));
+    
+    const url = buildWledUrl(deviceAddress, protocol, '/json/state');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(playlistData),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      return {
+        success: true,
+        message: 'Playlist saved successfully',
+        presetId: playlistPresetId,
+      };
+    } else {
+      return {
+        success: false,
+        message: `Failed to save playlist: ${response.status}`,
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to create WLED playlist:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
 };

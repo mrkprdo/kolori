@@ -157,6 +157,14 @@ class WledWebSocketManager {
     };
 
     this.wledSocket.onerror = (error) => {
+      // Filter out common masking errors that don't affect functionality
+      const errorMessage = (error as any)?.message || '';
+      if (errorMessage.includes('Server-sent frames must not be masked')) {
+        // This is a known React Native + WLED compatibility issue that doesn't affect functionality
+        logger.warn("WebSocket masking warning (functionality not affected):", errorMessage);
+        return; // Don't propagate this specific error
+      }
+      
       logger.error("WebSocket Error:", error);
       if (this.onErrorCallback) this.onErrorCallback(error);
     };

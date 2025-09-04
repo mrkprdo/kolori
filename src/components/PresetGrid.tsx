@@ -21,6 +21,7 @@ import {
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import CustomEffectsModal from './CustomEffectsModal';
+import PlaylistCreationModal from './PlaylistCreationModal';
 
 // Animated playlist item component
 interface AnimatedPlaylistItemProps {
@@ -449,6 +450,7 @@ interface PresetGridProps {
   onLiveViewToggle: (enabled: boolean) => void;
   onLiveLedDataUpdate?: (ledData: LEDColor[]) => void;
   onRefreshPresets?: () => Promise<void>;
+  onSavePlaylist?: (playlist: SavedPlaylist) => void;
 }
 
 export default function PresetGrid({
@@ -473,12 +475,14 @@ export default function PresetGrid({
   onLiveViewToggle,
   onLiveLedDataUpdate,
   onRefreshPresets,
+  onSavePlaylist,
 }: PresetGridProps) {
   
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
   const [showCustomEffectsModal, setShowCustomEffectsModal] = useState(false);
+  const [showPlaylistCreationModal, setShowPlaylistCreationModal] = useState(false);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
@@ -803,7 +807,7 @@ export default function PresetGrid({
               {/* Create Playlist Button */}
               {customEffects.length > 0 && (
                 <TouchableOpacity
-                  onPress={onShowPlaylist}
+                  onPress={() => setShowPlaylistCreationModal(true)}
                   style={[styles.createButton, { backgroundColor: isDark ? '#1e3a8a' : '#dbeafe' }]}
                 >
                   <Ionicons name="play" size={18} color={isDark ? '#93c5fd' : '#1d4ed8'} />
@@ -857,6 +861,31 @@ export default function PresetGrid({
         liveViewEnabled={liveViewEnabled}
         onLiveViewToggle={onLiveViewToggle}
         onRefreshPresets={onRefreshPresets}
+      />
+
+      {/* Playlist Creation Modal */}
+      <PlaylistCreationModal
+        visible={showPlaylistCreationModal}
+        isDark={isDark}
+        onClose={() => setShowPlaylistCreationModal(false)}
+        customEffects={customEffects}
+        onSavePlaylist={(playlist) => {
+          if (onSavePlaylist) {
+            onSavePlaylist(playlist);
+          }
+        }}
+        onRefreshPresets={onRefreshPresets}
+        device={activeDevice || { 
+          id: 0, 
+          ip: '', 
+          name: 'Unknown Device', 
+          protocol: 'http', 
+          isConnected: false, 
+          isPlaying: false, 
+          autoBrightness: false, 
+          maxBrightness: 255 
+        }}
+        savedPlaylists={savedPlaylists}
       />
     </View>
   );

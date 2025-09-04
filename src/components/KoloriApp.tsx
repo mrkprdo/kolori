@@ -540,6 +540,13 @@ const KoloriApp = React.memo(function KoloriApp({
         },
         onError: (error) => {
           const currentActiveDevice = activeDeviceRef.current;
+          // Filter out masking errors that don't affect functionality
+          const errorMessage = (error as any)?.message || '';
+          if (errorMessage.includes('Server-sent frames must not be masked')) {
+            logger.warn('WebSocket masking warning for device:', currentActiveDevice?.name || 'unknown', '(functionality not affected)');
+            return;
+          }
+          
           logger.error('Global WebSocket error for device:', currentActiveDevice?.name || 'unknown', error);
           if (isMounted) {
             setLiveLedData([]);
@@ -925,6 +932,7 @@ const KoloriApp = React.memo(function KoloriApp({
           setShowSettings={onShowSettings}
           isDark={isDark}
           scheduleMode={settings.scheduleMode}
+          onRefreshPresets={fetchWledPresets}
         />
         <PresetGrid
           activePreset={activePreset}
@@ -991,6 +999,11 @@ const KoloriApp = React.memo(function KoloriApp({
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
           onLiveLedDataUpdate={setLiveLedData}
           onRefreshPresets={fetchWledPresets}
+          onSavePlaylist={(playlist) => {
+            const newPlaylists = [...savedPlaylists, playlist];
+            setSavedPlaylists(newPlaylists);
+            storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, newPlaylists);
+          }}
         />
         <PlaylistModal
           isVisible={showPlaylist}
