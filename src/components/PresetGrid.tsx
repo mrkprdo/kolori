@@ -527,6 +527,7 @@ interface PresetGridProps {
   onPlaylistRemove: (playlistId: number) => void;
   onPlaylistSelect: (playlistId: number) => void;
   setShowSettings: (show: boolean) => void;
+  onShowDeviceManagement: () => void;
   liveLedData: LEDColor[];
   liveViewEnabled: boolean;
   onLiveViewToggle: (enabled: boolean) => void;
@@ -555,6 +556,7 @@ export default function PresetGrid({
   onPlaylistRemove,
   onPlaylistSelect,
   setShowSettings,
+  onShowDeviceManagement,
   liveLedData,
   liveViewEnabled,
   onLiveViewToggle,
@@ -582,6 +584,7 @@ export default function PresetGrid({
   const fabScaleAnim1 = useRef(new Animated.Value(0)).current;
   const fabScaleAnim2 = useRef(new Animated.Value(0)).current;
   const fabScaleAnim3 = useRef(new Animated.Value(0)).current;
+  const fabScaleAnim4 = useRef(new Animated.Value(0)).current;
   const wiggleAnim = useRef(new Animated.Value(0)).current;
   // Device presets are now passed via customEffects prop from parent
   const devicePresets = customEffects; // Use customEffects directly
@@ -700,7 +703,13 @@ export default function PresetGrid({
           useNativeDriver: true,
         }),
         Animated.stagger(50, [
-          Animated.spring(fabScaleAnim1, {
+          Animated.spring(fabScaleAnim4, {
+            toValue: 1,
+            tension: 200,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+          Animated.spring(fabScaleAnim3, {
             toValue: 1,
             tension: 200,
             friction: 6,
@@ -712,7 +721,7 @@ export default function PresetGrid({
             friction: 6,
             useNativeDriver: true,
           }),
-          Animated.spring(fabScaleAnim3, {
+          Animated.spring(fabScaleAnim1, {
             toValue: 1,
             tension: 200,
             friction: 6,
@@ -728,7 +737,7 @@ export default function PresetGrid({
           duration: 200,
           useNativeDriver: true,
         }),
-        Animated.parallel([
+        Animated.stagger(40, [
           Animated.timing(fabScaleAnim1, {
             toValue: 0,
             duration: 150,
@@ -744,10 +753,15 @@ export default function PresetGrid({
             duration: 150,
             useNativeDriver: true,
           }),
+          Animated.timing(fabScaleAnim4, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
         ]),
       ]).start();
     }
-  }, [showFabOptions, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3]);
+  }, [showFabOptions, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
 
   const startWiggleAnimation = useCallback(() => {
     const wiggle = () => {
@@ -811,11 +825,16 @@ export default function PresetGrid({
           duration: 150,
           useNativeDriver: true,
         }),
+        Animated.timing(fabScaleAnim4, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
       ]),
     ]).start(() => {
       setShowFabOptions(false);
     });
-  }, [wiggleAnim, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3]);
+  }, [wiggleAnim, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
 
   const toggleCardSelection = useCallback((id: string | number) => {
     setSelectedForDelete(prev => {
@@ -1307,7 +1326,7 @@ export default function PresetGrid({
             styles.miniFab,
             {
               transform: [{ scale: fabScaleAnim1 }],
-              bottom: 80,
+              bottom: 260,
             }
           ]}
         >
@@ -1328,12 +1347,39 @@ export default function PresetGrid({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Mini FAB 2 - Delete */}
+        {/* Mini FAB 2 - Device Management */}
         <Animated.View
           style={[
             styles.miniFab,
             {
               transform: [{ scale: fabScaleAnim2 }],
+              bottom: 200,
+            }
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              toggleFabOptions();
+              onShowDeviceManagement();
+            }}
+            style={[
+              styles.miniFabButton,
+              { 
+                backgroundColor: '#f59e0b',
+                shadowColor: isDark ? '#000' : '#f59e0b'
+              }
+            ]}
+          >
+            <Ionicons name="hardware-chip-outline" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Mini FAB 3 - Delete */}
+        <Animated.View
+          style={[
+            styles.miniFab,
+            {
+              transform: [{ scale: fabScaleAnim3 }],
               bottom: 140,
             }
           ]}
@@ -1355,13 +1401,13 @@ export default function PresetGrid({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Mini FAB 3 - Settings */}
+        {/* Mini FAB 4 - Settings */}
         <Animated.View
           style={[
             styles.miniFab,
             {
-              transform: [{ scale: fabScaleAnim3 }],
-              bottom: 200,
+              transform: [{ scale: fabScaleAnim4 }],
+              bottom: 80,
             }
           ]}
         >
@@ -1449,6 +1495,11 @@ export default function PresetGrid({
                       duration: 150,
                       useNativeDriver: true,
                     }),
+                    Animated.timing(fabScaleAnim4, {
+                      toValue: 0,
+                      duration: 150,
+                      useNativeDriver: true,
+                    }),
                   ]),
                 ]).start(() => {
                   setShowFabOptions(false);
@@ -1486,6 +1537,11 @@ export default function PresetGrid({
                         useNativeDriver: true,
                       }),
                       Animated.timing(fabScaleAnim3, {
+                        toValue: 0,
+                        duration: 150,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(fabScaleAnim4, {
                         toValue: 0,
                         duration: 150,
                         useNativeDriver: true,

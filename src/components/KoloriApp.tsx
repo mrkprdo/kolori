@@ -40,6 +40,7 @@ import {
 // Components
 import PresetGrid from './PresetGrid';
 import PlaylistModal from './PlaylistModal';
+import DeviceManagementModal from './DeviceManagementModal';
 
 /**
  * Props for the main KoloriApp component
@@ -87,6 +88,7 @@ const KoloriApp = React.memo(function KoloriApp({
 }: KoloriAppProps) {
   const systemColorScheme = useColorScheme();
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
+  const [showDeviceManagementModal, setShowDeviceManagementModal] = useState(false);
   
   // Debug logging for playlist state changes - memoized to prevent unnecessary logging
   useEffect(() => {
@@ -807,7 +809,7 @@ const KoloriApp = React.memo(function KoloriApp({
       }
       
     } catch (error: any) {
-      logger.error('❌ Failed to activate preset:', error.message);
+      logger.error('❌ Failed to activate preset:', error.message.toString());
       showNotification(
         'error',
         'Activation Failed',
@@ -991,6 +993,7 @@ const KoloriApp = React.memo(function KoloriApp({
             }
           }, [savedPlaylists, activeDevice?.isConnected, activeDevice?.protocol, activeDeviceId, getDeviceAddress, onDeviceUpdate])}
           setShowSettings={onShowSettings}
+          onShowDeviceManagement={() => setShowDeviceManagementModal(true)}
           liveLedData={liveLedData}
           liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
@@ -1052,6 +1055,11 @@ const KoloriApp = React.memo(function KoloriApp({
               logger.log('💡 Tip: Try refreshing playlists from the device to get preset IDs');
             }
           }, [savedPlaylists, activeDevice?.isConnected, activeDevice?.protocol, activeDeviceId, getDeviceAddress, onDeviceUpdate])}
+        />
+        <DeviceManagementModal
+          isVisible={showDeviceManagementModal}
+          onClose={() => setShowDeviceManagementModal(false)}
+          isDark={isDark}
         />
       </SafeAreaView>
     </SafeAreaProvider>

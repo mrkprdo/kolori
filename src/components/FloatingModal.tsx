@@ -42,24 +42,24 @@ const FloatingModal: React.FC<FloatingModalProps> = ({
 
   const modalStyle = {
     backgroundColor: modalBackground,
-    borderRadius: 20,
-    marginHorizontal: 16,
-    marginVertical: 60,
+    borderRadius: 16,
+    marginHorizontal: 12,
+    marginVertical: 50,
     flex: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    maxHeight: maxHeight || '85%',
+    ...(maxHeight ? { maxHeight } : {}),
   };
 
   const headerStyle = {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: borderColor,
   };
@@ -67,13 +67,13 @@ const FloatingModal: React.FC<FloatingModalProps> = ({
   const content = scrollable ? (
     <ScrollView 
       style={{ flex: 1 }}
-      contentContainerStyle={{ padding: 24 }}
+      contentContainerStyle={{ padding: 0 }}
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={{ flex: 1, padding: 24 }}>
+    <View style={{ flex: 1, padding: 0 }}>
       {children}
     </View>
   );
@@ -104,7 +104,7 @@ const FloatingModal: React.FC<FloatingModalProps> = ({
 
 const styles = StyleSheet.create({
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });
