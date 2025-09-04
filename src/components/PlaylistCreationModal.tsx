@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { CustomEffect, SavedPlaylist, Device } from '../types';
 import { createWledPlaylist } from '../config/wledApi';
+import FloatingModal from './FloatingModal';
 
 interface PlaylistItem {
   id: string;
@@ -170,33 +171,6 @@ export default function PlaylistCreationModal({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const containerStyle = {
-    flex: 1,
-    backgroundColor: isDark ? '#111827' : '#f9fafb',
-  };
-
-  const modalStyle = {
-    backgroundColor: isDark ? '#1f2937' : '#ffffff',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 60,
-    flex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  };
-
-  const headerStyle = {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: isDark ? '#374151' : '#e5e7eb',
-  };
 
   const addNewPlaylistItem = () => {
     const newId = (playlistItems.length + 1).toString();
@@ -344,24 +318,14 @@ export default function PlaylistCreationModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={containerStyle}>
-        <View style={modalStyle}>
-          {/* Header */}
-          <View style={headerStyle}>
-            <Text style={{
-              fontSize: 20,
-              fontWeight: 'bold',
-              color: isDark ? '#ffffff' : '#111827',
-            }}>
-              Create Playlist
-            </Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={{ flex: 1, padding: 20 }}>
+    <>
+    <FloatingModal
+      visible={visible}
+      isDark={isDark}
+      onClose={handleClose}
+      title="Create Playlist"
+      scrollable={true}
+    >
             {/* Playlist Items */}
             <View style={{ marginBottom: 24 }}>
               <Text style={{
@@ -467,65 +431,63 @@ export default function PlaylistCreationModal({
                 </Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
 
-          {/* Footer */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            padding: 20,
-            borderTopWidth: 1,
-            borderTopColor: isDark ? '#374151' : '#e5e7eb',
-          }}>
-            <TouchableOpacity
-              onPress={handleClose}
-              style={{
-                flex: 1,
-                backgroundColor: isDark ? '#4b5563' : '#f3f4f6',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 8,
-                alignItems: 'center',
-                marginRight: 8,
-              }}
-            >
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: isDark ? '#9ca3af' : '#6b7280',
-              }}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              onPress={() => setShowSaveModal(true)}
-              disabled={playlistItems.filter(item => item.presetId !== null).length === 0}
-              style={{
-                flex: 1,
-                backgroundColor: playlistItems.filter(item => item.presetId !== null).length === 0 ? '#9ca3af' : '#3b82f6',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 8,
-                alignItems: 'center',
-                marginLeft: 8,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              <Ionicons name="save-outline" size={20} color="white" />
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: 'white',
-              }}>
-                Save Playlist
-              </Text>
-            </TouchableOpacity>
-          </View>
+        {/* Footer Buttons */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: 20,
+          paddingTop: 20,
+          borderTopWidth: 1,
+          borderTopColor: isDark ? '#374151' : '#e5e7eb',
+          gap: 12,
+        }}>
+          <TouchableOpacity
+            onPress={handleClose}
+            style={{
+              flex: 1,
+              backgroundColor: isDark ? '#4b5563' : '#f3f4f6',
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: isDark ? '#9ca3af' : '#6b7280',
+            }}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => setShowSaveModal(true)}
+            disabled={playlistItems.filter(item => item.presetId !== null).length === 0}
+            style={{
+              flex: 1,
+              backgroundColor: playlistItems.filter(item => item.presetId !== null).length === 0 ? '#9ca3af' : '#3b82f6',
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <Ionicons name="save-outline" size={20} color="white" />
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Save Playlist
+            </Text>
+          </TouchableOpacity>
         </View>
-      </View>
+    </FloatingModal>
 
       {/* Save Playlist Modal */}
       <SavePlaylistModal
@@ -535,6 +497,6 @@ export default function PlaylistCreationModal({
         onSave={handleSavePlaylist}
         isLoading={isSaving}
       />
-    </Modal>
+    </>
   );
 }

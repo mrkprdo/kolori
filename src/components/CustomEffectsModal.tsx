@@ -3,16 +3,15 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
-  Modal,
   ActivityIndicator,
   Alert,
   TextInput,
+  Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { createWledPreset } from '../config/wledApi';
+import FloatingModal from './FloatingModal';
 
 interface Effect {
   id: number;
@@ -70,28 +69,23 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-    >
+    <Modal visible={visible} animationType="fade" transparent>
       <View style={{
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
       }}>
         <View style={{
           backgroundColor: isDark ? '#1f2937' : '#ffffff',
           borderRadius: 12,
           padding: 24,
-          width: '100%',
-          maxWidth: 400,
+          marginHorizontal: 32,
+          minWidth: 280,
         }}>
           <Text style={{
             fontSize: 18,
-            fontWeight: '600',
+            fontWeight: 'bold',
             color: isDark ? '#ffffff' : '#111827',
             marginBottom: 16,
             textAlign: 'center',
@@ -115,20 +109,22 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
             maxLength={50}
             style={{
               backgroundColor: isDark ? '#374151' : '#f9fafb',
-              borderColor: isDark ? '#4b5563' : '#d1d5db',
               borderWidth: 1,
+              borderColor: isDark ? '#4b5563' : '#d1d5db',
               borderRadius: 8,
-              padding: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
               fontSize: 16,
               color: isDark ? '#ffffff' : '#111827',
               marginBottom: 4,
             }}
+            autoFocus
           />
           
           <Text style={{
             fontSize: 12,
             color: isDark ? '#9ca3af' : '#6b7280',
-            marginBottom: 24,
+            marginBottom: 20,
             textAlign: 'right',
           }}>
             {presetName.length}/50
@@ -136,15 +132,15 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
           
           <View style={{
             flexDirection: 'row',
+            justifyContent: 'space-between',
             gap: 12,
           }}>
             <TouchableOpacity
               onPress={handleClose}
               style={{
                 flex: 1,
-                backgroundColor: isDark ? '#374151' : '#e5e7eb',
+                backgroundColor: isDark ? '#4b5563' : '#f3f4f6',
                 paddingVertical: 12,
-                paddingHorizontal: 16,
                 borderRadius: 8,
                 alignItems: 'center',
               }}
@@ -160,12 +156,11 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
             
             <TouchableOpacity
               onPress={handleSave}
-              disabled={isLoading || !presetName.trim()}
+              disabled={!presetName.trim() || isLoading}
               style={{
                 flex: 1,
                 backgroundColor: (!presetName.trim() || isLoading) ? '#9ca3af' : '#3b82f6',
                 paddingVertical: 12,
-                paddingHorizontal: 16,
                 borderRadius: 8,
                 alignItems: 'center',
                 flexDirection: 'row',
@@ -208,11 +203,6 @@ export default function CustomEffectsModal({
   const [isTesting, setIsTesting] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  const containerStyle = {
-    flex: 1,
-    backgroundColor: isDark ? '#111827' : '#f9fafb',
-  };
 
   const sectionStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
@@ -434,41 +424,14 @@ export default function CustomEffectsModal({
   };
 
   return (
-    <Modal
+    <>
+    <FloatingModal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      isDark={isDark}
+      onClose={handleClose}
+      title="Add Custom Effects"
+      scrollable={true}
     >
-      <SafeAreaView style={containerStyle}>
-        {/* Header */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: isDark ? '#374151' : '#e5e7eb',
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-        }}>
-          <TouchableOpacity onPress={handleClose} style={{ padding: 8 }}>
-            <Ionicons 
-              name="close" 
-              size={24} 
-              color={isDark ? '#ffffff' : '#111827'} 
-            />
-          </TouchableOpacity>
-          <Text style={{
-            flex: 1,
-            fontSize: 20,
-            fontWeight: 'bold',
-            textAlign: 'center',
-            color: isDark ? '#ffffff' : '#111827',
-          }}>
-            Add Custom Effects
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <ScrollView style={{ flex: 1, padding: 16 }}>
           {selectedDevices.length === 0 && (
             <View style={[sectionStyle, { alignItems: 'center', padding: 24 }]}>
               <Ionicons 
@@ -816,8 +779,7 @@ export default function CustomEffectsModal({
               </View>
             </>
           )}
-        </ScrollView>
-      </SafeAreaView>
+    </FloatingModal>
 
       {/* Save Preset Modal */}
       <SavePresetModal
@@ -827,6 +789,6 @@ export default function CustomEffectsModal({
         onSave={handleSavePreset}
         isLoading={isSaving}
       />
-    </Modal>
+    </>
   );
 }

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 import { Device } from '../types';
 import { ipToDeviceId } from '../utils/deviceId';
+import FloatingModal from './FloatingModal';
 
 interface ScanNetworkModalProps {
   isVisible: boolean;
@@ -26,8 +26,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#E5E7EB' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: isDark ? '#FFF' : '#000' },
   closeButton: { padding: 8 },
-  scanButton: { padding: 8 },
-  modalContent: { flex: 1, padding: 16 },
+  scanButton: { padding: 8, flexDirection: 'row', alignItems: 'center' },
   scanningIndicator: { alignItems: 'center', padding: 32 },
   scanningText: { marginTop: 16, fontSize: 16, textAlign: 'center', color: isDark ? '#d1d5db' : '#6b7280' },
   scanningOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: isDark ? 'rgba(17, 24, 39, 0.6)' : 'rgba(249, 250, 251, 0.6)', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
@@ -40,7 +39,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   connectIcon: { padding: 4, alignItems: 'center', justifyContent: 'center' },
   noDevicesContainer: { alignItems: 'center', padding: 48 },
   noDevicesText: { marginTop: 16, fontSize: 16, textAlign: 'center', color: isDark ? '#9CA3AF' : '#6B7280' },
-  addAllButtonContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#E5E7EB', backgroundColor: isDark ? '#111827' : '#F3F4F6' },
+  addAllButtonContainer: { padding: 16, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#E5E7EB', backgroundColor: isDark ? '#111827' : '#F3F4F6' },
   addAllButton: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   addAllButtonText: { color: 'white', fontWeight: '600', fontSize: 16 },
 });
@@ -210,18 +209,23 @@ export default function ScanNetworkModal({
   };
 
   return (
-    <Modal visible={isVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={isDark ? '#FFF' : '#000'} />
-          </TouchableOpacity>
-          <Text style={styles.modalTitle}>Device Discovery</Text>
-          <TouchableOpacity onPress={scanForDevices} style={styles.scanButton}>
-            <Ionicons name={isScanning ? "stop" : "refresh"} size={20} color="#3b82f6" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 80 }}>
+    <FloatingModal
+      visible={isVisible}
+      isDark={isDark}
+      onClose={onClose}
+      title="Device Discovery"
+      scrollable={false}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <TouchableOpacity onPress={scanForDevices} style={styles.scanButton}>
+          <Ionicons name={isScanning ? "stop" : "refresh"} size={20} color="#3b82f6" />
+          <Text style={{ marginLeft: 8, color: '#3b82f6', fontWeight: '600' }}>
+            {isScanning ? 'Stop' : 'Scan'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
           <View style={{ opacity: isScanning ? 0.3 : 1 }}>
             {discoveredDevices.map((device) => (
             <View key={device.name} style={styles.deviceCard}>
@@ -260,27 +264,26 @@ export default function ScanNetworkModal({
               </View>
             </View>
           )}
-        </ScrollView>
-        
-        {/* Sticky Add All Button */}
-        <View style={styles.addAllButtonContainer}>
-          <TouchableOpacity 
-            onPress={addAllDevices} 
-            disabled={isScanning || discoveredDevices.filter(d => d.status === 'discovered').length === 0}
-            style={[
-              styles.addAllButton, 
-              { 
-                backgroundColor: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? '#059669' : '#9ca3af',
-                opacity: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? 1 : 0.5
-              }
-            ]}>
-            <Ionicons name="add-circle" size={20} color="white" />
-            <Text style={styles.addAllButtonText}>
-              Add All Devices ({discoveredDevices.filter(d => d.status === 'discovered').length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </Modal>
+      </ScrollView>
+      
+      {/* Sticky Add All Button */}
+      <View style={styles.addAllButtonContainer}>
+        <TouchableOpacity 
+          onPress={addAllDevices} 
+          disabled={isScanning || discoveredDevices.filter(d => d.status === 'discovered').length === 0}
+          style={[
+            styles.addAllButton, 
+            { 
+              backgroundColor: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? '#059669' : '#9ca3af',
+              opacity: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? 1 : 0.5
+            }
+          ]}>
+          <Ionicons name="add-circle" size={20} color="white" />
+          <Text style={styles.addAllButtonText}>
+            Add All Devices ({discoveredDevices.filter(d => d.status === 'discovered').length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </FloatingModal>
   );
 }

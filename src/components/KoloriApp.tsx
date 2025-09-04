@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
+import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Utilities
@@ -85,6 +85,7 @@ const KoloriApp = React.memo(function KoloriApp({
   onShowSettings,
   onScanFromMain,
 }: KoloriAppProps) {
+  const systemColorScheme = useColorScheme();
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
   
   // Debug logging for playlist state changes - memoized to prevent unnecessary logging
@@ -609,7 +610,12 @@ const KoloriApp = React.memo(function KoloriApp({
   const isConnected = useMemo(() => activeDevice?.isConnected || false, [activeDevice?.isConnected]);
   const deviceName = useMemo(() => activeDevice?.name || 'No Device', [activeDevice?.name]);
   const activePreset = useMemo(() => activeDevice?.activePreset || null, [activeDevice?.activePreset]);
-  const isDark = useMemo(() => settings.theme === 'dark', [settings.theme]);
+  const isDark = useMemo(() => {
+    if (settings.theme === 'system') {
+      return systemColorScheme === 'dark';
+    }
+    return settings.theme === 'dark';
+  }, [settings.theme, systemColorScheme]);
 
   const getDeviceAddress = useCallback((device: WledDevice | undefined): string | null => {
     if (!device) return null;
