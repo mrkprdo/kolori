@@ -932,7 +932,6 @@ const KoloriApp = React.memo(function KoloriApp({
           setShowSettings={onShowSettings}
           isDark={isDark}
           scheduleMode={settings.scheduleMode}
-          onRefreshPresets={fetchWledPresets}
         />
         <PresetGrid
           activePreset={activePreset}

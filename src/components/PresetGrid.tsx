@@ -4,6 +4,7 @@ import {
   Text, 
   TouchableOpacity, 
   ScrollView,
+  RefreshControl,
   Dimensions,
   StyleSheet,
   Animated,
@@ -483,6 +484,8 @@ export default function PresetGrid({
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
   const [showCustomEffectsModal, setShowCustomEffectsModal] = useState(false);
   const [showPlaylistCreationModal, setShowPlaylistCreationModal] = useState(false);
+  const [showFabOptions, setShowFabOptions] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
@@ -578,12 +581,34 @@ export default function PresetGrid({
     });
   };
 
+  const handleRefresh = useCallback(async () => {
+    if (!onRefreshPresets || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await onRefreshPresets();
+    } catch (error) {
+      logger.error('Failed to refresh presets:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [onRefreshPresets, isRefreshing]);
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <ScrollView 
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={textColor}
+            colors={['#3b82f6']}
+            progressBackgroundColor={cardBackground}
+          />
+        }
       >
         
         {/* Live View Section */}
@@ -713,7 +738,7 @@ export default function PresetGrid({
             <View style={styles.headerLeft}>
               <Ionicons name="color-palette" size={20} color={textColor} />
               <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Custom Effects
+                Custom Effects ({customEffects.length})
               </Text>
             </View>
             <Ionicons
@@ -734,37 +759,19 @@ export default function PresetGrid({
                 </View>
               ) : (
                 <View>
-                  {/* Add Effect Button */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowCustomEffectsModal(true);
-                    }}
-                    style={[styles.addButton, { backgroundColor: cardBackground, borderColor: subtextColor }]}
-                  >
-                    <Ionicons name="add" size={20} color={subtextColor} />
-                    <Text style={[styles.addButtonText, { color: subtextColor }]}>
-                      Add Custom Effect
-                    </Text>
-                  </TouchableOpacity>
 
-                  {/* Device Presets (from WLED device) */}
                   {customEffects.length > 0 ? (
-                    <View>
-                      <Text style={[styles.sectionSubtitle, { color: subtextColor, marginBottom: 8 }]}>
-                        Device Presets ({customEffects.length})
-                      </Text>
-                      <View style={styles.presetGrid}>
-                        {customEffects.map((preset, index) => (
-                          <PresetCard
-                            key={`device-${preset.id}`}
-                            preset={{...preset, _animationDelay: index * 50}}
-                            isActive={activePreset?.toString() === preset.id.toString()}
-                            onClick={onPresetSelect}
-                            showIcon={false}
-                            isDark={isDark}
-                          />
-                        ))}
-                      </View>
+                    <View style={styles.presetGrid}>
+                      {customEffects.map((preset, index) => (
+                        <PresetCard
+                          key={`device-${preset.id}`}
+                          preset={{...preset, _animationDelay: index * 50}}
+                          isActive={activePreset?.toString() === preset.id.toString()}
+                          onClick={onPresetSelect}
+                          showIcon={false}
+                          isDark={isDark}
+                        />
+                      ))}
                     </View>
                   ) : (
                     <View style={[styles.infoCard, { backgroundColor: cardBackground, borderColor }]}>
@@ -792,7 +799,7 @@ export default function PresetGrid({
             <View style={styles.headerLeft}>
               <Ionicons name="list" size={20} color={textColor} />
               <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Playlists
+                Playlists ({savedPlaylists.length})
               </Text>
             </View>
             <Ionicons
@@ -804,18 +811,6 @@ export default function PresetGrid({
 
           {!isPlaylistsCollapsed && (
             <View>
-              {/* Create Playlist Button */}
-              {customEffects.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setShowPlaylistCreationModal(true)}
-                  style={[styles.createButton, { backgroundColor: isDark ? '#1e3a8a' : '#dbeafe' }]}
-                >
-                  <Ionicons name="play" size={18} color={isDark ? '#93c5fd' : '#1d4ed8'} />
-                  <Text style={[styles.createButtonText, { color: isDark ? '#bfdbfe' : '#1e40af' }]}>
-                    Create Playlist
-                  </Text>
-                </TouchableOpacity>
-              )}
 
               {isLoadingPlaylists ? (
                 // Loading state - brief empty state for smooth transition
@@ -850,6 +845,61 @@ export default function PresetGrid({
           )}
         </View>
       </ScrollView>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        onPress={() => setShowFabOptions(true)}
+        style={[
+          styles.floatingButton,
+          { 
+            backgroundColor: '#3b82f6',
+            shadowColor: isDark ? '#000' : '#3b82f6'
+          }
+        ]}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </TouchableOpacity>
+
+      {/* FAB Options Modal */}
+      {showFabOptions && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowFabOptions(false)}
+          style={styles.fabOverlay}
+        >
+          <View style={[styles.fabOptionsContainer, { backgroundColor: cardBackground }]}>
+            <Text style={[styles.fabTitle, { color: textColor }]}>Create New</Text>
+            
+            <TouchableOpacity
+              onPress={() => {
+                setShowFabOptions(false);
+                setShowCustomEffectsModal(true);
+              }}
+              style={styles.fabOption}
+            >
+              <Ionicons name="color-palette" size={20} color={textColor} />
+              <Text style={[styles.fabOptionText, { color: textColor }]}>
+                Custom Effect
+              </Text>
+            </TouchableOpacity>
+            
+            {customEffects.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setShowFabOptions(false);
+                  setShowPlaylistCreationModal(true);
+                }}
+                style={styles.fabOption}
+              >
+                <Ionicons name="play" size={20} color={textColor} />
+                <Text style={[styles.fabOptionText, { color: textColor }]}>
+                  Playlist
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Custom Effects Modal */}
       <CustomEffectsModal
@@ -1055,34 +1105,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  addButton: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  addButtonText: {
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  createButton: {
-    padding: 12,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  createButtonText: {
-    fontWeight: '500',
-    marginLeft: 8,
-  },
   playlistGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1120,5 +1142,58 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 1000,
+  },
+  fabOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001,
+  },
+  fabOptionsContainer: {
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  fabTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  fabOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  fabOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 12,
   },
 });

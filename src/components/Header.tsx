@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { WledDevice, ScheduleMode } from '../types';
@@ -14,7 +14,6 @@ interface HeaderProps {
   setShowSettings: (show: boolean) => void;
   isDark: boolean;
   scheduleMode: ScheduleMode;
-  onRefreshPresets?: () => Promise<void>;
 }
 
 /**
@@ -29,10 +28,8 @@ const Header = React.memo(function Header({
   setShowSettings,
   isDark,
   scheduleMode,
-  onRefreshPresets,
 }: HeaderProps) {
   const { showActionSheetWithOptions } = useActionSheet();
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Memoize theme colors to prevent recalculation
   const themeColors = useMemo(() => ({
@@ -97,19 +94,6 @@ const Header = React.memo(function Header({
     setShowSettings(true);
   }, [setShowSettings]);
 
-  const handleRefreshPress = useCallback(async () => {
-    if (!onRefreshPresets || isRefreshing) return;
-    
-    setIsRefreshing(true);
-    try {
-      await onRefreshPresets();
-    } catch (error) {
-      logger.error('Failed to refresh presets:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [onRefreshPresets, isRefreshing]);
-
   return (
     <View style={[styles.header, { backgroundColor: themeColors.backgroundColor, borderBottomColor: themeColors.borderColor }]}>
       <View style={styles.headerContent}>        
@@ -146,19 +130,6 @@ const Header = React.memo(function Header({
         
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          {/* Refresh Button */}
-          <TouchableOpacity 
-            onPress={handleRefreshPress}
-            style={[styles.actionButton, { opacity: isConnected ? 1 : 0.5 }]}
-            disabled={!isConnected}
-          >
-            {isRefreshing ? (
-              <ActivityIndicator size="small" color={themeColors.textColor} />
-            ) : (
-              <Ionicons name="refresh" size={24} color={themeColors.textColor} />
-            )}
-          </TouchableOpacity>
-          
           {/* Settings Button */}
           <TouchableOpacity 
             onPress={handleSettingsPress}
@@ -178,7 +149,6 @@ const Header = React.memo(function Header({
     prevProps.activeDeviceId === nextProps.activeDeviceId &&
     prevProps.isDark === nextProps.isDark &&
     prevProps.scheduleMode === nextProps.scheduleMode &&
-    prevProps.onRefreshPresets === nextProps.onRefreshPresets &&
     prevProps.devices.length === nextProps.devices.length &&
     prevProps.devices.every((device, index) => {
       const nextDevice = nextProps.devices[index];
