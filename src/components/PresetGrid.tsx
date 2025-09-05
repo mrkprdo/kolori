@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
 import { SEASONAL_PRESETS } from '../constants/presets';
 import { 
-  WledDevice, 
+  Device as WledDevice, 
   CustomEffect, 
   SavedPlaylist, 
   LEDColor 
@@ -25,6 +25,7 @@ import { storage, STORAGE_KEYS } from '../utils/storage';
 import { deleteWledPreset, deleteWledPlaylistViaWebSocket } from '../config/wledApi';
 import CustomEffectsModal from './CustomEffectsModal';
 import PlaylistCreationModal from './PlaylistCreationModal';
+import DeviceManagementModal from './DeviceManagementModal';
 
 // Animated playlist item component
 interface AnimatedPlaylistItemProps {
@@ -309,7 +310,6 @@ function PresetCard({
   
   // Simplified animation values - only native driver animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
-  const pressAnim = useRef(new Animated.Value(1)).current;
   
   // Entrance animation
   useEffect(() => {
@@ -321,44 +321,6 @@ function PresetCard({
       useNativeDriver: true,
     }).start();
   }, []);
-  
-  // Simplified active state - no complex animations for now
-  useEffect(() => {
-    // Just a simple scale animation when active
-    if (isActive) {
-      Animated.spring(pressAnim, {
-        toValue: 1.02,
-        tension: 200,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.spring(pressAnim, {
-        toValue: 1,
-        tension: 200,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isActive]);
-  
-  const handlePressIn = () => {
-    Animated.spring(pressAnim, {
-      toValue: 0.95,
-      tension: 200,
-      friction: 4,
-      useNativeDriver: true,
-    }).start();
-  };
-  
-  const handlePressOut = () => {
-    Animated.spring(pressAnim, {
-      toValue: 1,
-      tension: 200,
-      friction: 4,
-      useNativeDriver: true,
-    }).start();
-  };
   
   // Use LinearGradient colors for device presets if available
   const shouldUseGradient = preset.isWledPreset && (preset.linearGradientColors || preset.gradient);
@@ -382,7 +344,6 @@ function PresetCard({
   const animatedTransformStyle = {
     transform: [
       { scale: scaleAnim },
-      { scale: pressAnim },
       ...(isDeleteMode && wiggleAnim ? [{
         rotate: wiggleAnim.interpolate({
           inputRange: [-1, 1],
@@ -397,34 +358,29 @@ function PresetCard({
     margin: '1.5%',
   };
 
-  const staticCardStyle = {
-    borderColor: isSelected ? '#ef4444' : (isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)'),
-    borderWidth: isSelected ? 3 : 2,
-    shadowColor: isSelected ? '#ef4444' : (isActive ? '#3b82f6' : '#000'),
-    shadowOpacity: isSelected ? 0.6 : (isActive ? 0.4 : 0.1),
-    elevation: isSelected ? 12 : (isActive ? 8 : 2),
-  };
 
-  if (shouldUseGradient && hasValidGradient) {
-    // Use LinearGradient for device presets with gradients
-    return (
-      <Animated.View style={[animatedTransformStyle, cardItemStyle]}>
-        <View style={[styles.presetCard, staticCardStyle]}>
-        <TouchableOpacity
-          onPress={handleCardPress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={styles.touchableArea}
-          activeOpacity={0.8}
-        >
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.gradientBackground, { borderRadius: 8 }]}
-        >
-          <View style={styles.cardOverlay} />
-          <View style={styles.cardContent}>
+  // Use unified structure for all preset cards (with gradient support)
+  return (
+    <Animated.View style={[animatedTransformStyle, cardItemStyle]}>
+      <TouchableOpacity
+        onPress={handleCardPress}
+        style={styles.touchableArea}
+      >
+        <View style={[
+          styles.presetCard, 
+          shouldUseGradient && hasValidGradient ? { padding: 0 } : { backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1' },
+          isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6' }, 
+          isSelected && { borderWidth: 3, borderColor: '#ef4444' }
+        ]}>
+          {shouldUseGradient && hasValidGradient && (
+            <LinearGradient
+              colors={gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientBackground}
+            />
+          )}
+          <View style={shouldUseGradient && hasValidGradient ? styles.gradientContent : null}>
             {showIcon && (
               <Text style={styles.cardIcon}>{preset.icon}</Text>
             )}
@@ -449,60 +405,8 @@ function PresetCard({
               </View>
             </View>
           )}
-        </LinearGradient>
-        </TouchableOpacity>
         </View>
-      </Animated.View>
-    );
-  }
-
-  // Use solid background for seasonal presets or presets without gradients
-  return (
-    <Animated.View style={[animatedTransformStyle, cardItemStyle]}>
-      <View 
-        style={[
-          styles.presetCard,
-          staticCardStyle,
-          {
-            backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1',
-          }
-        ]}
-      >
-      <TouchableOpacity
-        onPress={handleCardPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={styles.touchableArea}
-        activeOpacity={0.8}
-      >
-      <View style={styles.cardOverlay} />
-      <View style={styles.cardContent}>
-        {showIcon && (
-          <Text style={styles.cardIcon}>{preset.icon}</Text>
-        )}
-        <Text style={styles.cardTitle}>
-          {preset.name}
-        </Text>
-        {preset.effectName && (
-          <Text style={styles.cardSubtitle}>
-            {preset.effectName}
-          </Text>
-        )}
-      </View>
-      {isActive && !isDeleteMode && (
-        <View style={styles.activeIndicator}>
-          <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-        </View>
-      )}
-      {isDeleteMode && (
-        <View style={styles.deleteOverlay}>
-          <View style={styles.deleteXButton}>
-            <Ionicons name="close" size={16} color="#ffffff" />
-          </View>
-        </View>
-      )}
       </TouchableOpacity>
-      </View>
     </Animated.View>
   );
 }
@@ -527,7 +431,10 @@ interface PresetGridProps {
   onPlaylistRemove: (playlistId: number) => void;
   onPlaylistSelect: (playlistId: number) => void;
   setShowSettings: (show: boolean) => void;
-  onShowDeviceManagement: () => void;
+  devices: WledDevice[];
+  onDeviceRemove: (deviceId: number) => void;
+  onAddDevice: () => void;
+  onScanForDevices: () => void;
   liveLedData: LEDColor[];
   liveViewEnabled: boolean;
   onLiveViewToggle: (enabled: boolean) => void;
@@ -556,7 +463,9 @@ export default function PresetGrid({
   onPlaylistRemove,
   onPlaylistSelect,
   setShowSettings,
-  onShowDeviceManagement,
+  onDeviceRemove,
+  onAddDevice,
+  onScanForDevices,
   liveLedData,
   liveViewEnabled,
   onLiveViewToggle,
@@ -573,6 +482,7 @@ export default function PresetGrid({
   const [showFabOptions, setShowFabOptions] = useState(false);
   const [showCreateNewOptions, setShowCreateNewOptions] = useState(false);
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
+  const [showDeviceManagementModal, setShowDeviceManagementModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<Set<string | number>>(new Set());
@@ -1329,6 +1239,7 @@ export default function PresetGrid({
               bottom: 260,
             }
           ]}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
@@ -1356,11 +1267,12 @@ export default function PresetGrid({
               bottom: 200,
             }
           ]}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
               toggleFabOptions();
-              onShowDeviceManagement();
+              setShowDeviceManagementModal(true);
             }}
             style={[
               styles.miniFabButton,
@@ -1383,6 +1295,7 @@ export default function PresetGrid({
               bottom: 140,
             }
           ]}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
@@ -1410,6 +1323,7 @@ export default function PresetGrid({
               bottom: 80,
             }
           ]}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
@@ -1599,6 +1513,17 @@ export default function PresetGrid({
         }}
         savedPlaylists={savedPlaylists}
       />
+
+      {/* Device Management Modal */}
+      <DeviceManagementModal
+        isVisible={showDeviceManagementModal}
+        onClose={() => setShowDeviceManagementModal(false)}
+        isDark={isDark}
+        devices={devices}
+        onDeviceRemove={onDeviceRemove}
+        onAddDevice={onAddDevice}
+        onScanForDevices={onScanForDevices}
+      />
     </View>
   );
 }
@@ -1719,18 +1644,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 8,
-    overflow: 'visible',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
   },
   presetCard: {
     borderRadius: 8,
-    overflow: 'visible',
-    position: 'relative',
+    padding: 8,
     aspectRatio: 1,
-    borderWidth: 2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   cardOverlay: {
     position: 'absolute',
@@ -1739,6 +1660,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 12,
   },
   cardContent: {
     flex: 1,
@@ -1757,13 +1679,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: 'white',
     textAlign: 'center',
+    marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: 8,
     opacity: 0.75,
     color: 'white',
-    textAlign: 'center',
-    marginTop: 2,
   },
   activeIndicator: {
     position: 'absolute',
@@ -1816,14 +1737,21 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 8,
+  },
+  gradientContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 8,
   },
   touchableArea: {
     flex: 1,
-    width: '100%',
-    height: '100%',
   },
   floatingDropdown: {
     position: 'absolute',

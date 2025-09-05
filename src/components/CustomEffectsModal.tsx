@@ -7,6 +7,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -214,6 +215,73 @@ export default function CustomEffectsModal({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+  };
+
+  const containerStyle = {
+    flex: 1,
+  };
+
+  const contentContainerStyle = {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  };
+
+  const stickyFooterStyle = {
+    borderTopWidth: 1, 
+    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: isDark ? 0.25 : 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  };
+
+  const buttonContainerStyle = {
+    padding: 16,
+    flexDirection: 'row' as const,
+    gap: 8,
+  };
+
+  const footerButtonPrimaryStyle = {
+    flex: 1, 
+    flexDirection: 'row' as const, 
+    alignItems: 'center' as const, 
+    justifyContent: 'center' as const, 
+    paddingVertical: 14, 
+    paddingHorizontal: 20,
+    borderRadius: 12, 
+    gap: 6,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  };
+
+  const footerButtonSecondaryStyle = {
+    flex: 1, 
+    flexDirection: 'row' as const, 
+    alignItems: 'center' as const, 
+    justifyContent: 'center' as const, 
+    paddingVertical: 14, 
+    paddingHorizontal: 20,
+    borderRadius: 12, 
+    gap: 6,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  };
+
+  const footerButtonTextStyle = {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: 'white',
   };
 
   const fetchEffects = useCallback(async () => {
@@ -430,8 +498,10 @@ export default function CustomEffectsModal({
       isDark={isDark}
       onClose={handleClose}
       title="Add Custom Effects"
-      scrollable={true}
+      scrollable={false}
     >
+      <View style={containerStyle}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={contentContainerStyle}>
           {selectedDevices.length === 0 && (
             <View style={[sectionStyle, { alignItems: 'center', padding: 24 }]}>
               <Ionicons 
@@ -706,79 +776,52 @@ export default function CustomEffectsModal({
                 )}
               </View>
 
-              {/* Action Buttons */}
-              <View style={sectionStyle}>
-                <Text style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: isDark ? '#ffffff' : '#111827',
-                  marginBottom: 16,
-                }}>
-                  Actions
-                </Text>
-                
-                <TouchableOpacity
-                  onPress={testEffect}
-                  disabled={isTesting || selectedEffect === null || selectedPalette === null}
-                  style={{
-                    backgroundColor: (isTesting || selectedEffect === null || selectedPalette === null) 
-                      ? '#9ca3af' : '#10b981',
-                    paddingVertical: 14,
-                    paddingHorizontal: 20,
-                    borderRadius: 8,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    marginBottom: 12,
-                  }}
-                >
-                  {isTesting && <ActivityIndicator size="small" color="white" />}
-                  <Ionicons 
-                    name="play-outline" 
-                    size={20} 
-                    color="white" 
-                  />
-                  <Text style={{
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: 16,
-                  }}>
-                    {isTesting ? 'Testing...' : 'Test Effect'}
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  onPress={() => setShowSaveModal(true)}
-                  disabled={selectedEffect === null || selectedPalette === null}
-                  style={{
-                    backgroundColor: (selectedEffect === null || selectedPalette === null) 
-                      ? '#9ca3af' : '#3b82f6',
-                    paddingVertical: 14,
-                    paddingHorizontal: 20,
-                    borderRadius: 8,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <Ionicons 
-                    name="save-outline" 
-                    size={20} 
-                    color="white" 
-                  />
-                  <Text style={{
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: 16,
-                  }}>
-                    Save Preset
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </>
           )}
+        </ScrollView>
+        
+        {/* Sticky Footer with Action Buttons */}
+        {selectedDevices.length > 0 && (
+          <View style={stickyFooterStyle}>
+            <View style={buttonContainerStyle}>
+              <TouchableOpacity
+                onPress={testEffect}
+                disabled={isTesting || selectedEffect === null || selectedPalette === null}
+                style={[
+                  footerButtonSecondaryStyle,
+                  {
+                    backgroundColor: (isTesting || selectedEffect === null || selectedPalette === null) 
+                      ? '#9ca3af' : '#10b981',
+                    opacity: (isTesting || selectedEffect === null || selectedPalette === null) ? 0.6 : 1
+                  }
+                ]}
+              >
+                {isTesting && <ActivityIndicator size="small" color="white" />}
+                <Ionicons name="play-outline" size={20} color="white" />
+                <Text style={footerButtonTextStyle}>
+                  {isTesting ? 'Testing...' : 'Test Effect'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => setShowSaveModal(true)}
+                disabled={selectedEffect === null || selectedPalette === null}
+                style={[
+                  footerButtonPrimaryStyle,
+                  {
+                    backgroundColor: (selectedEffect === null || selectedPalette === null) 
+                      ? '#9ca3af' : '#3b82f6',
+                    opacity: (selectedEffect === null || selectedPalette === null) ? 0.6 : 1
+                  }
+                ]}
+              >
+                <Ionicons name="save-outline" size={20} color="white" />
+                <Text style={footerButtonTextStyle}>Save Preset</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
     </FloatingModal>
 
       {/* Save Preset Modal */}

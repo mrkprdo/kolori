@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Linking, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // Using Ionicons for icons
+import { APP_VERSION } from '../constants/version';
 
 interface AboutModalProps {
   isVisible: boolean;
@@ -11,7 +12,6 @@ interface AboutModalProps {
 const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) => {
   if (!isVisible) return null;
 
-  const appVersion = '1.0.0'; // Hardcoded for now, replace with actual app version if available
 
   const openGitHub = () => {
     Linking.openURL('https://github.com/mrkprdo/kolori');
@@ -49,12 +49,15 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
       gap: 12, // gap-3
     },
     logoContainer: {
-      padding: 8, // p-2
-      borderRadius: 8, // rounded-lg
-      backgroundColor: '#3B82F6', // bg-gradient-to-r from-blue-500 to-purple-500 (simplified)
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      overflow: 'hidden',
     },
-    logoIcon: {
-      color: '#FFF', // text-white
+    logoImage: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
     },
     titleContainer: {
       // No specific styles needed here, Text components handle it
@@ -87,12 +90,39 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
       textAlign: 'center', // text-center
       gap: 12, // space-y-3
     },
+    appNameContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      marginBottom: 12,
+    },
     appName: {
       fontSize: 36, // text-4xl
       fontWeight: 'bold',
       // bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent
       // This gradient text is complex in RN, simplifying to a single color
       color: '#3B82F6', // Simplified to blue
+    },
+    plusText: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: isDark ? '#9ca3af' : '#6b7280',
+      marginTop: 6,
+    },
+    wledContainer: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    wledLogo: {
+      width: 150,
+      height: 112,
+      borderRadius: 15,
+    },
+    wledText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#3B82F6',
     },
     descriptionText: {
       fontSize: 14, // text-sm
@@ -108,10 +138,12 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
       fontSize: 14, // text-sm
       marginBottom: 12, // mb-3
       color: isDark ? '#FFF' : '#111827',
+      textAlign: 'center',
     },
     developerLink: {
       fontWeight: 'bold',
       color: isDark ? '#60A5FA' : '#2563EB', // text-blue-400 or text-blue-600
+      textAlign: 'center',
     },
     actionsSection: {
       gap: 12, // space-y-3
@@ -151,11 +183,15 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.logoContainer}>
-                <Ionicons name="color-palette-outline" size={24} style={styles.logoIcon} />
+                <Image 
+                  source={require('../../assets/icon.png')} 
+                  style={styles.logoImage}
+                  resizeMode="cover"
+                />
               </View>
               <View style={styles.titleContainer}>
                 <Text style={styles.title}>About Kolori</Text>
-                <Text style={styles.version}>v{appVersion}</Text>
+                <Text style={styles.version}>v{APP_VERSION}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -167,9 +203,19 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
           <View style={styles.content}>
             {/* Description */}
             <View style={styles.descriptionSection}>
-              <Text style={styles.appName}>Kolori</Text>
+              <View style={styles.appNameContainer}>
+                <Text style={styles.appName}>Kolori</Text>
+                <Text style={styles.plusText}>+</Text>
+                <View style={styles.wledContainer}>
+                  <Image 
+                    source={require('../../assets/wled_logo_akemi.png')} 
+                    style={styles.wledLogo}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
               <Text style={styles.descriptionText}>
-                A modern, intuitive web interface for controlling WLED devices with style and ease.
+                A modern, intuitive interface for controlling WLED devices with style and ease.
               </Text>
             </View>
 

@@ -3,82 +3,252 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
+  ScrollView,
   StyleSheet,
+  Linking,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import FloatingModal from './FloatingModal';
+import { Device as WledDevice } from '../types';
 
 interface DeviceManagementModalProps {
   isVisible: boolean;
   onClose: () => void;
   isDark: boolean;
+  devices: WledDevice[];
+  onDeviceRemove: (deviceId: number) => void;
+  onAddDevice: () => void;
+  onScanForDevices: () => void;
 }
 
 export default function DeviceManagementModal({
   isVisible,
   onClose,
   isDark,
+  devices = [],
+  onDeviceRemove,
+  onAddDevice,
+  onScanForDevices,
 }: DeviceManagementModalProps) {
-  const backgroundColor = isDark ? '#111827' : '#F9FAFB';
-  const textColor = isDark ? '#FFFFFF' : '#111827';
-  const cardBackgroundColor = isDark ? '#1F2937' : '#FFFFFF';
-  const borderColor = isDark ? '#374151' : '#E5E7EB';
+  const handleShowAddManually = () => {
+    onClose();
+    if (onAddDevice && typeof onAddDevice === 'function') {
+      onAddDevice();
+    } else {
+      console.error('onAddDevice is not a function:', onAddDevice);
+    }
+  };
+
+  const handleShowScanNetwork = () => {
+    onClose();
+    onScanForDevices();
+  };
+
+  const openWledPage = (ip: string) => {
+    const url = `http://${ip}`;
+    Linking.openURL(url);
+  };
+
+  const confirmDeviceRemoval = (device: WledDevice) => {
+    Alert.alert(
+      'Remove Device',
+      `Are you sure you want to remove "${device.name}" from your devices?\n\nThis action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => onDeviceRemove(device.id)
+        }
+      ]
+    );
+  };
+
+  const getStyles = (isDark: boolean) => StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 6,
+    },
+    deviceCard: {
+      backgroundColor: isDark ? '#1f2937' : '#ffffff', 
+      borderRadius: 10, 
+      padding: 10,
+      marginBottom: 0,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.25 : 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: isDark ? '#374151' : '#e5e7eb',
+    },
+    deviceCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    deviceName: {
+      color: isDark ? '#ffffff' : '#111827',
+      fontWeight: '700',
+      fontSize: 13,
+    },
+    deviceIp: {
+      color: isDark ? '#9ca3af' : '#6b7280',
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 1,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    linkButton: {
+      padding: 5,
+      borderRadius: 6,
+      backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
+      marginRight: 6,
+    },
+    trashButton: {
+      padding: 5,
+      borderRadius: 6,
+      backgroundColor: isDark ? '#374151' : '#fef2f2',
+    },
+    noDevicesContainer: {
+      alignItems: 'center', 
+      paddingVertical: 32, 
+      paddingHorizontal: 20,
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: isDark ? '#374151' : '#d1d5db',
+    },
+    noDevicesText: {
+      color: isDark ? '#9ca3af' : '#6b7280', 
+      fontSize: 13, 
+      fontWeight: '600',
+      textAlign: 'center',
+      marginTop: 6,
+    },
+    stickyFooter: {
+      borderTopWidth: 1, 
+      borderTopColor: isDark ? '#374151' : '#e5e7eb', 
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: isDark ? 0.25 : 0.1,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    buttonContainer: {
+      padding: 16,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    footerButtonPrimary: {
+      flex: 1, 
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      paddingVertical: 14, 
+      paddingHorizontal: 20,
+      borderRadius: 12, 
+      backgroundColor: '#3b82f6', 
+      gap: 6,
+      shadowColor: '#3b82f6',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    footerButtonSecondary: {
+      flex: 1, 
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      paddingVertical: 14, 
+      paddingHorizontal: 20,
+      borderRadius: 12, 
+      backgroundColor: isDark ? '#374151' : '#ffffff', 
+      gap: 6,
+      borderWidth: 1,
+      borderColor: isDark ? '#4b5563' : '#d1d5db',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.25 : 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    footerButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+  });
+
+  const styles = getStyles(isDark);
 
   return (
-    <Modal
+    <FloatingModal
       visible={isVisible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      isDark={isDark}
+      onClose={onClose}
+      title="Device Management"
+      scrollable={false}
     >
-      <SafeAreaView style={[styles.container, { backgroundColor }]}>
-        <View style={[styles.header, { borderBottomColor: borderColor }]}>
-          <Text style={[styles.title, { color: textColor }]}>
-            Device Management
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons
-              name="close"
-              size={24}
-              color={isDark ? '#9CA3AF' : '#6B7280'}
-            />
-          </TouchableOpacity>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.contentContainer}>
+          {(devices || []).map((device) => (
+            <View key={device.id} style={styles.deviceCard}>
+              <View style={styles.deviceCardHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }]} />
+                    <Text style={styles.deviceName}>{device.name}</Text>
+                  </View>
+                  <Text style={styles.deviceIp}>{device.ip}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => openWledPage(device.ip)} style={styles.linkButton}>
+                    <Ionicons name="link-outline" size={18} color="#3B82F6" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => confirmDeviceRemoval(device)} style={styles.trashButton}>
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          ))}
+          {(devices || []).length === 0 && (
+            <View style={styles.noDevicesContainer}>
+              <Ionicons name="hardware-chip-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
+              <Text style={styles.noDevicesText}>No devices configured</Text>
+            </View>
+          )}
+        </ScrollView>
+        <View style={styles.stickyFooter}>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonPrimary}>
+              <Ionicons name="add" size={20} color="white" />
+              <Text style={[styles.footerButtonText, { color: 'white' }]}>Add Manually</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonSecondary}>
+              <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
+              <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Scan Network</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.content}>
-          <Text style={[styles.placeholderText, { color: textColor }]}>
-            Device management UI will be here.
-          </Text>
-        </View>
-      </SafeAreaView>
-    </Modal>
+      </View>
+    </FloatingModal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 16,
-  },
-});

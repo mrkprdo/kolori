@@ -22,26 +22,121 @@ interface DeviceWithStatus extends MdnsWledDevice {
 }
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
-  modalContainer: { flex: 1, backgroundColor: isDark ? '#111827' : '#F3F4F6' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#E5E7EB' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: isDark ? '#FFF' : '#000' },
-  closeButton: { padding: 8 },
-  scanButton: { padding: 8, flexDirection: 'row', alignItems: 'center' },
-  scanningIndicator: { alignItems: 'center', padding: 32 },
-  scanningText: { marginTop: 16, fontSize: 16, textAlign: 'center', color: isDark ? '#d1d5db' : '#6b7280' },
-  scanningOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: isDark ? 'rgba(17, 24, 39, 0.6)' : 'rgba(249, 250, 251, 0.6)', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  scanningOverlayContent: { alignItems: 'center' },
-  deviceCard: { flexDirection: 'row', alignItems: 'center', padding: 6, borderRadius: 4, borderWidth: 1, marginBottom: 6, backgroundColor: isDark ? '#1F2937' : '#FFF', borderColor: isDark ? '#374151' : '#E5E7EB' },
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  scanButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
+    gap: 4,
+  },
+  deviceCard: {
+    backgroundColor: isDark ? '#1f2937' : '#ffffff', 
+    borderRadius: 10, 
+    padding: 10,
+    marginBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDark ? 0.25 : 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: isDark ? '#374151' : '#e5e7eb',
+  },
+  deviceCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   deviceInfo: { flex: 1 },
-  deviceName: { fontSize: 12, fontWeight: '600', marginBottom: 0, color: isDark ? '#FFF' : '#111827' },
-  deviceIP: { fontSize: 11, color: isDark ? '#9CA3AF' : '#6B7280' },
-  statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-  connectIcon: { padding: 4, alignItems: 'center', justifyContent: 'center' },
-  noDevicesContainer: { alignItems: 'center', padding: 48 },
-  noDevicesText: { marginTop: 16, fontSize: 16, textAlign: 'center', color: isDark ? '#9CA3AF' : '#6B7280' },
-  addAllButtonContainer: { padding: 16, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#E5E7EB', backgroundColor: isDark ? '#111827' : '#F3F4F6' },
-  addAllButton: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  addAllButtonText: { color: 'white', fontWeight: '600', fontSize: 16 },
+  deviceName: {
+    color: isDark ? '#ffffff' : '#111827',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  deviceIP: {
+    color: isDark ? '#9ca3af' : '#6b7280',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
+  connectButton: {
+    padding: 5,
+    borderRadius: 6,
+    backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
+  },
+  noDevicesContainer: {
+    alignItems: 'center', 
+    paddingVertical: 32, 
+    paddingHorizontal: 20,
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: isDark ? '#374151' : '#d1d5db',
+  },
+  noDevicesText: {
+    color: isDark ? '#9ca3af' : '#6b7280', 
+    fontSize: 13, 
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  stickyFooter: {
+    borderTopWidth: 1, 
+    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: isDark ? 0.25 : 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  buttonContainer: {
+    padding: 16,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  footerButtonPrimary: {
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 14, 
+    paddingHorizontal: 20,
+    borderRadius: 12, 
+    backgroundColor: '#059669', 
+    gap: 6,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  footerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
 });
 
 export default function ScanNetworkModal({
@@ -216,73 +311,74 @@ export default function ScanNetworkModal({
       title="Device Discovery"
       scrollable={false}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <TouchableOpacity onPress={scanForDevices} style={styles.scanButton}>
-          <Ionicons name={isScanning ? "stop" : "refresh"} size={20} color="#3b82f6" />
-          <Text style={{ marginLeft: 8, color: '#3b82f6', fontWeight: '600' }}>
-            {isScanning ? 'Stop' : 'Scan'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
-          <View style={{ opacity: isScanning ? 0.3 : 1 }}>
-            {discoveredDevices.map((device) => (
+      <View style={styles.container}>
+        <View style={styles.scanButtonContainer}>
+          <TouchableOpacity 
+            onPress={scanForDevices} 
+            style={styles.scanButton}
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <ActivityIndicator size="small" color="#3b82f6" />
+            ) : (
+              <Ionicons name="refresh" size={18} color="#3b82f6" />
+            )}
+            <Text style={{ color: '#3b82f6', fontWeight: '600', fontSize: 14 }}>
+              {isScanning ? 'Scanning...' : 'Scan'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        <ScrollView contentContainerStyle={styles.contentContainer}>
+          {discoveredDevices.map((device) => (
             <View key={device.name} style={styles.deviceCard}>
-              <View style={styles.deviceInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.statusDot, { backgroundColor: device.status === 'connected' || device.status === 'alreadyAdded' ? '#10b981' : device.status === 'failed' ? '#ef4444' : '#f59e0b' }]} />
-                  <Text style={styles.deviceName}>{device.name}</Text>
+              <View style={styles.deviceCardHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <View style={[styles.statusDot, { backgroundColor: device.status === 'connected' || device.status === 'alreadyAdded' ? '#10b981' : device.status === 'failed' ? '#ef4444' : '#f59e0b' }]} />
+                    <Text style={styles.deviceName}>{device.name}</Text>
+                  </View>
+                  <Text style={styles.deviceIP}>{device.addresses?.[0] || device.host}</Text>
                 </View>
-                <Text style={styles.deviceIP}>{device.addresses?.[0] || device.host}</Text>
+                <TouchableOpacity
+                  onPress={() => connectToDevice(device)}
+                  disabled={device.status === 'connecting' || device.status === 'connected' || device.status === 'alreadyAdded'}
+                  style={styles.connectButton}>
+                  {device.status === 'connecting' && <ActivityIndicator size="small" color="#3b82f6" />}
+                  {device.status === 'discovered' && <Ionicons name="add-circle-outline" size={18} color="#3b82f6" />}
+                  {device.status === 'failed' && <Ionicons name="close-circle-outline" size={18} color="#ef4444" />}
+                  {(device.status === 'connected' || device.status === 'alreadyAdded') && <Ionicons name="checkmark-circle" size={18} color="#10b981" />}
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => connectToDevice(device)}
-                disabled={device.status === 'connecting' || device.status === 'connected' || device.status === 'alreadyAdded'}
-                style={styles.connectIcon}>
-                {device.status === 'connecting' && <ActivityIndicator size="small" color="#3b82f6" />}
-                {device.status === 'discovered' && <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />}
-                {device.status === 'failed' && <Ionicons name="close-circle-outline" size={20} color="#ef4444" />}
-                {(device.status === 'connected' || device.status === 'alreadyAdded') && <Ionicons name="checkmark-circle" size={20} color="#10b981" />}
-              </TouchableOpacity>
             </View>
           ))}
-            {!isScanning && discoveredDevices.length === 0 && (
-              <View style={styles.noDevicesContainer}>
-                <Ionicons name="search" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-                <Text style={styles.noDevicesText}>No WLED devices found on your network.</Text>
-              </View>
-            )}
-          </View>
-          
-          {/* Scanning Overlay */}
-          {isScanning && (
-            <View style={styles.scanningOverlay}>
-              <View style={styles.scanningOverlayContent}>
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={styles.scanningText}>Scanning network for WLED devices...</Text>
-              </View>
+          {!isScanning && discoveredDevices.length === 0 && (
+            <View style={styles.noDevicesContainer}>
+              <Ionicons name="search" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
+              <Text style={styles.noDevicesText}>No WLED devices found on your network.</Text>
             </View>
           )}
-      </ScrollView>
-      
-      {/* Sticky Add All Button */}
-      <View style={styles.addAllButtonContainer}>
-        <TouchableOpacity 
-          onPress={addAllDevices} 
-          disabled={isScanning || discoveredDevices.filter(d => d.status === 'discovered').length === 0}
-          style={[
-            styles.addAllButton, 
-            { 
-              backgroundColor: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? '#059669' : '#9ca3af',
-              opacity: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? 1 : 0.5
-            }
-          ]}>
-          <Ionicons name="add-circle" size={20} color="white" />
-          <Text style={styles.addAllButtonText}>
-            Add All Devices ({discoveredDevices.filter(d => d.status === 'discovered').length})
-          </Text>
-        </TouchableOpacity>
+        </ScrollView>
+        
+        <View style={styles.stickyFooter}>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              onPress={addAllDevices} 
+              disabled={isScanning || discoveredDevices.filter(d => d.status === 'discovered').length === 0}
+              style={[
+                styles.footerButtonPrimary, 
+                { 
+                  backgroundColor: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? '#059669' : '#9ca3af',
+                  opacity: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? 1 : 0.6
+                }
+              ]}>
+              <Ionicons name="add-circle" size={20} color="white" />
+              <Text style={styles.footerButtonText}>
+                Add All Devices ({discoveredDevices.filter(d => d.status === 'discovered').length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </FloatingModal>
   );

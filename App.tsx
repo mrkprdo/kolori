@@ -69,6 +69,12 @@ export default function App() {
     setShowScanNetworkModal(true);
   };
 
+  const handleOpenAddManuallyModalFromMain = () => {
+    console.log('handleOpenAddManuallyModalFromMain called');
+    setAddModalOpenedFrom('main');
+    setShowAddManuallyModal(true);
+  };
+
   const handleCloseAddManuallyModal = () => {
     setShowAddManuallyModal(false);
     // If opened from settings, reopen settings
@@ -250,6 +256,7 @@ export default function App() {
                           setIsDiscoveryInProgress={setIsDiscoveryInProgress}
                           onShowSettings={() => setShowSettings(true)}
                           onScanFromMain={handleOpenScanModalFromMain}
+                          onShowAddManually={handleOpenAddManuallyModalFromMain}
                         />
                       )}
                     </Stack.Screen>

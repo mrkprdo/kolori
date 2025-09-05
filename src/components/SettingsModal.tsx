@@ -6,7 +6,6 @@ import {
   ScrollView,
   Switch,
   StyleSheet,
-  Alert,
   TextInput,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -23,19 +22,11 @@ interface SettingsModalProps {
   onThemeChange: (theme: Theme) => void;
   scheduleMode: ScheduleMode;
   onScheduleModeChange: (mode: ScheduleMode) => void;
-  devices: WledDevice[];
-  onDeviceRemove: (deviceId: number) => void;
-  onAddDevice: () => void;
-  onScanForDevices: () => void;
   // New settings
   settings: Settings;
   onSettingsUpdate: (settings: Settings) => void;
 }
 
-const TABS = [
-  { id: 'devices', title: 'Devices', icon: 'hardware-chip-outline' },
-  { id: 'general', title: 'General', icon: 'settings-outline' },
-];
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
   tabContainer: { 
@@ -177,25 +168,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   footerButtonText: { fontSize: 14, fontWeight: '700' },
 
-  // Danger Zone
-  dangerZoneGroup: {
-    gap: 6,
-    backgroundColor: isDark ? '#1f1f23' : '#fef7f7',
-    borderRadius: 10,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: isDark ? '#7f1d1d' : '#fca5a5',
-  },
-  dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: isDark ? '#7f1d1d' : '#fca5a5',
-  },
 });
 
 export default function SettingsModal({
@@ -206,65 +178,13 @@ export default function SettingsModal({
   onThemeChange,
   scheduleMode,
   onScheduleModeChange,
-  devices,
-  onDeviceRemove,
-  onAddDevice,
-  onScanForDevices,
   settings,
   onSettingsUpdate,
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState('devices');
   const [showAbout, setShowAbout] = useState(false); // New state for About modal
   const styles = getStyles(isDark);
 
-  const handleShowAddManually = () => {
-    onClose();
-    onAddDevice();
-  };
 
-  const handleShowScanNetwork = () => {
-    onClose();
-    onScanForDevices();
-  };
-
-  const renderDevicesTab = () => (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.tabContentContainer}>
-        {devices.map((device) => (
-          <View key={device.id} style={styles.deviceCard}>
-            <View style={styles.deviceCardHeader}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }]} />
-                  <Text style={styles.deviceName}>{device.name}</Text>
-                </View>
-                <Text style={styles.deviceIp}>{device.ip}</Text>
-              </View>
-              <TouchableOpacity onPress={() => onDeviceRemove(device.id)} style={styles.trashButton}>
-                <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-        {devices.length === 0 && (
-          <View style={styles.noDevicesContainer}>
-            <Ionicons name="hardware-chip-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-            <Text style={styles.noDevicesText}>No devices configured</Text>
-          </View>
-        )}
-      </ScrollView>
-      <View style={styles.stickyFooter}>
-        <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonPrimary}>
-          <Ionicons name="add" size={20} color="white" />
-          <Text style={styles.footerButtonText}>Add Manually</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonSecondary}>
-          <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
-          <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Scan Network</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 
   const renderGeneralTab = () => (
     <ScrollView contentContainerStyle={styles.tabContentContainer}>
@@ -306,62 +226,6 @@ export default function SettingsModal({
 
       
 
-      <Text style={styles.sectionTitle}>Danger Zone</Text>
-      <View style={styles.dangerZoneGroup}>
-        <TouchableOpacity
-          style={styles.dangerButton}
-          onPress={() => {
-            Alert.alert(
-              'Clear Cache',
-              'This will clear all cached data but keep your devices and settings.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Clear Cache',
-                  style: 'destructive',
-                  onPress: () => {
-                    // Clear cache logic would go here
-                    Alert.alert('Success', 'Cache cleared successfully');
-                  }
-                }
-              ]
-            );
-          }}
-        >
-          <View>
-            <Text style={[styles.optionText, { color: '#EF4444' }]}>Clear Cache</Text>
-            <Text style={styles.optionSubText}>Clear cached data (keeps devices)</Text>
-          </View>
-          <Ionicons name="trash-outline" size={20} color="#EF4444" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.dangerButton}
-          onPress={() => {
-            Alert.alert(
-              'Reset Application',
-              'This will remove all devices and reset the app to first-time setup. This action cannot be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Reset App',
-                  style: 'destructive',
-                  onPress: () => {
-                    // Reset app logic would go here
-                    Alert.alert('App Reset', 'Application has been reset to factory settings');
-                  }
-                }
-              ]
-            );
-          }}
-        >
-          <View>
-            <Text style={[styles.optionText, { color: '#EF4444' }]}>Reset Application</Text>
-            <Text style={styles.optionSubText}>Remove all data and reset app</Text>
-          </View>
-          <Ionicons name="warning" size={20} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
     </ScrollView>
   );
 
@@ -374,26 +238,8 @@ export default function SettingsModal({
       title="Settings"
       scrollable={false}
     >
-        <View style={styles.tabContainer}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => setActiveTab(tab.id)}
-              style={[styles.tabButton, activeTab === tab.id && styles.tabButtonActive]}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={16}
-                color={activeTab === tab.id ? '#FFF' : (isDark ? '#9CA3AF' : '#6B7280')}
-              />
-              <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                {tab.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
 
-        {activeTab === 'devices' ? renderDevicesTab() : renderGeneralTab()}
+        {renderGeneralTab()}
 
     </FloatingModal>
 

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getWledPresets } from '../config/wledApi';
 import { logger } from '../utils/logger';
 import { Device as WledDevice } from '../types';
+import { APP_VERSION, APP_NAME } from '../constants/version';
 
 interface LoadingScreenProps {
   isDark?: boolean;
@@ -168,7 +169,7 @@ export default function LoadingScreen({
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: subtextColor }]}>
-            Kolori v1.0.0
+            {APP_NAME} v{APP_VERSION}
           </Text>
           <Text style={[styles.footerText, { color: subtextColor }]}>
             Open Source WLED Controller

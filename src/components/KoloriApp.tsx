@@ -40,7 +40,6 @@ import {
 // Components
 import PresetGrid from './PresetGrid';
 import PlaylistModal from './PlaylistModal';
-import DeviceManagementModal from './DeviceManagementModal';
 
 /**
  * Props for the main KoloriApp component
@@ -60,6 +59,7 @@ interface KoloriAppProps {
   setIsDiscoveryInProgress: (inProgress: boolean) => void;
   onShowSettings: () => void;
   onScanFromMain: () => void;
+  onShowAddManually: () => void;
 }
 
 /**
@@ -85,10 +85,10 @@ const KoloriApp = React.memo(function KoloriApp({
   setIsDiscoveryInProgress,
   onShowSettings,
   onScanFromMain,
+  onShowAddManually,
 }: KoloriAppProps) {
   const systemColorScheme = useColorScheme();
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
-  const [showDeviceManagementModal, setShowDeviceManagementModal] = useState(false);
   
   // Debug logging for playlist state changes - memoized to prevent unnecessary logging
   useEffect(() => {
@@ -993,7 +993,18 @@ const KoloriApp = React.memo(function KoloriApp({
             }
           }, [savedPlaylists, activeDevice?.isConnected, activeDevice?.protocol, activeDeviceId, getDeviceAddress, onDeviceUpdate])}
           setShowSettings={onShowSettings}
-          onShowDeviceManagement={() => setShowDeviceManagementModal(true)}
+          onDeviceRemove={onDeviceDelete}
+          onAddDevice={() => {
+            console.log('Add Device button clicked');
+            if (onShowAddManually && typeof onShowAddManually === 'function') {
+              onShowAddManually();
+            } else {
+              console.error('onShowAddManually is not a function:', onShowAddManually);
+            }
+          }}
+          onScanForDevices={() => {
+            setShowScanNetworkModal(true);
+          }}
           liveLedData={liveLedData}
           liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
@@ -1055,11 +1066,6 @@ const KoloriApp = React.memo(function KoloriApp({
               logger.log('💡 Tip: Try refreshing playlists from the device to get preset IDs');
             }
           }, [savedPlaylists, activeDevice?.isConnected, activeDevice?.protocol, activeDeviceId, getDeviceAddress, onDeviceUpdate])}
-        />
-        <DeviceManagementModal
-          isVisible={showDeviceManagementModal}
-          onClose={() => setShowDeviceManagementModal(false)}
-          isDark={isDark}
         />
       </SafeAreaView>
     </SafeAreaProvider>
