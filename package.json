@@ -6,7 +6,13 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "clean": "node scripts/clean-build.js",
+    "clean:android": "node scripts/clean-android-build.js",
+    "build:clean": "npm run clean && eas build",
+    "build:android": "npm run clean && eas build --platform android",
+    "build:ios": "npm run clean && eas build --platform ios",
+    "android:release": "npm run clean:android && npx expo run:android --variant release"
   },
   "dependencies": {
     "@expo/cli": "^0.24.21",

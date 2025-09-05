@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
+import { STORAGE_KEYS } from '../constants/storage';
 
 interface SettingsScreenProps {
   isDark?: boolean;
@@ -173,7 +174,7 @@ export default function SettingsScreen({
 
   const loadSettings = async () => {
     try {
-      const savedSettings = await AsyncStorage.getItem('app_settings');
+      const savedSettings = await AsyncStorage.getItem(STORAGE_KEYS.APP_SETTINGS);
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         setSettings({ ...DEFAULT_SETTINGS, ...parsed });
@@ -187,7 +188,7 @@ export default function SettingsScreen({
 
   const saveSettings = async (newSettings: AppSettings) => {
     try {
-      await AsyncStorage.setItem('app_settings', JSON.stringify(newSettings));
+      await AsyncStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(newSettings));
       setSettings(newSettings);
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -236,8 +237,8 @@ export default function SettingsScreen({
           onPress: async () => {
             try {
               // Clear specific cache keys (preserve devices and settings)
-              await AsyncStorage.removeItem('mdns_cache');
-              await AsyncStorage.removeItem('network_cache');
+              await AsyncStorage.removeItem(STORAGE_KEYS.MDNS_CACHE);
+              await AsyncStorage.removeItem(STORAGE_KEYS.NETWORK_CACHE);
               Alert.alert('Success', 'Cache cleared successfully');
             } catch (error) {
               Alert.alert('Error', 'Failed to clear cache');

@@ -6,7 +6,8 @@ import {
   Modal,
   TextInput,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  StyleSheet
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -247,16 +248,20 @@ export default function DeviceForm({
             />
             
             {/* Quick IP suggestions */}
-            <View className="flex-row space-x-2 mt-2">
+            <View style={styles.suggestionsContainer}>
               {COMMON_IPS.map((prefix) => (
                 <TouchableOpacity
                   key={prefix}
                   onPress={() => setFormData({ ...formData, ip: prefix })}
-                  className={`px-3 py-1 rounded-lg border ${
-                    isDark ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-100'
-                  }`}
+                  style={[
+                    styles.suggestionButton,
+                    isDark ? styles.suggestionButtonDark : styles.suggestionButtonLight
+                  ]}
                 >
-                  <Text className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  <Text style={[
+                    styles.suggestionText,
+                    isDark ? styles.suggestionTextDark : styles.suggestionTextLight
+                  ]}>
                     {prefix}...
                   </Text>
                 </TouchableOpacity>
@@ -381,3 +386,36 @@ export default function DeviceForm({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  suggestionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  suggestionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  suggestionButtonLight: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+  },
+  suggestionButtonDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4B5563',
+  },
+  suggestionText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  suggestionTextLight: {
+    color: '#4B5563',
+  },
+  suggestionTextDark: {
+    color: '#D1D5DB',
+  },
+});

@@ -260,30 +260,40 @@ export class WledMdnsDiscovery {
   }
 
   // Validate WLED device by making HTTP request to /json/info
-  public async validateWledDevice(device: MdnsWledDevice): Promise<{
+  public async validateWledDevice(device: MdnsWledDevice | any): Promise<{
     isValid: boolean;
     deviceInfo?: any;
     error?: string;
   }> {
-    const address = device.addresses[0] || device.host;
+    // Handle different device formats
+    const address = device.addresses?.[0] || device.host || device.ip;
     const port = device.port || 80;
-    const url = `http://${address}:${port}/json/info`;
+    
+    // Construct URL - omit port if it's 80 (standard HTTP)
+    const url = port === 80 ? `http://${address}/json/info` : `http://${address}:${port}/json/info`;
 
     try {
       console.log(`Validating WLED device at ${url}`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout
 
       const response = await fetch(url, {
         method: "GET",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
+      console.log(`Response status: ${response.status}, OK: ${response.ok}`);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Device response data:', data);
 
         // Verify this is actually a WLED device
         if (data.ver || data.name || data.brand === "WLED" || data.arch) {
@@ -291,17 +301,35 @@ export class WledMdnsDiscovery {
             isValid: true,
             deviceInfo: data,
           };
+        } else {
+          console.log('Device data does not indicate WLED device:', data);
         }
+      } else {
+        console.log(`HTTP Error: ${response.status} ${response.statusText}`);
       }
 
       return {
         isValid: false,
-        error: "Device is not a WLED device",
+        error: `Device is not a WLED device (HTTP ${response.status})`,
       };
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Validation error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+      
+      let errorMessage = 'Unknown error';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return {
         isValid: false,
-        error: `Validation failed: ${error}`,
+        error: `Validation failed: ${errorMessage}`,
       };
     }
   }

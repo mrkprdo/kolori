@@ -36,6 +36,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Development data
+.expo-shared/
+.expo/devices.json
 
 .claude/
 
