@@ -26,6 +26,11 @@
     },
     "web": {
       "favicon": "./assets/kolori.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ad859c32-ce5b-43cb-ad8c-65b0827db42d"
+      }
     }
   }
 }
