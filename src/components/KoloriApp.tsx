@@ -19,12 +19,9 @@ import {
 import {
   activateWledPreset,
   activateWledPresetById,
-  activateWledEffect,
-  checkWledHeartbeat,
-  turnWledOn,
-  turnWledOff,
   getWledPresets,
-  generatePresetGradient,
+  setWledBrightness,
+  getWledState,
 } from '../config/wledApi';
 
 // Types
@@ -345,6 +342,10 @@ function KoloriApp({
     // Clear active state from all saved playlists when switching devices
     setSavedPlaylists(prev => prev.map(playlist => ({ ...playlist, isActive: false })));
     setCurrentWebSocketDeviceId(null); // Clear current WebSocket device tracking
+    
+    // Reset one-way brightness sync on device switch
+    hasLocalBrightnessModification.current = false;
+    console.log('🔄 One-way brightness sync reset on device switch - will allow WebSocket brightness updates');
     logger.log('🔄 KoloriApp: Managing global WebSocket for active device:', activeDevice?.name, 'clearing old data');
 
     const deviceAddress = getDeviceAddress(activeDevice);
@@ -450,7 +451,35 @@ function KoloriApp({
                 brightness: message.state.bri,
                 effect: message.state.seg?.[0]?.fx
               });
-              // Can update device state here if needed
+              
+              // Block brightness updates if slider operation is in progress OR one-way sync is enabled
+              if (isChangingBrightness.current || hasLocalBrightnessModification.current) {
+                const reason = isChangingBrightness.current ? 'slider operation in progress' : 'one-way sync enabled';
+                logger.log(`🚫 WebSocket brightness update blocked - ${reason}`);
+                
+                // Update everything except brightness
+                const currentWledInfo = currentActiveDevice.wledInfo || {};
+                onDeviceUpdate(currentActiveDevice.id, { 
+                  wledInfo: {
+                    ...currentWledInfo,
+                    // bri: message.state.bri, // BLOCKED
+                    on: message.state.on,
+                    ps: message.state.ps || currentWledInfo.ps // current preset
+                  }
+                });
+              } else {
+                // Normal update with brightness
+                const currentWledInfo = currentActiveDevice.wledInfo || {};
+                onDeviceUpdate(currentActiveDevice.id, { 
+                  wledInfo: {
+                    ...currentWledInfo,
+                    bri: message.state.bri,
+                    on: message.state.on,
+                    ps: message.state.ps || currentWledInfo.ps // current preset
+                  }
+                });
+                logger.log('✅ Device state updated for device ID:', currentActiveDevice.id, 'brightness:', message.state.bri);
+              }
             }
             
             // Handle effects list response
@@ -511,11 +540,12 @@ function KoloriApp({
             logger.log('📡 Step 3: Skipping live view enable (setting is off)');
           }
           
-          // Step 4: Load device presets (like old implementation in onOpen)
+          // Step 4: Load device presets and state (like old implementation in onOpen)
           setTimeout(() => {
             if (isMounted && activeDeviceRef.current?.id === currentActiveDevice.id) {
-              logger.log('📡 Step 4: Loading device presets from onOpen for:', currentActiveDevice.name);
+              logger.log('📡 Step 4: Loading device presets and state from onOpen for:', currentActiveDevice.name);
               loadDevicePresets();
+              refreshDeviceState();
             }
           }, 500);
           
@@ -643,12 +673,16 @@ function KoloriApp({
     try {
       const deviceAddress = getDeviceAddress(activeDevice);
       const protocol = activeDevice.protocol || 'http';
-      const url = `${protocol}://${deviceAddress}/json/info`;
       
-      logger.log('🌐 Fetching device info via HTTP:', url);
+      logger.log('🌐 Fetching device info and state via HTTP:', deviceAddress);
       
-      const response = await fetch(url);
-      const deviceInfo = await response.json();
+      // Fetch both device info and current state
+      const [infoResponse, stateResponse] = await Promise.all([
+        fetch(`${protocol}://${deviceAddress}/json/info`),
+        getWledState(deviceAddress, protocol)
+      ]);
+      
+      const deviceInfo = await infoResponse.json();
       
       logger.log('📥 Device info received via HTTP:', {
         deviceName: deviceInfo.name,
@@ -656,9 +690,18 @@ function KoloriApp({
         version: deviceInfo.ver
       });
       
-      // Update device with HTTP-fetched info
+      // Merge device info with current state (including brightness)
+      if (stateResponse.success && stateResponse.data) {
+        deviceInfo.bri = stateResponse.data.bri;
+        deviceInfo.on = stateResponse.data.on;
+        deviceInfo.ps = stateResponse.data.ps; // current preset
+        
+        logger.log('📊 Device state merged - brightness:', deviceInfo.bri, 'on:', deviceInfo.on);
+      }
+      
+      // Update device with HTTP-fetched info including state
       onDeviceUpdate(activeDevice.id, { wledInfo: deviceInfo });
-      logger.log('✅ Device info updated via HTTP fallback for device ID:', activeDevice.id);
+      logger.log('✅ Device info and state updated via HTTP fallback for device ID:', activeDevice.id);
       
     } catch (error) {
       logger.error('❌ Failed to fetch device info via HTTP:', error);
@@ -834,6 +877,109 @@ function KoloriApp({
       );
     }
   }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, customEffects, getDeviceAddress, onDeviceUpdate]);
+
+  // Global brightness changing flag to coordinate between slider and WebSocket
+  const isChangingBrightness = useRef(false);
+  
+  // One-way brightness sync flag - blocks WebSocket brightness updates once user modifies locally
+  const hasLocalBrightnessModification = useRef(false);
+  
+  // Handle brightness change from slider
+  const handleBrightnessChange = useCallback(async (brightness: number) => {
+    if (!activeDevice?.isConnected) {
+      showNotification(
+        "error",
+        "Device Offline", 
+        "Connect to a WLED device to change brightness."
+      );
+      return;
+    }
+
+    // Set global brightness changing flag
+    isChangingBrightness.current = true;
+    console.log('🔒 Global brightness lock enabled');
+    
+    // Set one-way brightness sync flag - block WebSocket updates permanently
+    hasLocalBrightnessModification.current = true;
+    console.log('🚫 One-way brightness sync enabled - WebSocket brightness updates blocked');
+
+    try {
+      const result = await setWledBrightness(
+        getDeviceAddress(activeDevice),
+        brightness,
+        activeDevice.protocol || "http"
+      );
+
+      if (result.success) {
+        // Update the device's brightness info in local state after protection period
+        // Wait longer to ensure slider protection period is active
+        setTimeout(() => {
+          onDeviceUpdate(activeDevice.id, { 
+            wledInfo: {
+              ...activeDevice.wledInfo,
+              bri: brightness
+            }
+          });
+          console.log('💾 Device state updated in KoloriApp with brightness:', brightness);
+        }, 2500); // After slider protection period ends
+        
+        // Release global brightness lock after longer delay
+        setTimeout(() => {
+          isChangingBrightness.current = false;
+          console.log('🔓 Global brightness lock released');
+        }, 3000);
+        
+        logger.log(`✅ Brightness set to ${brightness} on ${activeDevice.name}`);
+      } else {
+        // Release lock on error
+        isChangingBrightness.current = false;
+        throw new Error(result.message || 'Failed to set brightness');
+      }
+    } catch (error: any) {
+      // Release lock on error
+      isChangingBrightness.current = false;
+      logger.error('❌ Failed to set brightness:', error.message);
+      showNotification(
+        'error',
+        'Brightness Change Failed',
+        `Could not set brightness: ${error.message}`
+      );
+    }
+  }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, activeDevice?.wledInfo, getDeviceAddress, onDeviceUpdate]);
+
+  // Function to refresh device state (including brightness)
+  const refreshDeviceState = useCallback(async () => {
+    if (!activeDevice?.isConnected) {
+      logger.warn('Cannot refresh device state - device not connected');
+      return;
+    }
+
+    try {
+      const deviceAddress = getDeviceAddress(activeDevice);
+      const protocol = activeDevice.protocol || 'http';
+      
+      logger.log('🔄 Refreshing device state for:', activeDevice.name);
+      
+      const stateResponse = await getWledState(deviceAddress, protocol);
+      
+      if (stateResponse.success && stateResponse.data) {
+        // Update device with current state
+        const currentWledInfo = activeDevice.wledInfo || {};
+        onDeviceUpdate(activeDevice.id, { 
+          wledInfo: {
+            ...currentWledInfo,
+            bri: stateResponse.data.bri,
+            on: stateResponse.data.on,
+            ps: stateResponse.data.ps // current preset
+          }
+        });
+        
+        logger.log('✅ Device state refreshed - brightness:', stateResponse.data.bri, 'on:', stateResponse.data.on);
+      }
+    } catch (error: any) {
+      logger.error('❌ Failed to refresh device state:', error);
+    }
+  }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, activeDevice?.wledInfo, getDeviceAddress, onDeviceUpdate]);
 
   // Fetch WLED presets and playlists from device - memoized
   const fetchWledPresets = useCallback(async () => {
@@ -1027,7 +1173,16 @@ function KoloriApp({
           liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
           onLiveLedDataUpdate={setLiveLedData}
-          onRefreshPresets={fetchWledPresets}
+          onRefreshPresets={async () => {
+            // Reset one-way brightness sync on refresh
+            hasLocalBrightnessModification.current = false;
+            console.log('🔄 One-way brightness sync reset - will allow WebSocket brightness updates');
+            
+            await Promise.all([
+              fetchWledPresets(),
+              refreshDeviceState()
+            ]);
+          }}
           onSavePlaylist={(playlist) => {
             const newPlaylists = [...savedPlaylists, playlist];
             setSavedPlaylists(newPlaylists);
@@ -1041,6 +1196,7 @@ function KoloriApp({
             ];
             return presets;
           })()}
+          onBrightnessChange={handleBrightnessChange}
         />
         <PlaylistModal
           isVisible={showPlaylist}

@@ -154,7 +154,9 @@ export const loadActiveDeviceId = async (): Promise<number | null> => {
   return storage.loadFromStorage(STORAGE_KEYS.ACTIVE_DEVICE, null);
 };
 
-export const saveActiveDeviceId = async (deviceId: number | null): Promise<boolean> => {
+export const saveActiveDeviceId = async (
+  deviceId: number | null
+): Promise<boolean> => {
   return storage.saveToStorage(STORAGE_KEYS.ACTIVE_DEVICE, deviceId);
 };
 
@@ -162,84 +164,143 @@ export const saveActiveDeviceId = async (deviceId: number | null): Promise<boole
 export const getDeviceIdentifier = (device: any): string => {
   // Use MAC address as primary identifier, fallback to IP + name
   const macAddress = device?.wledInfo?.mac;
-  if (macAddress) {
-    return `mac_${macAddress}`;
-  }
-  return `device_${device?.ip || 'unknown'}_${device?.name || 'unnamed'}`;
+  const identifier = macAddress
+    ? `mac_${macAddress}`
+    : `device_${device?.ip || "unknown"}_${device?.name || "unnamed"}`;
+
+  console.log(
+    "📍 Device identifier for",
+    device?.name || "unnamed device",
+    ":",
+    identifier
+  );
+  console.log("📍 Device data:", {
+    mac: macAddress,
+    ip: device?.ip,
+    name: device?.name,
+    wledInfo: device?.wledInfo,
+  });
+
+  return identifier;
 };
 
-export const loadDeviceSeasonalPresets = async (device: any): Promise<any[]> => {
+export const loadDeviceSeasonalPresets = async (
+  device: any
+): Promise<any[]> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(STORAGE_KEYS.DEVICE_SEASONAL_PRESETS, {});
-    
+    const allDevicePresets = await storage.loadFromStorage(
+      STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
+      {}
+    );
+
     // Return device-specific presets if they exist, otherwise return global defaults
     const devicePresets = allDevicePresets[deviceIdentifier];
     if (devicePresets && Array.isArray(devicePresets)) {
       return devicePresets;
     }
-    
+
     // Fallback to global seasonal presets for backward compatibility
-    const globalPresets = await storage.loadFromStorage(STORAGE_KEYS.SEASONAL_PRESETS, []);
+    const globalPresets = await storage.loadFromStorage(
+      STORAGE_KEYS.SEASONAL_PRESETS,
+      []
+    );
     if (globalPresets && globalPresets.length > 0) {
       return globalPresets;
     }
-    
+
     // Return default presets
     return [
-      { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
-      { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
-      { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
+      { id: "1", name: "Halloween/Fall", icon: "🍂", presetId: 1 },
+      { id: "2", name: "Canada Day", icon: "🇨🇦", presetId: 2 },
+      { id: "3", name: "Holidays", icon: "🎄", presetId: 3 },
     ];
   } catch (error) {
-    logger.error('Failed to load device seasonal presets:', error);
+    logger.error("Failed to load device seasonal presets:", error);
     return [
-      { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
-      { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
-      { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
+      { id: "1", name: "Halloween/Fall", icon: "🍂", presetId: 1 },
+      { id: "2", name: "Canada Day", icon: "🇨🇦", presetId: 2 },
+      { id: "3", name: "Holidays", icon: "🎄", presetId: 3 },
     ];
   }
 };
 
-export const saveDeviceSeasonalPresets = async (device: any, presets: any[]): Promise<boolean> => {
+export const saveDeviceSeasonalPresets = async (
+  device: any,
+  presets: any[]
+): Promise<boolean> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(STORAGE_KEYS.DEVICE_SEASONAL_PRESETS, {});
-    
+    const allDevicePresets = await storage.loadFromStorage(
+      STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
+      {}
+    );
+
     // Update the presets for this specific device
     allDevicePresets[deviceIdentifier] = presets;
-    
-    return await storage.saveToStorage(STORAGE_KEYS.DEVICE_SEASONAL_PRESETS, allDevicePresets);
+
+    return await storage.saveToStorage(
+      STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
+      allDevicePresets
+    );
   } catch (error) {
-    logger.error('Failed to save device seasonal presets:', error);
+    logger.error("Failed to save device seasonal presets:", error);
     return false;
   }
 };
 
-export const removeDeviceSeasonalPresets = async (device: any): Promise<boolean> => {
+export const removeDeviceSeasonalPresets = async (
+  device: any
+): Promise<boolean> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(STORAGE_KEYS.DEVICE_SEASONAL_PRESETS, {});
-    
+    const allDevicePresets = await storage.loadFromStorage(
+      STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
+      {}
+    );
+
     // Remove the presets for this specific device
     delete allDevicePresets[deviceIdentifier];
-    
-    return await storage.saveToStorage(STORAGE_KEYS.DEVICE_SEASONAL_PRESETS, allDevicePresets);
+
+    return await storage.saveToStorage(
+      STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
+      allDevicePresets
+    );
   } catch (error) {
-    logger.error('Failed to remove device seasonal presets:', error);
+    logger.error("Failed to remove device seasonal presets:", error);
     return false;
   }
 };
 
-export const hasDeviceSeasonalPresets = async (device: any): Promise<boolean> => {
+export const hasDeviceSeasonalPresets = async (
+  device: any
+): Promise<boolean> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(STORAGE_KEYS.DEVICE_SEASONAL_PRESETS, {});
-    
+    const allDevicePresets = await storage.loadFromStorage(
+      STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
+      {}
+    );
+
+    console.log(
+      "🔍 Checking for stored presets. All stored device presets:",
+      Object.keys(allDevicePresets)
+    );
+    console.log("🔍 Looking for identifier:", deviceIdentifier);
+    console.log(
+      "🔍 Found stored presets for this device:",
+      allDevicePresets[deviceIdentifier]
+    );
+
     // Check if this device has stored presets (not just fallback defaults)
-    return allDevicePresets[deviceIdentifier] && Array.isArray(allDevicePresets[deviceIdentifier]);
+    const hasPresets =
+      allDevicePresets[deviceIdentifier] &&
+      Array.isArray(allDevicePresets[deviceIdentifier]);
+    console.log("🔍 Device has stored presets:", hasPresets);
+
+    return hasPresets;
   } catch (error) {
-    logger.error('Failed to check device seasonal presets:', error);
+    logger.error("Failed to check device seasonal presets:", error);
     return false;
   }
 };

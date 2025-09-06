@@ -8,11 +8,11 @@ import {
   Dimensions,
   StyleSheet,
   Animated,
-  Easing,
   Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
 import { logger } from '../utils/logger';
 import { SeasonalPreset } from '../types';
 import { 
@@ -475,6 +475,7 @@ interface PresetGridProps {
   onRefreshPresets?: () => Promise<void>;
   onSavePlaylist?: (playlist: SavedPlaylist) => void;
   seasonalPresets: SeasonalPreset[];
+  onBrightnessChange?: (brightness: number) => void;
 }
 
 export default function PresetGrid({
@@ -507,6 +508,7 @@ export default function PresetGrid({
   onRefreshPresets,
   onSavePlaylist,
   seasonalPresets,
+  onBrightnessChange,
 }: PresetGridProps) {
   
   
@@ -522,6 +524,29 @@ export default function PresetGrid({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<Set<string | number>>(new Set());
+  // UNCONTROLLED SLIDER APPROACH - Remove value prop to eliminate flicker
+  const [currentBrightnessDisplay, setCurrentBrightnessDisplay] = useState<number>(activeDevice?.wledInfo?.bri || 0);
+  const [isSliding, setIsSliding] = useState(false);
+  const [sliderKey, setSliderKey] = useState(0); // Force re-render key for slider reset
+  const sliderRef = useRef<any>(null);
+  const hasUserTouchedSlider = useRef(false);
+  
+  // Reset slider to device value - force re-render with new defaultValue
+  const resetSliderToDeviceValue = useCallback((deviceBrightness: number, reason: string) => {
+    console.log(`🔄 Resetting slider to device value: ${deviceBrightness} (${reason})`);
+    console.log(`📊 Current device brightness from activeDevice: ${activeDevice?.wledInfo?.bri}`);
+    
+    // Update display value first
+    setCurrentBrightnessDisplay(deviceBrightness);
+    hasUserTouchedSlider.current = false;
+    
+    // Then force slider to re-render with new defaultValue by changing key
+    setSliderKey(prev => {
+      const newKey = prev + 1;
+      console.log(`✅ Slider reset complete - key: ${newKey}, value: ${deviceBrightness}`);
+      return newKey;
+    });
+  }, [activeDevice?.wledInfo?.bri]);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
@@ -577,6 +602,48 @@ export default function PresetGrid({
     storage.saveToStorage(STORAGE_KEYS.PLAYLISTS_COLLAPSED, isPlaylistsCollapsed);
   }, [isPlaylistsCollapsed]);
 
+  // Track previous device ID for immediate updates on device switch
+  const prevDeviceId = useRef(activeDevice?.id);
+  
+  // Handle device switching - reset uncontrolled slider
+  useEffect(() => {
+    const isDeviceSwitch = prevDeviceId.current !== activeDevice?.id;
+    
+    if (isDeviceSwitch && activeDevice?.id) {
+      prevDeviceId.current = activeDevice.id;
+      
+      if (activeDevice.wledInfo?.bri !== undefined) {
+        const deviceBrightness = Math.round(activeDevice.wledInfo.bri);
+        resetSliderToDeviceValue(deviceBrightness, 'device-switch');
+      }
+    }
+  }, [activeDevice?.id, activeDevice?.name, resetSliderToDeviceValue]);
+
+  // Initial device brightness sync - only update display if user hasn't touched slider
+  useEffect(() => {
+    if (!hasUserTouchedSlider.current && activeDevice?.wledInfo?.bri !== undefined) {
+      const deviceBrightness = Math.round(activeDevice.wledInfo.bri);
+      setCurrentBrightnessDisplay(deviceBrightness);
+      console.log(`📖 Initial brightness sync: ${deviceBrightness}`);
+    }
+  }, [activeDevice?.wledInfo?.bri]);
+
+  // Reset brightness sync on refresh - reset uncontrolled slider
+  const resetBrightnessSync = useCallback(() => {
+    console.log('🔄 resetBrightnessSync called');
+    console.log(`📊 activeDevice?.wledInfo?.bri: ${activeDevice?.wledInfo?.bri}`);
+    console.log(`📊 currentBrightnessDisplay: ${currentBrightnessDisplay}`);
+    
+    if (activeDevice?.wledInfo?.bri !== undefined) {
+      const deviceBrightness = Math.round(activeDevice.wledInfo.bri);
+      console.log(`📊 Calculated deviceBrightness: ${deviceBrightness}`);
+      resetSliderToDeviceValue(deviceBrightness, 'refresh');
+    } else {
+      console.log('❌ activeDevice.wledInfo.bri is undefined - cannot reset');
+    }
+  }, [activeDevice?.wledInfo?.bri, resetSliderToDeviceValue, currentBrightnessDisplay]);
+
+
   // Device presets are now loaded by the parent KoloriApp component
   // This component receives them via the customEffects prop
 
@@ -628,13 +695,15 @@ export default function PresetGrid({
     
     setIsRefreshing(true);
     try {
+      // Reset brightness sync before refreshing to allow fresh device data
+      resetBrightnessSync();
       await onRefreshPresets();
     } catch (error) {
       logger.error('Failed to refresh presets:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [onRefreshPresets, isRefreshing]);
+  }, [onRefreshPresets, isRefreshing, resetBrightnessSync]);
 
   const toggleFabOptions = useCallback(() => {
     const newValue = !showFabOptions;
@@ -968,6 +1037,44 @@ export default function PresetGrid({
                     ledData={liveLedData} 
                     subtextColor={subtextColor}
                   />
+                )}
+
+                {/* Brightness Slider */}
+                {liveViewEnabled && activeDevice?.isConnected && (
+                  <View style={styles.sliderContainer}>
+                    <Ionicons name="sunny-outline" size={20} color={subtextColor} />
+                    <Slider
+                      key={`brightness-slider-${sliderKey}`}
+                      ref={sliderRef}
+                      style={styles.slider}
+                      minimumValue={0}
+                      maximumValue={255}
+                      step={1}
+                      defaultValue={currentBrightnessDisplay}
+                      onSlidingStart={() => {
+                        setIsSliding(true);
+                        hasUserTouchedSlider.current = true;
+                        console.log('🎯 User touched slider - now uncontrolled');
+                      }}
+                      onValueChange={(value) => {
+                        // Only update display value - slider manages its own value internally
+                        const roundedValue = Math.round(value);
+                        setCurrentBrightnessDisplay(roundedValue);
+                      }}
+                      onSlidingComplete={(value) => {
+                        const finalValue = Math.round(value);
+                        console.log('🎯 Slider final value:', finalValue);
+                        
+                        // Send to WLED device
+                        onBrightnessChange?.(finalValue);
+                        setIsSliding(false);
+                      }}
+                      minimumTrackTintColor="#3b82f6"
+                      maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
+                      thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
+                    />
+                    <Text style={{color: subtextColor, fontSize: 12, width: 30, textAlign: 'right'}}>{currentBrightnessDisplay}</Text>
+                  </View>
                 )}
                 
                 {!liveViewEnabled && (
@@ -1670,6 +1777,16 @@ const styles = StyleSheet.create({
   ledCount: {
     fontSize: 12,
     marginTop: 8,
+  },
+  sliderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  slider: {
+    flex: 1,
+    height: 40,
+    marginHorizontal: 8,
   },
   dynamicLedGrid: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import { logger } from "../utils/logger";
 import { WLED_PALETTES_DATA, PaletteColor } from "../constants/palettes";
-import { ApiResponse, DeviceValidationResult, WledDevice } from "../types";
+import { ApiResponse, DeviceValidationResult } from "../types";
 
 // Helper function to build WLED URLs with protocol support
 const buildWledUrl = (
@@ -429,10 +429,11 @@ export const fetchWledPresets = async (
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorMessage = response.status === 404 
-        ? `WLED device not found at ${deviceAddress}. Check device connection and IP address.`
-        : `HTTP Error: ${response.status} - ${response.statusText}`;
-      
+      const errorMessage =
+        response.status === 404
+          ? `WLED device not found at ${deviceAddress}. Check device connection and IP address.`
+          : `HTTP Error: ${response.status} - ${response.statusText}`;
+
       return {
         success: false,
         presets: [],
@@ -465,7 +466,13 @@ export const fetchWledPresets = async (
 
         // Check if this is a playlist
         if ((presetData as any).playlist && (presetData as any).playlist.ps) {
-          logger.log(`🎵 Found playlist in preset ${presetId}:`, (presetData as any).n, 'with', (presetData as any).playlist.ps.length, 'items');
+          logger.log(
+            `🎵 Found playlist in preset ${presetId}:`,
+            (presetData as any).n,
+            "with",
+            (presetData as any).playlist.ps.length,
+            "items"
+          );
           const playlist = {
             id: `playlist_${presetId}`,
             presetId: parseInt(presetId),
@@ -488,7 +495,12 @@ export const fetchWledPresets = async (
           playlists.push(playlist);
         } else {
           // Regular preset - add effect and palette info
-          logger.log(`⚙️ Categorizing as regular preset ${presetId}:`, (presetData as any).n, 'has playlist data?', !!(presetData as any).playlist);
+          logger.log(
+            `⚙️ Categorizing as regular preset ${presetId}:`,
+            (presetData as any).n,
+            "has playlist data?",
+            !!(presetData as any).playlist
+          );
           if ((presetData as any).seg && (presetData as any).seg[0]) {
             const segment = (presetData as any).seg[0];
             preset.effectId = segment.fx || 0;
@@ -589,7 +601,6 @@ export const fetchWledEffects = async (
 
 // Alias for backward compatibility
 export const getWledPresets = fetchWledPresets;
-
 
 // Helper function to generate gradient based on palette ID (matching old implementation) - Optimized
 export const generatePresetGradient = (paletteId: number): string => {
@@ -700,8 +711,8 @@ export const createWledPreset = async (
   protocol = "http"
 ): Promise<ApiResponse & { presetId?: number }> => {
   // Generate a preset ID if not provided
-  const targetPresetId = presetId || (50 + Math.floor(Math.random() * 200));
-  
+  const targetPresetId = presetId || 50 + Math.floor(Math.random() * 200);
+
   // First, apply the effect and palette
   try {
     const applyUrl = buildWledUrl(deviceAddress, protocol, `/json/state`);
@@ -710,10 +721,10 @@ export const createWledPreset = async (
 
     // Apply effect and palette to all segments
     const applyResponse = await fetch(applyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        seg: { fx: effectId, pal: paletteId }
+        seg: { fx: effectId, pal: paletteId },
       }),
       signal: controller.signal,
     });
@@ -728,7 +739,7 @@ export const createWledPreset = async (
     }
 
     // Wait a moment for effect to be applied
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Now save as preset
     const saveUrl = buildWledUrl(deviceAddress, protocol, `/json/state`);
@@ -736,8 +747,8 @@ export const createWledPreset = async (
     const saveTimeoutId = setTimeout(() => saveController.abort(), 10000);
 
     const saveResponse = await fetch(saveUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         psave: targetPresetId,
         n: presetName,
@@ -753,7 +764,7 @@ export const createWledPreset = async (
     if (saveResponse.ok) {
       return {
         success: true,
-        message: 'Preset saved successfully',
+        message: "Preset saved successfully",
         presetId: targetPresetId,
       };
     } else {
@@ -809,29 +820,29 @@ export const createWledPlaylist = async (
   protocol = "http"
 ): Promise<ApiResponse & { presetId?: number }> => {
   if (!playlistItems || playlistItems.length === 0) {
-    return { success: false, message: 'Playlist cannot be empty' };
+    return { success: false, message: "Playlist cannot be empty" };
   }
-  
+
   // Ensure all playlist items have valid preset IDs
   for (const item of playlistItems) {
     if (!item.presetId || item.presetId < 1 || item.presetId > 250) {
-      return { 
-        success: false, 
-        message: `Invalid preset ID: ${item.presetId}. Must be between 1 and 250.` 
+      return {
+        success: false,
+        message: `Invalid preset ID: ${item.presetId}. Must be between 1 and 250.`,
       };
     }
   }
-  
+
   // Generate a unique preset ID for the playlist (typically in range 51-250)
   const playlistPresetId = 51 + Math.floor(Math.random() * 199);
-  
+
   // Create playlist data in WLED format (matching WebSocket implementation)
   const playlistData = {
     psave: playlistPresetId,
     n: playlistName,
     playlist: {
-      ps: playlistItems.map(item => item.presetId), // Array of preset IDs
-      dur: playlistItems.map(item => item.duration * 10), // Convert seconds to tenths of seconds
+      ps: playlistItems.map((item) => item.presetId), // Array of preset IDs
+      dur: playlistItems.map((item) => item.duration * 10), // Convert seconds to tenths of seconds
       transition: playlistItems.map(() => 7), // Array of transition times (0.7 seconds each)
       repeat: 0, // 0 = infinite repeat
       r: true, // Enable playlist repeat/cycling
@@ -840,19 +851,24 @@ export const createWledPlaylist = async (
     on: true, // Turn on lights
     o: true, // Save on state
     v: true, // Preset is visible/valid
-    time: Math.floor(Date.now() / 1000)
+    time: Math.floor(Date.now() / 1000),
   };
 
   try {
-    logger.log("📡 WLED API: Sending playlist creation request to", deviceAddress, ":", JSON.stringify(playlistData, null, 2));
-    
-    const url = buildWledUrl(deviceAddress, protocol, '/json/state');
+    logger.log(
+      "📡 WLED API: Sending playlist creation request to",
+      deviceAddress,
+      ":",
+      JSON.stringify(playlistData, null, 2)
+    );
+
+    const url = buildWledUrl(deviceAddress, protocol, "/json/state");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(playlistData),
       signal: controller.signal,
     });
@@ -862,7 +878,7 @@ export const createWledPlaylist = async (
     if (response.ok) {
       return {
         success: true,
-        message: 'Playlist saved successfully',
+        message: "Playlist saved successfully",
         presetId: playlistPresetId,
       };
     } else {
@@ -902,15 +918,15 @@ export const deleteWledPreset = async (
 
   try {
     logger.log("🗑️ WLED API: Deleting preset", presetId, "from", deviceAddress);
-    
-    const url = buildWledUrl(deviceAddress, protocol, '/json/state');
+
+    const url = buildWledUrl(deviceAddress, protocol, "/json/state");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(deleteData),
       signal: controller.signal,
@@ -922,7 +938,7 @@ export const deleteWledPreset = async (
       logger.log("✅ WLED API: Preset deleted successfully");
       return {
         success: true,
-        message: 'Preset deleted successfully',
+        message: "Preset deleted successfully",
       };
     } else {
       return {
@@ -955,18 +971,136 @@ export const deleteWledPlaylistViaWebSocket = async (
 
   try {
     logger.log("🗑️ WLED WebSocket: Deleting playlist/preset", presetId);
-    
+
     // For now, return success as we'll implement WebSocket deletion later
     // This matches the pattern from the old implementation
     return {
       success: true,
-      message: 'Playlist deleted via WebSocket',
+      message: "Playlist deleted via WebSocket",
     };
   } catch (error: any) {
     logger.error("Failed to delete WLED playlist via WebSocket:", error);
     return {
       success: false,
       message: `WebSocket deletion failed: ${error.message}`,
+    };
+  }
+};
+
+// Function to set WLED device brightness
+export const setWledBrightness = async (
+  deviceAddress: string,
+  brightness: number,
+  protocol = "http"
+): Promise<ApiResponse> => {
+  // Validate brightness value (0-255)
+  if (brightness < 0 || brightness > 255) {
+    return {
+      success: false,
+      message: `Invalid brightness value: ${brightness}. Must be between 0 and 255.`,
+    };
+  }
+
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/json/state");
+    logger.log(
+      `💡 Setting WLED brightness to ${brightness} on ${deviceAddress}`
+    );
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bri: brightness, // WLED brightness parameter
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      logger.log(`✅ WLED brightness set successfully: ${brightness}`);
+      return {
+        success: true,
+        message: `Brightness set to ${brightness}`,
+      };
+    } else {
+      const errorText = await response.text();
+      logger.error(
+        `❌ Failed to set WLED brightness: ${response.status} - ${errorText}`
+      );
+      return {
+        success: false,
+        message: `Failed to set brightness: ${response.status}`,
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to set WLED brightness:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
+// Function to get current WLED device state (including brightness)
+export const getWledState = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse> => {
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/json/state");
+    logger.log(`📊 Getting WLED state from ${deviceAddress}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const stateData = await response.json();
+      logger.log(`✅ WLED state retrieved successfully:`, {
+        brightness: stateData.bri,
+        on: stateData.on,
+        preset: stateData.ps,
+      });
+
+      return {
+        success: true,
+        message: "State retrieved successfully",
+        data: stateData,
+      };
+    } else {
+      const errorText = await response.text();
+      logger.error(
+        `❌ Failed to get WLED state: ${response.status} - ${errorText}`
+      );
+      return {
+        success: false,
+        message: `Failed to get state: ${response.status}`,
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to get WLED state:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
     };
   }
 };
