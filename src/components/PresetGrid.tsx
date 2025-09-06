@@ -1596,7 +1596,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   sectionContent: {
-    marginTop: 12,
+    marginTop: 8,
     overflow: 'visible',
   },
   innerCard: {
@@ -1609,7 +1609,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 8,
     paddingVertical: 4,
   },
   headerLeft: {
@@ -1685,7 +1685,7 @@ const styles = StyleSheet.create({
   presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    marginTop: 4,
   },
   presetCard: {
     borderRadius: 8,
@@ -1761,7 +1761,7 @@ const styles = StyleSheet.create({
   playlistGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    marginTop: 4,
   },
   playlistItem: {
     width: '22%',
