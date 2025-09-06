@@ -23,7 +23,7 @@ interface SeasonalPresetsModalProps {
 }
 
 const defaultSeasonalPresets: SeasonalPreset[] = [
-  { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
+ { id: '1', name: 'Halloween', icon: '🎃', presetId: 1 },
   { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
   { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
 ];

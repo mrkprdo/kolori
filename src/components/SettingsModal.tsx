@@ -130,7 +130,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   dropdownOptionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 2,
     paddingHorizontal: 10,
     borderRadius: 8,
   },

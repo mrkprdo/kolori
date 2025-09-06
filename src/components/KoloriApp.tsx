@@ -799,7 +799,7 @@ function KoloriApp({
       
       // Find the preset to get its details
       const seasonalPresets = settings.seasonalPresets || [
-        { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
+        { id: '1', name: 'Halloween', icon: '🎃', presetId: 1 },
         { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
         { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
       ];
@@ -1190,7 +1190,7 @@ function KoloriApp({
           }}
           seasonalPresets={(() => {
             const presets = settings.seasonalPresets || [
-              { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
+              { id: '1', name: 'Halloween', icon: '🎃', presetId: 1 },
               { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
               { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
             ];
