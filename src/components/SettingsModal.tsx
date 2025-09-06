@@ -12,6 +12,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import AboutModal from './AboutModal';
 import FloatingModal from './FloatingModal';
+import SeasonalPresetsModal from './SeasonalPresetsModal';
 import { Device as WledDevice, Theme, ScheduleMode, Settings } from '../types';
 
 interface SettingsModalProps {
@@ -182,12 +183,27 @@ export default function SettingsModal({
   onSettingsUpdate,
 }: SettingsModalProps) {
   const [showAbout, setShowAbout] = useState(false); // New state for About modal
+  const [showSeasonalPresets, setShowSeasonalPresets] = useState(false); // New state for Seasonal Presets modal
   const styles = getStyles(isDark);
 
 
 
   const renderGeneralTab = () => (
     <ScrollView contentContainerStyle={styles.tabContentContainer}>
+      <Text style={styles.sectionTitle}>Presets</Text>
+      <View style={styles.settingsGroup}>
+        <TouchableOpacity
+          style={[styles.optionButton, { justifyContent: 'space-between' }]}
+          onPress={() => setShowSeasonalPresets(true)}
+        >
+          <View>
+            <Text style={styles.optionText}>Seasonal Presets</Text>
+            <Text style={styles.optionSubText}>Configure preset IDs for seasonal effects</Text>
+          </View>
+          <Ionicons name="calendar-outline" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.sectionTitle}>Appearance</Text>
       <View style={styles.settingsGroup}>
         <View style={[styles.dropdownOptionButton, { backgroundColor: isDark ? '#111827' : '#f9fafb' }]}>
@@ -248,6 +264,42 @@ export default function SettingsModal({
         isVisible={showAbout}
         onClose={() => setShowAbout(false)}
         isDark={isDark}
+      />
+
+      {/* Seasonal Presets Modal */}
+      <SeasonalPresetsModal
+        isVisible={showSeasonalPresets}
+        onClose={() => setShowSeasonalPresets(false)}
+        isDark={isDark}
+        seasonalPresets={(() => {
+          const presets = settings.seasonalPresets || [];
+          return presets;
+        })()}
+        onUpdateSeasonalPresets={async (presets) => {
+          // Save to storage first
+          try {
+            const { storage, STORAGE_KEYS } = await import('../utils/storage');
+            await storage.saveToStorage(STORAGE_KEYS.SEASONAL_PRESETS, presets);
+            
+            // Reload from storage to ensure consistency
+            const reloadedPresets = await storage.loadFromStorage(STORAGE_KEYS.SEASONAL_PRESETS, presets);
+            
+            const updatedSettings = {
+              ...settings,
+              seasonalPresets: reloadedPresets,
+            };
+            onSettingsUpdate(updatedSettings);
+          } catch (error) {
+            console.error('Failed to save seasonal presets to storage:', error);
+            
+            // Fallback to direct update
+            const updatedSettings = {
+              ...settings,
+              seasonalPresets: presets,
+            };
+            onSettingsUpdate(updatedSettings);
+          }
+        }}
       />
     </>
   );

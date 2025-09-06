@@ -26,7 +26,6 @@ import {
   getWledPresets,
   generatePresetGradient,
 } from '../config/wledApi';
-import { SEASONAL_PRESETS } from '../constants/presets';
 
 // Types
 import {
@@ -70,7 +69,7 @@ interface KoloriAppProps {
  * @param {KoloriAppProps} props - Component properties
  * @returns {JSX.Element} The main application interface
  */
-const KoloriApp = React.memo(function KoloriApp({
+function KoloriApp({
   navigation,
   devices,
   activeDeviceId,
@@ -87,6 +86,7 @@ const KoloriApp = React.memo(function KoloriApp({
   onScanFromMain,
   onShowAddManually,
 }: KoloriAppProps) {
+  
   const systemColorScheme = useColorScheme();
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
   
@@ -755,8 +755,16 @@ const KoloriApp = React.memo(function KoloriApp({
       logger.log('🎯 Activating preset:', presetId, 'on device:', activeDevice.name);
       
       // Find the preset to get its details
-      const preset = [...customEffects, ...SEASONAL_PRESETS].find(p => 
+      const seasonalPresets = settings.seasonalPresets || [
+        { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
+        { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
+        { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
+      ];
+      
+      const preset = [...customEffects].find(p => 
         p.id.toString() === presetId.toString()
+      ) || seasonalPresets.find(p => 
+        p.presetId.toString() === presetId.toString()
       );
 
       if (!preset) {
@@ -776,9 +784,18 @@ const KoloriApp = React.memo(function KoloriApp({
           wledPresetId,
           activeDevice.protocol || "http"
         );
+      } else if ('presetId' in preset) {
+        // For seasonal presets, use the configured presetId
+        logger.log('🎯 Activating seasonal preset:', preset.name, 'with ID:', preset.presetId);
+        
+        result = await activateWledPresetById(
+          getDeviceAddress(activeDevice),
+          preset.presetId,
+          activeDevice.protocol || "http"
+        );
       } else {
-        // For seasonal presets, use the preset name/data
-        logger.log('🎯 Activating seasonal preset:', preset.name);
+        // For custom effects, use the preset name/data
+        logger.log('🎯 Activating custom effect:', preset.name);
         
         result = await activateWledPreset(
           getDeviceAddress(activeDevice),
@@ -931,6 +948,7 @@ const KoloriApp = React.memo(function KoloriApp({
       <SafeAreaView style={[styles.container, isDark ? styles.statusBarDark : styles.statusBarLight]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <PresetGrid
+          key={`presets-${JSON.stringify(settings.seasonalPresets)}`}
           activePreset={activePreset}
           onPresetSelect={handlePresetSelect}
           isDark={isDark}
@@ -1015,6 +1033,14 @@ const KoloriApp = React.memo(function KoloriApp({
             setSavedPlaylists(newPlaylists);
             storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, newPlaylists);
           }}
+          seasonalPresets={(() => {
+            const presets = settings.seasonalPresets || [
+              { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
+              { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
+              { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
+            ];
+            return presets;
+          })()}
         />
         <PlaylistModal
           isVisible={showPlaylist}
@@ -1070,24 +1096,7 @@ const KoloriApp = React.memo(function KoloriApp({
       </SafeAreaView>
     </SafeAreaProvider>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
-  return (
-    prevProps.activeDeviceId === nextProps.activeDeviceId &&
-    prevProps.devices.length === nextProps.devices.length &&
-    prevProps.devices.every((device, index) => {
-      const nextDevice = nextProps.devices[index];
-      return device.id === nextDevice?.id &&
-             device.isConnected === nextDevice?.isConnected &&
-             device.name === nextDevice?.name &&
-             device.activePreset === nextDevice?.activePreset;
-    }) &&
-    prevProps.settings.theme === nextProps.settings.theme &&
-    prevProps.settings.liveViewEnabled === nextProps.settings.liveViewEnabled &&
-    prevProps.settings.scheduleMode === nextProps.settings.scheduleMode &&
-    prevProps.showScanNetworkModal === nextProps.showScanNetworkModal
-  );
-});
+}
 
 export default KoloriApp;
 

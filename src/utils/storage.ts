@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   CUSTOM_EFFECTS_COLLAPSED: "kolori_custom_effects_collapsed",
   PLAYLISTS_COLLAPSED: "kolori_playlists_collapsed",
   DEVICE_CONFIG: "kolori_device_config",
+  SEASONAL_PRESETS: "kolori_seasonal_presets",
 };
 
 class Storage {

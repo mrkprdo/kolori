@@ -20,7 +20,7 @@ import SettingsModal from './src/components/SettingsModal';
 import AddDeviceManuallyModal from './src/components/AddDeviceManuallyModal';
 
 // Utils
-import { loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId } from './src/utils/storage';
+import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId } from './src/utils/storage';
 import { hasValidAgreement, saveAgreementSignature } from './src/utils/userAgreement';
 
 // Types
@@ -100,11 +100,12 @@ export default function App() {
       const startTime = Date.now();
       
       try {
-        const [loadedDevices, loadedSettings, agreementResult, loadedActiveId] = await Promise.all([
+        const [loadedDevices, loadedSettings, agreementResult, loadedActiveId, loadedSeasonalPresets] = await Promise.all([
           loadDevices(),
           loadSettings(),
           hasValidAgreement(),
           loadActiveDeviceId(),
+          storage.loadFromStorage(STORAGE_KEYS.SEASONAL_PRESETS, []),
         ]);
 
         setDevices(loadedDevices);
@@ -112,7 +113,10 @@ export default function App() {
         setHasAgreed(agreementResult);
 
         if (loadedSettings && Object.keys(loadedSettings).length > 0) {
-          setSettings(loadedSettings as Settings);
+          setSettings({
+            ...loadedSettings,
+            seasonalPresets: loadedSeasonalPresets,
+          } as Settings);
         } else {
           setSettings({ 
             theme: 'dark', 
@@ -122,7 +126,8 @@ export default function App() {
             debugLogs: false,
             scanTimeout: 15,
             maxDevices: 10,
-            backgroundScanEnabled: true
+            backgroundScanEnabled: true,
+            seasonalPresets: loadedSeasonalPresets,
           });
         }
 
@@ -195,8 +200,11 @@ export default function App() {
   };
 
   const handleUpdateSettings = (newSettings: Settings) => {
-    setSettings(newSettings);
-    saveSettings(newSettings);
+    setSettings(prevSettings => {
+      const updatedSettings = { ...newSettings };
+      saveSettings(updatedSettings);
+      return updatedSettings;
+    });
   };
 
   const handleAgreementAccept = async () => {
@@ -304,6 +312,7 @@ export default function App() {
           onAddDevice={() => { setShowSettings(false); setAddModalOpenedFrom('settings'); setShowAddManuallyModal(true); }}
           onScanForDevices={handleOpenScanModalFromSettings}
           settings={settings}
+          onSettingsUpdate={handleUpdateSettings}
         />
       )}
 

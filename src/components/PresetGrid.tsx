@@ -14,7 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
-import { SEASONAL_PRESETS } from '../constants/presets';
+import { SeasonalPreset } from '../types';
 import { 
   Device as WledDevice, 
   CustomEffect, 
@@ -71,8 +71,8 @@ const AnimatedPlaylistItem = React.memo(function AnimatedPlaylistItem({
   const cardStyle = useMemo(() => [
     styles.playlistCard,
     { backgroundColor: '#8b5cf6' },
-    playlist.isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6' },
-    isSelected && { borderWidth: 3, borderColor: '#ef4444' }
+    playlist.isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6', borderRadius: 8 },
+    isSelected && { borderWidth: 3, borderColor: '#ef4444', borderRadius: 8 }
   ], [playlist.isActive, isDeleteMode, isSelected]);
   
   return (
@@ -99,6 +99,9 @@ const AnimatedPlaylistItem = React.memo(function AnimatedPlaylistItem({
         <View style={cardStyle}>
           <Text style={styles.playlistName}>
             {playlist.name}
+          </Text>
+          <Text style={styles.playlistId}>
+            ID: {playlist.id}
           </Text>
           <Text style={styles.playlistCount}>
             {playlist.items?.length || 0} effects
@@ -138,6 +141,33 @@ const extractPrimaryColor = (gradient: string): string => {
   // Extract first RGB/hex color from gradient string
   const colorMatch = gradient.match(/(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\(\d+,\s*\d+,\s*\d+\))/);
   return colorMatch ? colorMatch[0] : '#6366f1';
+};
+
+// Helper function to get seasonal gradient based on preset name
+const getSeasonalGradient = (presetName: string): string => {
+  const name = presetName.toLowerCase();
+  
+  if (name.includes('halloween') || name.includes('fall') || name.includes('autumn')) {
+    return 'linear-gradient(135deg, #ff6600, #ff9933)';
+  }
+  if (name.includes('canada')) {
+    return 'linear-gradient(135deg, #ff0000, #ff4444)';
+  }
+  if (name.includes('christmas') || name.includes('holiday')) {
+    return 'linear-gradient(135deg, #228B22, #32CD32)';
+  }
+  if (name.includes('valentine')) {
+    return 'linear-gradient(135deg, #ff1493, #ff69b4)';
+  }
+  if (name.includes('easter') || name.includes('spring')) {
+    return 'linear-gradient(135deg, #98fb98, #ffb6c1)';
+  }
+  if (name.includes('july') || name.includes('independence')) {
+    return 'linear-gradient(135deg, #0066cc, #ff0000)';
+  }
+  
+  // Default gradient
+  return 'linear-gradient(135deg, #6366f1, #8b5cf6)';
 };
 
 // Helper function to parse gradient string and extract colors for LinearGradient - pure function
@@ -369,8 +399,8 @@ function PresetCard({
         <View style={[
           styles.presetCard, 
           shouldUseGradient && hasValidGradient ? { padding: 0 } : { backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1' },
-          isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6' }, 
-          isSelected && { borderWidth: 3, borderColor: '#ef4444' }
+          isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6', borderRadius: 8 }, 
+          isSelected && { borderWidth: 3, borderColor: '#ef4444', borderRadius: 8 }
         ]}>
           {shouldUseGradient && hasValidGradient && (
             <LinearGradient
@@ -380,12 +410,15 @@ function PresetCard({
               style={styles.gradientBackground}
             />
           )}
-          <View style={shouldUseGradient && hasValidGradient ? styles.gradientContent : null}>
+          <View style={shouldUseGradient && hasValidGradient ? styles.gradientContent : styles.cardContent}>
             {showIcon && (
               <Text style={styles.cardIcon}>{preset.icon}</Text>
             )}
             <Text style={styles.cardTitle}>
               {preset.name}
+            </Text>
+            <Text style={styles.cardPresetId}>
+              ID: {preset.presetId || preset.id}
             </Text>
             {preset.effectName && (
               <Text style={styles.cardSubtitle}>
@@ -441,6 +474,7 @@ interface PresetGridProps {
   onLiveLedDataUpdate?: (ledData: LEDColor[]) => void;
   onRefreshPresets?: () => Promise<void>;
   onSavePlaylist?: (playlist: SavedPlaylist) => void;
+  seasonalPresets: SeasonalPreset[];
 }
 
 export default function PresetGrid({
@@ -472,7 +506,9 @@ export default function PresetGrid({
   onLiveLedDataUpdate,
   onRefreshPresets,
   onSavePlaylist,
+  seasonalPresets,
 }: PresetGridProps) {
+  
   
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] = useState(true);
@@ -547,8 +583,8 @@ export default function PresetGrid({
   // Note: WebSocket connection is handled by the parent KoloriApp component
   // Live LED data is passed down via props and updated through onLiveLedDataUpdate
 
-  const activePresetData = [...SEASONAL_PRESETS, ...customEffects].find(
-    (p) => p.id.toString() === activePreset?.toString()
+  const activePresetData = [...seasonalPresets, ...customEffects].find(
+    (p) => p.presetId?.toString() === activePreset?.toString()
   );
 
   const handleLiveViewToggle = () => {
@@ -988,12 +1024,18 @@ export default function PresetGrid({
           {!isSeasonalCollapsed && (
             <View style={styles.sectionContent}>
               <View style={styles.presetGrid}>
-                {SEASONAL_PRESETS.map((preset, index) => (
+                {seasonalPresets.map((preset, index) => (
                   <PresetCard
                     key={preset.id}
-                    preset={{...preset, _animationDelay: index * 50}}
-                    isActive={activePreset?.toString() === preset.id.toString()}
-                    onClick={onPresetSelect}
+                    preset={{
+                      id: preset.presetId,
+                      name: preset.name,
+                      icon: preset.icon,
+                      gradient: getSeasonalGradient(preset.name),
+                      _animationDelay: index * 50
+                    }}
+                    isActive={activePreset?.toString() === preset.presetId.toString()}
+                    onClick={() => onPresetSelect(preset.presetId)}
                     showIcon={true}
                     isDark={isDark}
                     isDeleteMode={false}
@@ -1679,12 +1721,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: 'white',
     textAlign: 'center',
+    marginBottom: 1,
+  },
+  cardPresetId: {
+    fontSize: 8,
+    color: 'white',
+    textAlign: 'center',
+    opacity: 0.8,
     marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: 8,
     opacity: 0.75,
     color: 'white',
+    textAlign: 'center',
   },
   activeIndicator: {
     position: 'absolute',
@@ -1729,12 +1779,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: 'center',
     fontWeight: '500',
+    marginBottom: 1,
+  },
+  playlistId: {
+    color: 'white',
+    fontSize: 8,
+    textAlign: 'center',
+    opacity: 0.8,
     marginBottom: 2,
   },
   playlistCount: {
     color: 'white',
     fontSize: 8,
     opacity: 0.75,
+    textAlign: 'center',
   },
   gradientBackground: {
     position: 'absolute',

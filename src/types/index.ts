@@ -91,6 +91,13 @@ export interface ApiResponse {
 export type ScheduleMode = 'all-day' | 'day' | 'night';
 export type Theme = 'light' | 'dark' | 'system';
 
+export interface SeasonalPreset {
+  readonly id: string;
+  readonly name: string;
+  readonly icon: string;
+  readonly presetId: number;
+}
+
 // Alias for compatibility with App.tsx
 export type Device = WledDevice;
 
@@ -103,5 +110,6 @@ export interface Settings {
   readonly scanTimeout: number;
   readonly maxDevices: number;
   readonly backgroundScanEnabled: boolean;
+  readonly seasonalPresets?: SeasonalPreset[];
   readonly [key: string]: unknown;
 }
