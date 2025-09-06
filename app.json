@@ -22,9 +22,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.mrkprdo.kolori",
+      "package": "dev.mrkprdo.kolori",
       "usesCleartextTraffic": true,
-      "networkSecurityConfig": "@xml/network_security_config"
+      "networkSecurityConfig": "@xml/network_security_config",
+      "versionCode": 3,
+      "versionName": "v0.2"
     },
     "web": {
       "favicon": "./assets/kolori.png"

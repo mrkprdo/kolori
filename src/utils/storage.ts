@@ -147,4 +147,13 @@ export const saveHasAgreed = async (hasAgreed: boolean): Promise<boolean> => {
   return storage.saveToStorage(STORAGE_KEYS.USER_AGREEMENT, hasAgreed);
 };
 
+// Active device functions
+export const loadActiveDeviceId = async (): Promise<number | null> => {
+  return storage.loadFromStorage(STORAGE_KEYS.ACTIVE_DEVICE, null);
+};
+
+export const saveActiveDeviceId = async (deviceId: number | null): Promise<boolean> => {
+  return storage.saveToStorage(STORAGE_KEYS.ACTIVE_DEVICE, deviceId);
+};
+
 export default storage;

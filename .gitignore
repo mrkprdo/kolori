@@ -41,6 +41,3 @@ yarn-error.*
 .expo/devices.json
 
 .claude/
-
-android/
-ios/

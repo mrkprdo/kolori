@@ -20,7 +20,7 @@ import SettingsModal from './src/components/SettingsModal';
 import AddDeviceManuallyModal from './src/components/AddDeviceManuallyModal';
 
 // Utils
-import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings } from './src/utils/storage';
+import { loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId } from './src/utils/storage';
 import { hasValidAgreement, saveAgreementSignature } from './src/utils/userAgreement';
 
 // Types
@@ -104,7 +104,7 @@ export default function App() {
           loadDevices(),
           loadSettings(),
           hasValidAgreement(),
-          storage.loadFromStorage(STORAGE_KEYS.ACTIVE_DEVICE, null),
+          loadActiveDeviceId(),
         ]);
 
         setDevices(loadedDevices);
@@ -164,6 +164,7 @@ export default function App() {
     // Always set the newly added device as active device
     // This ensures WebSocket connection is established and device info is retrieved
     setActiveDeviceId(device.id);
+    saveActiveDeviceId(device.id);
     
     console.log('🔧 Device added and set as active:', device.name, 'ID:', device.id);
   };
@@ -189,7 +190,7 @@ export default function App() {
   const handleSetActiveDeviceId = (id: number | null) => {
     console.log('🔄 Active device changing to ID:', id);
     setActiveDeviceId(id);
-    storage.saveToStorage(STORAGE_KEYS.ACTIVE_DEVICE, id);
+    saveActiveDeviceId(id);
     // WebSocket connection will be managed globally by KoloriApp
   };
 
@@ -204,9 +205,12 @@ export default function App() {
     transitionToScreen('main');
   };
 
+  // Derive the active device from devices and activeDeviceId
+  const activeDevice = activeDeviceId ? devices.find(device => device.id === activeDeviceId) || null : null;
+
   const renderContent = () => {
     if (isLoading || hasAgreed === null || settings === null || currentScreen === 'loading') {
-      return <LoadingScreen isDark={settings?.theme !== 'light'} />;
+      return <LoadingScreen isDark={settings?.theme !== 'light'} activeDevice={activeDevice} />;
     }
 
     if (currentScreen === 'agreement') {
