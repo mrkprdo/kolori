@@ -26,6 +26,7 @@ interface SettingsModalProps {
   // New settings
   settings: Settings;
   onSettingsUpdate: (settings: Settings) => void;
+  activeDevice?: WledDevice | null;
 }
 
 
@@ -181,6 +182,7 @@ export default function SettingsModal({
   onScheduleModeChange,
   settings,
   onSettingsUpdate,
+  activeDevice,
 }: SettingsModalProps) {
   const [showAbout, setShowAbout] = useState(false); // New state for About modal
   const [showSeasonalPresets, setShowSeasonalPresets] = useState(false); // New state for Seasonal Presets modal
@@ -276,30 +278,15 @@ export default function SettingsModal({
           return presets;
         })()}
         onUpdateSeasonalPresets={async (presets) => {
-          // Save to storage first
-          try {
-            const { storage, STORAGE_KEYS } = await import('../utils/storage');
-            await storage.saveToStorage(STORAGE_KEYS.SEASONAL_PRESETS, presets);
-            
-            // Reload from storage to ensure consistency
-            const reloadedPresets = await storage.loadFromStorage(STORAGE_KEYS.SEASONAL_PRESETS, presets);
-            
-            const updatedSettings = {
-              ...settings,
-              seasonalPresets: reloadedPresets,
-            };
-            onSettingsUpdate(updatedSettings);
-          } catch (error) {
-            console.error('Failed to save seasonal presets to storage:', error);
-            
-            // Fallback to direct update
-            const updatedSettings = {
-              ...settings,
-              seasonalPresets: presets,
-            };
-            onSettingsUpdate(updatedSettings);
-          }
+          // Device-specific storage is now handled within SeasonalPresetsModal
+          // Just update the settings for UI consistency
+          const updatedSettings = {
+            ...settings,
+            seasonalPresets: presets,
+          };
+          onSettingsUpdate(updatedSettings);
         }}
+        activeDevice={activeDevice}
       />
     </>
   );

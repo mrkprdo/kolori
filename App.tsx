@@ -20,7 +20,7 @@ import SettingsModal from './src/components/SettingsModal';
 import AddDeviceManuallyModal from './src/components/AddDeviceManuallyModal';
 
 // Utils
-import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId } from './src/utils/storage';
+import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId, loadDeviceSeasonalPresets, saveDeviceSeasonalPresets, hasDeviceSeasonalPresets } from './src/utils/storage';
 import { hasValidAgreement, saveAgreementSignature } from './src/utils/userAgreement';
 
 // Types
@@ -29,6 +29,12 @@ import { MdnsWledDevice } from './src/utils/wledMdnsDiscovery';
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
+
+const DEFAULT_SEASONAL_PRESETS = [
+  { id: '1', name: 'Halloween/Fall', icon: '🍂', presetId: 1 },
+  { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
+  { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
+];
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -100,17 +106,25 @@ export default function App() {
       const startTime = Date.now();
       
       try {
-        const [loadedDevices, loadedSettings, agreementResult, loadedActiveId, loadedSeasonalPresets] = await Promise.all([
+        const [loadedDevices, loadedSettings, agreementResult, loadedActiveId] = await Promise.all([
           loadDevices(),
           loadSettings(),
           hasValidAgreement(),
           loadActiveDeviceId(),
-          storage.loadFromStorage(STORAGE_KEYS.SEASONAL_PRESETS, []),
         ]);
 
         setDevices(loadedDevices);
         setActiveDeviceId(loadedActiveId);
         setHasAgreed(agreementResult);
+
+        // Load device-specific seasonal presets for the active device
+        let loadedSeasonalPresets = [];
+        if (loadedActiveId && loadedDevices.length > 0) {
+          const activeDevice = loadedDevices.find(device => device.id === loadedActiveId);
+          if (activeDevice) {
+            loadedSeasonalPresets = await loadDeviceSeasonalPresets(activeDevice);
+          }
+        }
 
         if (loadedSettings && Object.keys(loadedSettings).length > 0) {
           setSettings({
@@ -154,7 +168,7 @@ export default function App() {
     loadInitialData();
   }, []);
 
-  const handleAddDevice = (device: Device) => {
+  const handleAddDevice = async (device: Device) => {
     // Check current route OUTSIDE the setState callback to avoid stale closures
     const currentRoute = navigationRef.getCurrentRoute();
     const isOnOnboardingScreen = currentRoute?.name === 'DeviceOnboarding';
@@ -166,10 +180,48 @@ export default function App() {
       return newDevices;
     });
     
-    // Always set the newly added device as active device
-    // This ensures WebSocket connection is established and device info is retrieved
-    setActiveDeviceId(device.id);
-    saveActiveDeviceId(device.id);
+    // Check if this device has previously stored seasonal presets
+    try {
+      const hasExistingPresets = await hasDeviceSeasonalPresets(device);
+      let deviceSeasonalPresets;
+      
+      if (hasExistingPresets) {
+        // Device has stored presets, load them
+        deviceSeasonalPresets = await loadDeviceSeasonalPresets(device);
+        console.log('📝 Restored existing seasonal presets for device:', device.name);
+      } else {
+        // This is truly a new device, save and use default presets
+        await saveDeviceSeasonalPresets(device, DEFAULT_SEASONAL_PRESETS);
+        deviceSeasonalPresets = DEFAULT_SEASONAL_PRESETS;
+        console.log('✨ Initialized default seasonal presets for new device:', device.name);
+      }
+      
+      // Always set the newly added device as active device
+      // This ensures WebSocket connection is established and device info is retrieved
+      setActiveDeviceId(device.id);
+      saveActiveDeviceId(device.id);
+      
+      // Update settings to show the presets for this device
+      if (settings) {
+        setSettings({
+          ...settings,
+          seasonalPresets: deviceSeasonalPresets,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to initialize seasonal presets for device:', error);
+      
+      // Fallback to defaults on error
+      setActiveDeviceId(device.id);
+      saveActiveDeviceId(device.id);
+      
+      if (settings) {
+        setSettings({
+          ...settings,
+          seasonalPresets: DEFAULT_SEASONAL_PRESETS,
+        });
+      }
+    }
     
     console.log('🔧 Device added and set as active:', device.name, 'ID:', device.id);
   };
@@ -182,7 +234,10 @@ export default function App() {
     });
   };
 
-  const handleDeleteDevice = (deviceId: number) => {
+  const handleDeleteDevice = async (deviceId: number) => {
+    // Find the device being deleted
+    const deviceToDelete = devices.find(d => d.id === deviceId);
+    
     setDevices(prevDevices => {
       const newDevices = prevDevices.filter(d => d.id !== deviceId);
       saveDevices(newDevices);
@@ -190,12 +245,39 @@ export default function App() {
       // when devices.length === 0 due to the conditional rendering
       return newDevices;
     });
+    
+    // Keep device-specific seasonal presets (don't clean them up)
+    // This allows the device to remember its presets if it's added back later
+    if (deviceToDelete) {
+      console.log('📝 Keeping seasonal presets for removed device:', deviceToDelete.name, 'in case it\'s added back');
+    }
+    
+    // If the deleted device was the active device, reset seasonal presets to defaults
+    if (deviceId === activeDeviceId) {
+      setSettings(prevSettings => prevSettings ? {
+        ...prevSettings,
+        seasonalPresets: DEFAULT_SEASONAL_PRESETS,
+      } : null);
+    }
   };
 
-  const handleSetActiveDeviceId = (id: number | null) => {
+  const handleSetActiveDeviceId = async (id: number | null) => {
     console.log('🔄 Active device changing to ID:', id);
     setActiveDeviceId(id);
     saveActiveDeviceId(id);
+    
+    // Load device-specific seasonal presets when switching devices
+    if (id && devices.length > 0) {
+      const newActiveDevice = devices.find(device => device.id === id);
+      if (newActiveDevice && settings) {
+        const deviceSeasonalPresets = await loadDeviceSeasonalPresets(newActiveDevice);
+        setSettings(prevSettings => prevSettings ? {
+          ...prevSettings,
+          seasonalPresets: deviceSeasonalPresets,
+        } : null);
+      }
+    }
+    
     // WebSocket connection will be managed globally by KoloriApp
   };
 
@@ -307,12 +389,9 @@ export default function App() {
           onThemeChange={(theme) => handleUpdateSettings({ ...settings, theme })}
           scheduleMode={settings.scheduleMode}
           onScheduleModeChange={(mode) => handleUpdateSettings({ ...settings, scheduleMode: mode })}
-          devices={devices}
-          onDeviceRemove={handleDeleteDevice}
-          onAddDevice={() => { setShowSettings(false); setAddModalOpenedFrom('settings'); setShowAddManuallyModal(true); }}
-          onScanForDevices={handleOpenScanModalFromSettings}
           settings={settings}
           onSettingsUpdate={handleUpdateSettings}
+          activeDevice={activeDevice}
         />
       )}
 

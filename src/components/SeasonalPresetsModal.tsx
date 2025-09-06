@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FloatingModal from './FloatingModal';
-import { SeasonalPreset } from '../types';
+import { SeasonalPreset, WledDevice } from '../types';
+import { loadDeviceSeasonalPresets, saveDeviceSeasonalPresets } from '../utils/storage';
 
 interface SeasonalPresetsModalProps {
   isVisible: boolean;
@@ -18,6 +19,7 @@ interface SeasonalPresetsModalProps {
   isDark: boolean;
   seasonalPresets: SeasonalPreset[];
   onUpdateSeasonalPresets: (presets: SeasonalPreset[]) => void;
+  activeDevice?: WledDevice | null;
 }
 
 const defaultSeasonalPresets: SeasonalPreset[] = [
@@ -32,6 +34,7 @@ export default function SeasonalPresetsModal({
   isDark,
   seasonalPresets = defaultSeasonalPresets,
   onUpdateSeasonalPresets,
+  activeDevice,
 }: SeasonalPresetsModalProps) {
   const [editingPresets, setEditingPresets] = useState<SeasonalPreset[]>(seasonalPresets);
   const [isEditing, setIsEditing] = useState(false);
@@ -45,7 +48,7 @@ export default function SeasonalPresetsModal({
 
   const styles = getStyles(isDark);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate that all preset IDs are unique and valid
     const presetIds = editingPresets.map(p => p.presetId);
     const uniqueIds = new Set(presetIds);
@@ -58,6 +61,15 @@ export default function SeasonalPresetsModal({
     if (presetIds.some(id => id < 1 || id > 250)) {
       Alert.alert('Error', 'Preset IDs must be between 1 and 250');
       return;
+    }
+
+    // Save to device-specific storage if device is available
+    if (activeDevice) {
+      try {
+        await saveDeviceSeasonalPresets(activeDevice, editingPresets);
+      } catch (error) {
+        console.error('Failed to save device-specific seasonal presets:', error);
+      }
     }
 
     onUpdateSeasonalPresets(editingPresets);
@@ -108,6 +120,15 @@ export default function SeasonalPresetsModal({
       setShowResetConfirm(false);
       setConfirmText('');
       setEditingPresets(defaultSeasonalPresets);
+      
+      // Save to device-specific storage if device is available
+      if (activeDevice) {
+        try {
+          await saveDeviceSeasonalPresets(activeDevice, defaultSeasonalPresets);
+        } catch (error) {
+          console.error('Failed to save device-specific seasonal presets:', error);
+        }
+      }
       
       // Call the update function and wait for it to complete
       await onUpdateSeasonalPresets(defaultSeasonalPresets);
