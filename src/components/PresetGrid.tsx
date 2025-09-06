@@ -530,6 +530,7 @@ export default function PresetGrid({
   const [sliderKey, setSliderKey] = useState(0); // Force re-render key for slider reset
   const sliderRef = useRef<any>(null);
   const hasUserTouchedSlider = useRef(false);
+  const lastKnownDeviceBrightness = useRef<number>(activeDevice?.wledInfo?.bri || 0);
   
   // Reset slider to device value - force re-render with new defaultValue
   const resetSliderToDeviceValue = useCallback((deviceBrightness: number, reason: string) => {
@@ -619,12 +620,21 @@ export default function PresetGrid({
     }
   }, [activeDevice?.id, activeDevice?.name, resetSliderToDeviceValue]);
 
-  // Initial device brightness sync - only update display if user hasn't touched slider
+  // Track device brightness and sync display if user hasn't touched slider
   useEffect(() => {
-    if (!hasUserTouchedSlider.current && activeDevice?.wledInfo?.bri !== undefined) {
+    if (activeDevice?.wledInfo?.bri !== undefined) {
       const deviceBrightness = Math.round(activeDevice.wledInfo.bri);
-      setCurrentBrightnessDisplay(deviceBrightness);
-      console.log(`📖 Initial brightness sync: ${deviceBrightness}`);
+      
+      // Always update our tracking ref
+      lastKnownDeviceBrightness.current = deviceBrightness;
+      
+      // Only update display if user hasn't touched slider
+      if (!hasUserTouchedSlider.current) {
+        setCurrentBrightnessDisplay(deviceBrightness);
+        console.log(`📖 Brightness sync: ${deviceBrightness} (user hasn't touched)`);
+      } else {
+        console.log(`📖 Device brightness updated to ${deviceBrightness}, but user has control`);
+      }
     }
   }, [activeDevice?.wledInfo?.bri]);
 
@@ -632,15 +642,16 @@ export default function PresetGrid({
   const resetBrightnessSync = useCallback(() => {
     console.log('🔄 resetBrightnessSync called');
     console.log(`📊 activeDevice?.wledInfo?.bri: ${activeDevice?.wledInfo?.bri}`);
+    console.log(`📊 lastKnownDeviceBrightness: ${lastKnownDeviceBrightness.current}`);
     console.log(`📊 currentBrightnessDisplay: ${currentBrightnessDisplay}`);
     
-    if (activeDevice?.wledInfo?.bri !== undefined) {
-      const deviceBrightness = Math.round(activeDevice.wledInfo.bri);
-      console.log(`📊 Calculated deviceBrightness: ${deviceBrightness}`);
-      resetSliderToDeviceValue(deviceBrightness, 'refresh');
-    } else {
-      console.log('❌ activeDevice.wledInfo.bri is undefined - cannot reset');
-    }
+    // Use current device brightness, fallback to last known, fallback to current display
+    const deviceBrightness = activeDevice?.wledInfo?.bri !== undefined 
+      ? Math.round(activeDevice.wledInfo.bri)
+      : lastKnownDeviceBrightness.current || currentBrightnessDisplay;
+      
+    console.log(`📊 Using brightness for reset: ${deviceBrightness}`);
+    resetSliderToDeviceValue(deviceBrightness, 'refresh');
   }, [activeDevice?.wledInfo?.bri, resetSliderToDeviceValue, currentBrightnessDisplay]);
 
 
