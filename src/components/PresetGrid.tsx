@@ -207,8 +207,10 @@ interface DynamicLEDVisualizationProps {
 }
 
 function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizationProps) {
-  const screenWidth = Dimensions.get('window').width - 48; // Account for padding
-  const ledCount = ledData.length;
+  const screenWidth = Dimensions.get('window').width - 96; // Account for card padding + margins
+  // Remove first LED (appears to be padding/status LED from WLED)
+  const filteredLedData = ledData.slice(1);
+  const ledCount = filteredLedData.length;
   
   // Calculate optimal LED size and layout based on count
   const getOptimalLayout = (count: number) => {
@@ -231,14 +233,31 @@ function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizat
         spacing: 2
       };
     } else if (count <= 300) {
-      // Dense grid for larger counts
-      const columns = Math.ceil(Math.sqrt(count));
-      const ledSize = Math.min(Math.floor(screenWidth / columns) - 1, 4);
+      // Dense grid for larger counts - optimize for visual appeal
+      const spacing = 1;
+      const minLedSize = 6; // Minimum LED size for visibility
+      const maxLedSize = 10; // Maximum LED size to keep grid compact
+      
+      // Calculate optimal columns that fit within screen width
+      let columns = Math.floor(screenWidth / (minLedSize + spacing));
+      
+      // Ensure we don't exceed screen width
+      while (columns * (minLedSize + spacing) > screenWidth && columns > 8) {
+        columns--;
+      }
+      
+      // Calculate LED size that fits exactly
+      let ledSize = Math.floor((screenWidth - (columns * spacing)) / columns);
+      ledSize = Math.min(Math.max(ledSize, minLedSize), maxLedSize);
+      
+      // Ensure minimum values
+      columns = Math.max(columns, 8); // At least 8 columns
+      
       return {
         type: 'dense',
         ledSize,
         columns,
-        spacing: 1
+        spacing
       };
     } else {
       // Matrix visualization for very large counts
@@ -255,8 +274,14 @@ function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizat
   
   const layout = getOptimalLayout(ledCount);
   
+  
   const renderLED = (color: LEDColor, index: number) => {
-    const brightness = (color.r + color.g + color.b) / 3 / 255;
+    // Handle undefined color values
+    const r = color.r || 0;
+    const g = color.g || 0;
+    const b = color.b || 0;
+    
+    const brightness = (r + g + b) / 3 / 255;
     const isActive = brightness > 0.1; // Consider LED "active" if it's not very dim
     
     return (
@@ -268,9 +293,10 @@ function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizat
             height: layout.ledSize,
             marginRight: layout.spacing,
             marginBottom: layout.spacing,
+            flexShrink: 0, // Prevent shrinking
             borderRadius: layout.type === 'matrix' ? 0.5 : Math.min(layout.ledSize / 3, 2),
-            backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-            shadowColor: isActive ? `rgb(${color.r}, ${color.g}, ${color.b})` : 'transparent',
+            backgroundColor: `rgb(${r}, ${g}, ${b})`,
+            shadowColor: isActive ? `rgb(${r}, ${g}, ${b})` : 'transparent',
             shadowOpacity: isActive ? Math.min(brightness * 0.8, 0.6) : 0,
             shadowRadius: Math.min(layout.ledSize / 2, 3),
             elevation: isActive ? 2 : 0,
@@ -300,11 +326,14 @@ function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizat
       <View style={[
         styles.dynamicLedGrid, 
         { 
-          flexDirection: layout.type === 'linear' ? 'row' : 'row',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
           maxWidth: screenWidth,
+          width: '100%',
+          paddingHorizontal: 4,
         }
       ]}>
-        {ledData.map((color, index) => renderLED(color, index))}
+        {filteredLedData.map((color, index) => renderLED(color, index))}
       </View>
       <Text style={[styles.ledCount, { color: subtextColor }]}>
         {ledCount} LED{ledCount !== 1 ? 's' : ''} live
@@ -1093,26 +1122,37 @@ export default function PresetGrid({
                     <Text style={[styles.disabledText, { color: subtextColor }]}>
                       Live view disabled
                     </Text>
-                    {activeDevice?.wledInfo?.leds?.count ? (
-                      <View>
-                        <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
-                          {activeDevice.wledInfo.leds.count} LED{activeDevice.wledInfo.leds.count !== 1 ? 's' : ''} available
-                        </Text>
-                        {activeDevice.wledInfo.leds.rgbw && (
-                          <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
-                            RGBW LEDs supported
+                    {(() => {
+                      // Check for LED count in WLED device info
+                      const ledCount = activeDevice?.wledInfo?.leds?.count;
+                      
+                      if (ledCount) {
+                        return (
+                          <View>
+                            <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4 }]}>
+                              {ledCount} LED{ledCount !== 1 ? 's' : ''} available
+                            </Text>
+                            {activeDevice?.wledInfo?.leds?.rgbw && (
+                              <Text style={[styles.ledCount, { color: subtextColor, fontSize: 10, marginTop: 2 }]}>
+                                RGBW LEDs supported
+                              </Text>
+                            )}
+                          </View>
+                        );
+                      } else if (activeDevice?.isConnected) {
+                        return (
+                          <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                            Device connected - LED count not available
                           </Text>
-                        )}
-                      </View>
-                    ) : activeDevice?.isConnected ? (
-                      <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
-                        Device connected - LED count not available
-                      </Text>
-                    ) : (
-                      <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
-                        Device offline
-                      </Text>
-                    )}
+                        );
+                      } else {
+                        return (
+                          <Text style={[styles.ledCount, { color: subtextColor, marginTop: 4, fontSize: 12 }]}>
+                            Device offline
+                          </Text>
+                        );
+                      }
+                    })()}
                   </View>
                 )}
               </Animated.View>

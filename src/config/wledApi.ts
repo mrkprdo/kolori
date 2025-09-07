@@ -466,13 +466,13 @@ export const fetchWledPresets = async (
 
         // Check if this is a playlist
         if ((presetData as any).playlist && (presetData as any).playlist.ps) {
-          logger.log(
-            `🎵 Found playlist in preset ${presetId}:`,
-            (presetData as any).n,
-            "with",
-            (presetData as any).playlist.ps.length,
-            "items"
-          );
+          // logger.log(
+          //   `🎵 Found playlist in preset ${presetId}:`,
+          //   (presetData as any).n,ok 
+          //   "with",
+          //   (presetData as any).playlist.ps.length,
+          //   "items"
+          // );
           const playlist = {
             id: `playlist_${presetId}`,
             presetId: parseInt(presetId),
@@ -495,12 +495,12 @@ export const fetchWledPresets = async (
           playlists.push(playlist);
         } else {
           // Regular preset - add effect and palette info
-          logger.log(
-            `⚙️ Categorizing as regular preset ${presetId}:`,
-            (presetData as any).n,
-            "has playlist data?",
-            !!(presetData as any).playlist
-          );
+          // logger.log(
+          //   `⚙️ Categorizing as regular preset ${presetId}:`,
+          //   (presetData as any).n,
+          //   "has playlist data?",
+          //   !!(presetData as any).playlist
+          // );
           if ((presetData as any).seg && (presetData as any).seg[0]) {
             const segment = (presetData as any).seg[0];
             preset.effectId = segment.fx || 0;

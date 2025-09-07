@@ -439,9 +439,13 @@ function KoloriApp({
                 currentActiveDeviceName: currentActiveDevice.name
               });
               
-              // Update device with info (using the current active device ID)
-              onDeviceUpdate(currentActiveDevice.id, { wledInfo: message.info });
-              logger.log('✅ Device info updated for device ID:', currentActiveDevice.id);
+              // Merge WebSocket info with existing wledInfo to preserve LED count and other details
+              const currentWledInfo = currentActiveDevice.wledInfo || {};
+              const mergedInfo = { ...currentWledInfo, ...message.info };
+              
+              
+              onDeviceUpdate(currentActiveDevice.id, { wledInfo: mergedInfo });
+              logger.log('✅ Device info merged and updated for device ID:', currentActiveDevice.id);
             }
             
             // Handle device state updates
@@ -457,27 +461,28 @@ function KoloriApp({
                 const reason = isChangingBrightness.current ? 'slider operation in progress' : 'one-way sync enabled';
                 logger.log(`🚫 WebSocket brightness update blocked - ${reason}`);
                 
-                // Update everything except brightness
+                // Update everything except brightness - preserve all existing wledInfo
                 const currentWledInfo = currentActiveDevice.wledInfo || {};
-                onDeviceUpdate(currentActiveDevice.id, { 
-                  wledInfo: {
-                    ...currentWledInfo,
-                    // bri: message.state.bri, // BLOCKED
-                    on: message.state.on,
-                    ps: message.state.ps || currentWledInfo.ps // current preset
-                  }
-                });
+                const updatedWledInfo = {
+                  ...currentWledInfo,
+                  // bri: message.state.bri, // BLOCKED
+                  on: message.state.on,
+                  ps: message.state.ps || currentWledInfo.ps // current preset
+                };
+                
+                onDeviceUpdate(currentActiveDevice.id, { wledInfo: updatedWledInfo });
               } else {
-                // Normal update with brightness
+                // Normal update with brightness - preserve all existing wledInfo
                 const currentWledInfo = currentActiveDevice.wledInfo || {};
-                onDeviceUpdate(currentActiveDevice.id, { 
-                  wledInfo: {
-                    ...currentWledInfo,
-                    bri: message.state.bri,
-                    on: message.state.on,
-                    ps: message.state.ps || currentWledInfo.ps // current preset
-                  }
-                });
+                const updatedWledInfo = {
+                  ...currentWledInfo,
+                  bri: message.state.bri,
+                  on: message.state.on,
+                  ps: message.state.ps || currentWledInfo.ps // current preset
+                };
+                
+                
+                onDeviceUpdate(currentActiveDevice.id, { wledInfo: updatedWledInfo });
                 logger.log('✅ Device state updated for device ID:', currentActiveDevice.id, 'brightness:', message.state.bri);
               }
             }
@@ -951,6 +956,13 @@ function KoloriApp({
   const refreshDeviceState = useCallback(async () => {
     if (!activeDevice?.isConnected) {
       logger.warn('Cannot refresh device state - device not connected');
+      // Show toast notification
+      setNotificationState({
+        isVisible: true,
+        type: 'warning',
+        title: 'Device Not Connected',
+        message: 'Cannot refresh device state - device not connected'
+      });
       return;
     }
 
@@ -958,23 +970,35 @@ function KoloriApp({
       const deviceAddress = getDeviceAddress(activeDevice);
       const protocol = activeDevice.protocol || 'http';
       
-      logger.log('🔄 Refreshing device state for:', activeDevice.name);
+      logger.log('🔄 Refreshing device state and info for:', activeDevice.name);
       
-      const stateResponse = await getWledState(deviceAddress, protocol);
+      // Fetch both device info AND state
+      const [infoResponse, stateResponse] = await Promise.all([
+        fetch(`${protocol}://${deviceAddress}/json/info`),
+        getWledState(deviceAddress, protocol)
+      ]);
       
       if (stateResponse.success && stateResponse.data) {
-        // Update device with current state
-        const currentWledInfo = activeDevice.wledInfo || {};
-        onDeviceUpdate(activeDevice.id, { 
-          wledInfo: {
-            ...currentWledInfo,
-            bri: stateResponse.data.bri,
-            on: stateResponse.data.on,
-            ps: stateResponse.data.ps // current preset
-          }
-        });
+        let updatedWledInfo = activeDevice.wledInfo || {};
         
-        logger.log('✅ Device state refreshed - brightness:', stateResponse.data.bri, 'on:', stateResponse.data.on);
+        // If we got device info, merge it first
+        if (infoResponse.ok) {
+          const deviceInfo = await infoResponse.json();
+          updatedWledInfo = { ...updatedWledInfo, ...deviceInfo };
+          logger.log('📥 Device info fetched during refresh - LED count:', deviceInfo.leds?.count);
+        }
+        
+        // Then update with current state
+        updatedWledInfo = {
+          ...updatedWledInfo,
+          bri: stateResponse.data.bri,
+          on: stateResponse.data.on,
+          ps: stateResponse.data.ps // current preset
+        };
+        
+        onDeviceUpdate(activeDevice.id, { wledInfo: updatedWledInfo });
+        
+        logger.log('✅ Device state and info refreshed - brightness:', stateResponse.data.bri, 'on:', stateResponse.data.on, 'LED count:', updatedWledInfo.leds?.count);
       }
     } catch (error: any) {
       logger.error('❌ Failed to refresh device state:', error);

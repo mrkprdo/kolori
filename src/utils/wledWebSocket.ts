@@ -88,7 +88,7 @@ class WledWebSocketManager {
 
           for (let i = 0; i < byteArray.length; i += bytesPerLed) {
             colors.push({
-              r: byteArray[i + 2], // Red (assuming GRB order from old code)
+              r: byteArray[i + 2], // Red (final GRB order)
               g: byteArray[i], // Green
               b: byteArray[i + 1], // Blue
               w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
@@ -107,9 +107,9 @@ class WledWebSocketManager {
 
           for (let i = 0; i < byteArray.length; i += bytesPerLed) {
             colors.push({
-              r: byteArray[i + 2],
-              g: byteArray[i],
-              b: byteArray[i + 1],
+              r: byteArray[i + 2], // Red (final GRB order)
+              g: byteArray[i], // Green
+              b: byteArray[i + 1], // Blue
               w: bytesPerLed === 4 ? byteArray[i + 3] : undefined,
             });
           }
