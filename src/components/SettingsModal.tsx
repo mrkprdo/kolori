@@ -169,6 +169,21 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderColor: isDark ? '#4b5563' : '#d1d5db',
   },
   footerButtonText: { fontSize: 14, fontWeight: '700' },
+  ledSizeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    gap: 6,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  ledSizeButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
 
 });
 
@@ -203,6 +218,38 @@ export default function SettingsModal({
             <Text style={styles.optionSubText}>Configure preset IDs for seasonal effects</Text>
           </View>
           <Ionicons name="calendar-outline" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Live View</Text>
+      <View style={styles.settingsGroup}>
+        <TouchableOpacity
+          style={styles.optionButton}
+          onPress={() => {
+            const sizes: Array<'compact' | 'normal' | 'large' | 'extra-large'> = ['compact', 'normal', 'large', 'extra-large'];
+            const currentSize = settings.liveViewLedSize || 'normal';
+            const currentIndex = sizes.indexOf(currentSize);
+            const nextIndex = (currentIndex + 1) % sizes.length;
+            onSettingsUpdate({ ...settings, liveViewLedSize: sizes[nextIndex] });
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.optionText}>LED Size</Text>
+            <Text style={styles.optionSubText}>
+              {settings.liveViewLedSize === 'compact' ? 'Compact - More LEDs visible' :
+               settings.liveViewLedSize === 'large' ? 'Large - Easier to see' :
+               settings.liveViewLedSize === 'extra-large' ? 'Extra Large - Maximum visibility' :
+               'Normal - Balanced view'}
+            </Text>
+          </View>
+          <View style={[styles.ledSizeButton, { borderColor: isDark ? '#4b5563' : '#d1d5db' }]}>
+            <Text style={[styles.ledSizeButtonText, { color: isDark ? '#ffffff' : '#111827' }]}>
+              {settings.liveViewLedSize === 'compact' ? 'Compact' :
+               settings.liveViewLedSize === 'large' ? 'Large' :
+               settings.liveViewLedSize === 'extra-large' ? 'Extra Large' :
+               'Normal'}
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
 

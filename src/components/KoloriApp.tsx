@@ -956,13 +956,6 @@ function KoloriApp({
   const refreshDeviceState = useCallback(async () => {
     if (!activeDevice?.isConnected) {
       logger.warn('Cannot refresh device state - device not connected');
-      // Show toast notification
-      setNotificationState({
-        isVisible: true,
-        type: 'warning',
-        title: 'Device Not Connected',
-        message: 'Cannot refresh device state - device not connected'
-      });
       return;
     }
 
@@ -1221,6 +1214,7 @@ function KoloriApp({
             return presets;
           })()}
           onBrightnessChange={handleBrightnessChange}
+          liveViewLedSize={settings.liveViewLedSize}
         />
         <PlaylistModal
           isVisible={showPlaylist}

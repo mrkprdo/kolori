@@ -111,5 +111,6 @@ export interface Settings {
   readonly maxDevices: number;
   readonly backgroundScanEnabled: boolean;
   readonly seasonalPresets?: SeasonalPreset[];
+  readonly liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
   readonly [key: string]: unknown;
 }

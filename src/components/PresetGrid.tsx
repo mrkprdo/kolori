@@ -204,28 +204,42 @@ const parseGradientString = (gradientString: string): { colors: string[], locati
 interface DynamicLEDVisualizationProps {
   ledData: LEDColor[];
   subtextColor: string;
+  liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
 }
 
-function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizationProps) {
+function DynamicLEDVisualization({ ledData, subtextColor, liveViewLedSize = 'normal' }: DynamicLEDVisualizationProps) {
   const screenWidth = Dimensions.get('window').width - 96; // Account for card padding + margins
   // Remove first LED (appears to be padding/status LED from WLED)
   const filteredLedData = ledData.slice(1);
   const ledCount = filteredLedData.length;
   
-  // Calculate optimal LED size and layout based on count
+  // LED size multipliers based on setting
+  const getSizeMultiplier = (size: string) => {
+    switch (size) {
+      case 'compact': return 0.7;
+      case 'normal': return 1.0;
+      case 'large': return 1.4;
+      case 'extra-large': return 1.8;
+      default: return 1.0;
+    }
+  };
+
+  const sizeMultiplier = getSizeMultiplier(liveViewLedSize);
+
+  // Calculate optimal LED size and layout based on count and size setting
   const getOptimalLayout = (count: number) => {
     if (count <= 20) {
       // Linear layout for small counts
       return {
         type: 'linear',
-        ledSize: Math.min(Math.floor(screenWidth / count) - 2, 12),
+        ledSize: Math.max(Math.min(Math.floor((screenWidth / count) - 2) * sizeMultiplier, 12 * sizeMultiplier), 4),
         columns: count,
         spacing: 2
       };
     } else if (count <= 100) {
       // Grid layout for medium counts
       const columns = Math.ceil(Math.sqrt(count));
-      const ledSize = Math.min(Math.floor(screenWidth / columns) - 2, 8);
+      const ledSize = Math.max(Math.min(Math.floor((screenWidth / columns) - 2) * sizeMultiplier, 8 * sizeMultiplier), 3);
       return {
         type: 'grid',
         ledSize,
@@ -235,8 +249,8 @@ function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizat
     } else if (count <= 300) {
       // Dense grid for larger counts - optimize for visual appeal
       const spacing = 1;
-      const minLedSize = 6; // Minimum LED size for visibility
-      const maxLedSize = 10; // Maximum LED size to keep grid compact
+      const minLedSize = Math.max(10 * sizeMultiplier, 6); // Minimum LED size for visibility
+      const maxLedSize = 15 * sizeMultiplier; // Maximum LED size to keep grid compact
       
       // Calculate optimal columns that fit within screen width
       let columns = Math.floor(screenWidth / (minLedSize + spacing));
@@ -262,7 +276,7 @@ function DynamicLEDVisualization({ ledData, subtextColor }: DynamicLEDVisualizat
     } else {
       // Matrix visualization for very large counts
       const columns = Math.min(Math.ceil(Math.sqrt(count)), 40);
-      const ledSize = Math.max(Math.floor(screenWidth / columns) - 1, 2);
+      const ledSize = Math.max(Math.floor((screenWidth / columns) - 1) * sizeMultiplier, 2);
       return {
         type: 'matrix',
         ledSize,
@@ -480,7 +494,7 @@ interface PresetGridProps {
   currentPlaylist: any[];
   onShowPlaylist: () => void;
   activeDevice: WledDevice | undefined;
-  devices?: WledDevice[];
+  devices: WledDevice[];
   activeDeviceId?: number | null;
   onSetActiveDeviceId?: (id: number) => void;
   customEffects: CustomEffect[];
@@ -493,7 +507,6 @@ interface PresetGridProps {
   onPlaylistRemove: (playlistId: number) => void;
   onPlaylistSelect: (playlistId: number) => void;
   setShowSettings: (show: boolean) => void;
-  devices: WledDevice[];
   onDeviceRemove: (deviceId: number) => void;
   onAddDevice: () => void;
   onScanForDevices: () => void;
@@ -505,6 +518,7 @@ interface PresetGridProps {
   onSavePlaylist?: (playlist: SavedPlaylist) => void;
   seasonalPresets: SeasonalPreset[];
   onBrightnessChange?: (brightness: number) => void;
+  liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
 }
 
 export default function PresetGrid({
@@ -538,6 +552,7 @@ export default function PresetGrid({
   onSavePlaylist,
   seasonalPresets,
   onBrightnessChange,
+  liveViewLedSize = 'normal',
 }: PresetGridProps) {
   
   
@@ -1072,10 +1087,18 @@ export default function PresetGrid({
                 )}
                 
                 {/* Live LED Data */}
-                {liveViewEnabled && liveLedData.length > 0 && (
+                {liveViewEnabled && !activeDevice?.isConnected && (
+                  <View style={styles.disabledContainer}>
+                    <Text style={[styles.disabledText, { color: '#ef4444' }]}>
+                      Device offline - Connect to view LED data
+                    </Text>
+                  </View>
+                )}
+                {liveViewEnabled && activeDevice?.isConnected && liveLedData.length > 0 && (
                   <DynamicLEDVisualization 
                     ledData={liveLedData} 
                     subtextColor={subtextColor}
+                    liveViewLedSize={liveViewLedSize}
                   />
                 )}
 
@@ -1119,10 +1142,21 @@ export default function PresetGrid({
                 
                 {!liveViewEnabled && (
                   <View style={styles.disabledContainer}>
-                    <Text style={[styles.disabledText, { color: subtextColor }]}>
-                      Live view disabled
-                    </Text>
+                    {!activeDevice?.isConnected ? (
+                      <Text style={[styles.disabledText, { color: '#ef4444' }]}>
+                        Device offline - Connect to view LED data
+                      </Text>
+                    ) : (
+                      <Text style={[styles.disabledText, { color: subtextColor }]}>
+                        Live view disabled
+                      </Text>
+                    )}
                     {(() => {
+                      // Don't show LED count if device is offline
+                      if (!activeDevice?.isConnected) {
+                        return null;
+                      }
+                      
                       // Check for LED count in WLED device info
                       const ledCount = activeDevice?.wledInfo?.leds?.count;
                       
