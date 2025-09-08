@@ -22,10 +22,12 @@ import {
   LEDColor 
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
-import { deleteWledPreset, deleteWledPlaylistViaWebSocket } from '../config/wledApi';
+import { deleteWledPreset, deleteWledPlaylistViaWebSocket, createWledPreset } from '../config/wledApi';
 import CustomEffectsModal from './CustomEffectsModal';
 import PlaylistCreationModal from './PlaylistCreationModal';
 import DeviceManagementModal from './DeviceManagementModal';
+import LEDVisualization from './LEDVisualization';
+import { WLEDEffectData, getEffectByName } from '../data/wledEffects';
 
 // Animated playlist item component
 interface AnimatedPlaylistItemProps {
@@ -201,160 +203,6 @@ const parseGradientString = (gradientString: string): { colors: string[], locati
   return { colors: ['#6366f1', '#8b5cf6'] };
 };
 
-interface DynamicLEDVisualizationProps {
-  ledData: LEDColor[];
-  subtextColor: string;
-  liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
-}
-
-function DynamicLEDVisualization({ ledData, subtextColor, liveViewLedSize = 'normal' }: DynamicLEDVisualizationProps) {
-  const screenWidth = Dimensions.get('window').width - 96; // Account for card padding + margins
-  // Remove first LED (appears to be padding/status LED from WLED)
-  const filteredLedData = ledData.slice(1);
-  const ledCount = filteredLedData.length;
-  
-  // LED size multipliers based on setting
-  const getSizeMultiplier = (size: string) => {
-    switch (size) {
-      case 'compact': return 0.7;
-      case 'normal': return 1.0;
-      case 'large': return 1.4;
-      case 'extra-large': return 1.8;
-      default: return 1.0;
-    }
-  };
-
-  const sizeMultiplier = getSizeMultiplier(liveViewLedSize);
-
-  // Calculate optimal LED size and layout based on count and size setting
-  const getOptimalLayout = (count: number) => {
-    if (count <= 20) {
-      // Linear layout for small counts
-      return {
-        type: 'linear',
-        ledSize: Math.max(Math.min(Math.floor((screenWidth / count) - 2) * sizeMultiplier, 12 * sizeMultiplier), 4),
-        columns: count,
-        spacing: 2
-      };
-    } else if (count <= 100) {
-      // Grid layout for medium counts
-      const columns = Math.ceil(Math.sqrt(count));
-      const ledSize = Math.max(Math.min(Math.floor((screenWidth / columns) - 2) * sizeMultiplier, 8 * sizeMultiplier), 3);
-      return {
-        type: 'grid',
-        ledSize,
-        columns,
-        spacing: 2
-      };
-    } else if (count <= 300) {
-      // Dense grid for larger counts - optimize for visual appeal
-      const spacing = 1;
-      const minLedSize = Math.max(10 * sizeMultiplier, 6); // Minimum LED size for visibility
-      const maxLedSize = 15 * sizeMultiplier; // Maximum LED size to keep grid compact
-      
-      // Calculate optimal columns that fit within screen width
-      let columns = Math.floor(screenWidth / (minLedSize + spacing));
-      
-      // Ensure we don't exceed screen width
-      while (columns * (minLedSize + spacing) > screenWidth && columns > 8) {
-        columns--;
-      }
-      
-      // Calculate LED size that fits exactly
-      let ledSize = Math.floor((screenWidth - (columns * spacing)) / columns);
-      ledSize = Math.min(Math.max(ledSize, minLedSize), maxLedSize);
-      
-      // Ensure minimum values
-      columns = Math.max(columns, 8); // At least 8 columns
-      
-      return {
-        type: 'dense',
-        ledSize,
-        columns,
-        spacing
-      };
-    } else {
-      // Matrix visualization for very large counts
-      const columns = Math.min(Math.ceil(Math.sqrt(count)), 40);
-      const ledSize = Math.max(Math.floor((screenWidth / columns) - 1) * sizeMultiplier, 2);
-      return {
-        type: 'matrix',
-        ledSize,
-        columns,
-        spacing: 0.5
-      };
-    }
-  };
-  
-  const layout = getOptimalLayout(ledCount);
-  
-  
-  const renderLED = (color: LEDColor, index: number) => {
-    // Handle undefined color values
-    const r = color.r || 0;
-    const g = color.g || 0;
-    const b = color.b || 0;
-    
-    const brightness = (r + g + b) / 3 / 255;
-    const isActive = brightness > 0.1; // Consider LED "active" if it's not very dim
-    
-    return (
-      <View
-        key={index}
-        style={[
-          {
-            width: layout.ledSize,
-            height: layout.ledSize,
-            marginRight: layout.spacing,
-            marginBottom: layout.spacing,
-            flexShrink: 0, // Prevent shrinking
-            borderRadius: layout.type === 'matrix' ? 0.5 : Math.min(layout.ledSize / 3, 2),
-            backgroundColor: `rgb(${r}, ${g}, ${b})`,
-            shadowColor: isActive ? `rgb(${r}, ${g}, ${b})` : 'transparent',
-            shadowOpacity: isActive ? Math.min(brightness * 0.8, 0.6) : 0,
-            shadowRadius: Math.min(layout.ledSize / 2, 3),
-            elevation: isActive ? 2 : 0,
-          }
-        ]}
-      >
-        {/* LED highlight effect for active LEDs */}
-        {isActive && layout.ledSize > 4 && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0.5,
-              left: 0.5,
-              borderRadius: Math.min(layout.ledSize / 4, 1),
-              height: Math.min(layout.ledSize / 3, 3),
-              width: Math.min(layout.ledSize / 2, 2),
-              backgroundColor: 'rgba(255, 255, 255, 0.4)',
-            }}
-          />
-        )}
-      </View>
-    );
-  };
-  
-  return (
-    <View style={styles.ledContainer}>
-      <View style={[
-        styles.dynamicLedGrid, 
-        { 
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          maxWidth: screenWidth,
-          width: '100%',
-          paddingHorizontal: 4,
-        }
-      ]}>
-        {filteredLedData.map((color, index) => renderLED(color, index))}
-      </View>
-      <Text style={[styles.ledCount, { color: subtextColor }]}>
-        {ledCount} LED{ledCount !== 1 ? 's' : ''} live
-      </Text>
-    </View>
-  );
-}
 
 interface PresetCardProps {
   preset: any;
@@ -1024,6 +872,153 @@ export default function PresetGrid({
     }
   }, [isDeleteMode, startWiggleAnimation]);
 
+  // Random Custom Effect Generator
+  const generateRandomCustomEffect = useCallback(async () => {
+    if (!activeDevice?.isConnected) return;
+
+    try {
+      console.log('🎲 Generating random custom effect...');
+      
+      // Detect WLED device dimensions first
+      const detectWledDimensions = async (deviceIp: string): Promise<'1D' | '2D' | null> => {
+        try {
+          const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`, {
+            timeout: 5000,
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+          }
+          
+          const responseText = await response.text();
+          const sompMatch = responseText.match(/d\.Sf\.SOMP\.value\s*=\s*(\d+)/);
+          
+          if (sompMatch) {
+            const sompValue = parseInt(sompMatch[1]);
+            return sompValue === 0 ? '1D' : '2D';
+          }
+          return null;
+        } catch (error) {
+          console.error('Failed to detect WLED dimensions:', error);
+          return null;
+        }
+      };
+
+      // Get device effects and palettes
+      const [effectsResponse, palettesResponse, deviceDimensions] = await Promise.all([
+        fetch(`http://${activeDevice.ip}/json/eff`, { timeout: 8000 }),
+        fetch(`http://${activeDevice.ip}/json/pal`, { timeout: 8000 }),
+        detectWledDimensions(activeDevice.ip)
+      ]);
+
+      if (!effectsResponse.ok || !palettesResponse.ok) {
+        throw new Error('Failed to fetch device data');
+      }
+
+      const [deviceEffects, devicePalettes] = await Promise.all([
+        effectsResponse.json(),
+        palettesResponse.json()
+      ]);
+
+      console.log(`🎲 Device dimensions: ${deviceDimensions}`);
+      console.log(`🎲 Available effects: ${deviceEffects.length}`);
+      console.log(`🎲 Available palettes: ${devicePalettes.length}`);
+
+      // Filter effects based on device dimensions and lookup table
+      const availableEffects: WLEDEffectData[] = [];
+      deviceEffects.forEach((effectName: string, index: number) => {
+        const lookupEffect = getEffectByName(effectName);
+        
+        if (lookupEffect) {
+          // Filter based on device dimensions
+          let shouldInclude = true;
+          
+          if (deviceDimensions === '1D' && !lookupEffect.supports1D) {
+            shouldInclude = false;
+          } else if (deviceDimensions === '2D' && !lookupEffect.supports2D) {
+            shouldInclude = false;
+          }
+          
+          if (shouldInclude) {
+            availableEffects.push(lookupEffect);
+          }
+        }
+      });
+
+      if (availableEffects.length === 0) {
+        Alert.alert('No Effects Available', 'No compatible effects found for this device.');
+        return;
+      }
+
+      // Select random effect
+      const randomEffect = availableEffects[Math.floor(Math.random() * availableEffects.length)];
+      console.log(`🎲 Selected random effect: "${randomEffect.name}" (ID: ${randomEffect.id})`);
+
+      // Select random palette if effect supports palettes
+      let randomPalette = null;
+      let presetName = randomEffect.name;
+      
+      if (randomEffect.supportsPalette && devicePalettes.length > 0) {
+        const randomPaletteIndex = Math.floor(Math.random() * devicePalettes.length);
+        randomPalette = { id: randomPaletteIndex, name: devicePalettes[randomPaletteIndex] };
+        presetName = `${randomEffect.name}+${randomPalette.name}`;
+        console.log(`🎲 Selected random palette: "${randomPalette.name}" (ID: ${randomPalette.id})`);
+      }
+
+      console.log(`🎲 Generated preset name: "${presetName}"`);
+
+      // Create the random custom effect preset
+      const result = await createWledPreset(
+        activeDevice.ip,
+        presetName,
+        randomEffect.id,
+        randomPalette?.id || 0,
+        activeDevice.protocol || 'http'
+      );
+
+      if (result.success && result.presetId) {
+        console.log(`🎲 Successfully created random custom effect with preset ID: ${result.presetId}`);
+        
+        // Add to local custom effects
+        const newCustomEffect: CustomEffect = {
+          id: result.presetId,
+          presetId: result.presetId,
+          name: presetName,
+          effectName: randomEffect.name,
+          effectId: randomEffect.id,
+          paletteId: randomPalette?.id || 0,
+          paletteName: randomPalette?.name || '',
+          isWledPreset: true,
+          gradient: '#6366f1'
+        };
+
+        onAddCustomEffect(newCustomEffect);
+
+        // Apply the effect immediately
+        onPresetSelect(result.presetId);
+
+        // Refresh presets to ensure sync
+        if (onRefreshPresets) {
+          await onRefreshPresets();
+        }
+
+        Alert.alert(
+          '🎲 Random Effect Created!',
+          `Created "${presetName}" with effect "${randomEffect.name}"${randomPalette ? ` and palette "${randomPalette.name}"` : ''}.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        throw new Error(result.message || 'Failed to create preset');
+      }
+    } catch (error) {
+      console.error('🎲 Error generating random custom effect:', error);
+      Alert.alert(
+        'Failed to Generate Random Effect',
+        error instanceof Error ? error.message : 'An unexpected error occurred.'
+      );
+    }
+  }, [activeDevice, onAddCustomEffect, onPresetSelect, onRefreshPresets]);
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <ScrollView 
@@ -1095,10 +1090,11 @@ export default function PresetGrid({
                   </View>
                 )}
                 {liveViewEnabled && activeDevice?.isConnected && liveLedData.length > 0 && (
-                  <DynamicLEDVisualization 
+                  <LEDVisualization 
                     ledData={liveLedData} 
                     subtextColor={subtextColor}
                     liveViewLedSize={liveViewLedSize}
+                    showLedCount={true}
                   />
                 )}
 
@@ -1250,6 +1246,15 @@ export default function PresetGrid({
               <Text style={[styles.sectionTitle, { color: textColor }]}>
                 Custom Effects ({customEffects.length})
               </Text>
+              {/* Random Custom Effect Dice Button */}
+              {activeDevice?.isConnected && (
+                <TouchableOpacity
+                  onPress={generateRandomCustomEffect}
+                  style={[styles.diceButton, { backgroundColor: isDark ? '#374151' : '#f3f4f6' }]}
+                >
+                  <Ionicons name="dice" size={16} color={textColor} />
+                </TouchableOpacity>
+              )}
             </View>
             <Ionicons
               name={isCustomEffectsCollapsed ? 'chevron-down' : 'chevron-up'}
@@ -2213,5 +2218,19 @@ const styles = StyleSheet.create({
   cancelButton: {
     borderWidth: 1,
     borderColor: 'rgba(107, 114, 128, 0.3)',
+  },
+  diceButton: {
+    marginLeft: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 114, 128, 0.3)',
+    elevation: 1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
 });

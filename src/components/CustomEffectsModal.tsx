@@ -13,11 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { createWledPreset } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
-
-interface Effect {
-  id: number;
-  name: string;
-}
+import LEDVisualization from './LEDVisualization';
+import { WLEDEffectData, getEffectData, getEffectByName } from '../data/wledEffects';
 
 interface Palette {
   id: number;
@@ -195,13 +192,12 @@ export default function CustomEffectsModal({
   onLiveViewToggle,
   onRefreshPresets,
 }: CustomEffectsModalProps) {
-  const [effects, setEffects] = useState<Effect[]>([]);
+  const [effects, setEffects] = useState<WLEDEffectData[]>([]);
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [selectedEffect, setSelectedEffect] = useState<number | null>(null);
   const [selectedPalette, setSelectedPalette] = useState<number | null>(null);
   const [isLoadingEffects, setIsLoadingEffects] = useState(false);
   const [isLoadingPalettes, setIsLoadingPalettes] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -262,26 +258,43 @@ export default function CustomEffectsModal({
     elevation: 3,
   };
 
-  const footerButtonSecondaryStyle = {
-    flex: 1, 
-    flexDirection: 'row' as const, 
-    alignItems: 'center' as const, 
-    justifyContent: 'center' as const, 
-    paddingVertical: 14, 
-    paddingHorizontal: 20,
-    borderRadius: 12, 
-    gap: 6,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  };
-
   const footerButtonTextStyle = {
     fontSize: 15,
     fontWeight: '600' as const,
     color: 'white',
+  };
+
+  // Function to detect if WLED device is configured for 1D or 2D
+  const detectWledDimensions = async (deviceIp: string): Promise<'1D' | '2D' | null> => {
+    try {
+      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`, {
+        timeout: 5000,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+      }
+      
+      const responseText = await response.text();
+      console.log('WLED settings response:', responseText);
+      
+      // Parse the JavaScript response to find d.Sf.SOMP.value
+      // Look for the pattern d.Sf.SOMP.value=0 (1D) or d.Sf.SOMP.value=1 (2D)
+      const sompMatch = responseText.match(/d\.Sf\.SOMP\.value\s*=\s*(\d+)/);
+      
+      if (sompMatch) {
+        const sompValue = parseInt(sompMatch[1]);
+        const dimensions = sompValue === 0 ? '1D' : '2D';
+        console.log(`WLED device configured for: ${dimensions} (SOMP value: ${sompValue})`);
+        return dimensions;
+      } else {
+        console.warn('Could not parse SOMP value from settings response');
+        return null;
+      }
+    } catch (error) {
+      console.error('Failed to detect WLED dimensions:', error);
+      return null;
+    }
   };
 
   const fetchEffects = useCallback(async () => {
@@ -293,30 +306,71 @@ export default function CustomEffectsModal({
     setIsLoadingEffects(true);
     try {
       const device = selectedDevices[0]; // Use first selected device
-      console.log('Fetching effects from device:', device.ip);
-      const response = await fetch(`http://${device.ip}/json/eff`);
+      console.log('Loading effects from device and lookup table:', device.ip);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // First, detect if the device is configured for 1D or 2D
+      const deviceDimensions = await detectWledDimensions(device.ip);
+      console.log('Device dimensions detected:', deviceDimensions);
+      
+      // Get the effects list from the device
+      const effectsResponse = await fetch(`http://${device.ip}/json/eff`, {
+        timeout: 8000, // 8 second timeout
+      });
+      
+      if (!effectsResponse.ok) {
+        throw new Error(`HTTP ${effectsResponse.status}: ${effectsResponse.statusText || 'Unknown error'}`);
       }
       
-      const effectsData = await response.json();
-      console.log('Effects data received:', effectsData);
+      const deviceEffectsData: string[] = await effectsResponse.json();
+      console.log('Successfully loaded effects list from device:', deviceEffectsData.length, 'effects');
       
-      // Transform the effects data into the format we need
-      const effectsList: Effect[] = effectsData.map((effect: string, index: number) => ({
-        id: index,
-        name: effect,
-      }));
+      // Build the effects list using device data + our lookup table for capabilities
+      const effectsList: WLEDEffectData[] = [];
       
-      console.log('Processed effects list:', effectsList.length, 'effects');
-      setEffects(effectsList);
+      deviceEffectsData.forEach((effectName: string, index: number) => {
+        // Get effect data from our lookup table by matching the name
+        const lookupEffect = getEffectByName(effectName);
+
+        if (lookupEffect) {
+          // Filter based on device dimensions configuration
+          let shouldInclude = true;
+          
+          if (deviceDimensions === '1D' && !lookupEffect.supports1D) {
+            shouldInclude = false;
+            console.log(`Skipping 2D-only effect "${effectName}" for 1D device`);
+          } else if (deviceDimensions === '2D' && !lookupEffect.supports2D) {
+            shouldInclude = false;
+            console.log(`Skipping 1D-only effect "${effectName}" for 2D device`);
+          }
+          
+          if (shouldInclude) {
+            // Effect found in lookup table and compatible with device - add it to our list
+            effectsList.push(lookupEffect);
+            console.log(`Added effect: "${effectName}" (ID: ${lookupEffect.id}) - supports ${deviceDimensions}`);
+          }
+        } else {
+          // Effect not found in lookup table - skip it
+          console.log(`Effect "${effectName}" not found in lookup table, skipping`);
+        }
+      });
+      
+      // Sort effects alphabetically, but keep "Solid" first
+      const sortedEffectsList = effectsList.sort((a, b) => {
+        // Always put "Solid" first
+        if (a.name === 'Solid') return -1;
+        if (b.name === 'Solid') return 1;
+        
+        // Sort all other effects alphabetically by name
+        return a.name.localeCompare(b.name);
+      });
+      
+      console.log(`Processed effects list: ${sortedEffectsList.length} effects from device (filtered for ${deviceDimensions})`);
+      setEffects(sortedEffectsList);
+      
     } catch (error) {
-      console.error('Failed to fetch effects:', error);
-      Alert.alert(
-        'Failed to Load Effects',
-        `Could not load effects from the device. Please check your connection and try again.\n\nError: ${(error as Error).message}`
-      );
+      console.error('Failed to load effects from device:', error);
+      // Don't show any effects if we can't connect to the device
+      setEffects([]);
     } finally {
       setIsLoadingEffects(false);
     }
@@ -332,10 +386,19 @@ export default function CustomEffectsModal({
     try {
       const device = selectedDevices[0]; // Use first selected device
       console.log('Fetching palettes from device:', device.ip);
-      const response = await fetch(`http://${device.ip}/json/pal`);
+      const response = await fetch(`http://${device.ip}/json/pal`, {
+        timeout: 10000, // 10 second timeout
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorMsg = response.statusText || 'Unknown error';
+        if (response.status === 503) {
+          throw new Error(`Device temporarily unavailable (${response.status}). The WLED device may be busy or restarting.`);
+        } else if (response.status === 404) {
+          throw new Error(`Palettes endpoint not found (${response.status}). This device may not support the json/pal API.`);
+        } else {
+          throw new Error(`HTTP ${response.status}: ${errorMsg}`);
+        }
       }
       
       const palettesData = await response.json();
@@ -346,13 +409,39 @@ export default function CustomEffectsModal({
         name: palette,
       }));
       
+      console.log('Processed palettes list:', palettesList.length, 'palettes');
       setPalettes(palettesList);
+      
+      // Auto-select default palette if an effect that supports palettes is already selected
+      if (selectedEffect !== null && selectedPalette === null && palettesList.length > 0) {
+        const currentEffect = effects.find(e => e.id === selectedEffect);
+        if (currentEffect && currentEffect.supportsPalette) {
+          // Find "Default" palette or use first palette as default
+          const defaultPalette = palettesList.find(p => p.name.toLowerCase().includes('default')) || palettesList[0];
+          setSelectedPalette(defaultPalette.id);
+          console.log(`Auto-selected default palette after loading: "${defaultPalette.name}" (ID: ${defaultPalette.id})`);
+          
+          // Auto-apply the effect with the default palette
+          applyEffect(selectedEffect, defaultPalette.id);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch palettes:', error);
-      Alert.alert(
-        'Failed to Load Palettes',
-        `Could not load palettes from the device. Please check your connection and try again.\n\nError: ${(error as Error).message}`
-      );
+      
+      let errorMessage = 'Could not load palettes from the device.';
+      if (error instanceof Error) {
+        if (error.message.includes('503')) {
+          errorMessage += ' The device appears to be temporarily unavailable. Please wait a moment and try again.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage += ' The request timed out. Please check your network connection.';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
+          errorMessage += ' Please check that the device is online and accessible.';
+        } else {
+          errorMessage += `\n\nError: ${error.message}`;
+        }
+      }
+      
+      Alert.alert('Failed to Load Palettes', errorMessage);
     } finally {
       setIsLoadingPalettes(false);
     }
@@ -365,65 +454,108 @@ export default function CustomEffectsModal({
     }
   }, [visible, fetchEffects, fetchPalettes]);
 
-  const testEffect = async () => {
-    console.log('🧪 Testing effect:', selectedEffect, 'with palette:', selectedPalette);
-
-    if (selectedEffect === null || selectedPalette === null) {
-      Alert.alert('Incomplete Selection', 'Please select both an effect and a palette to test.');
-      return;
+  const handleEffectChange = (effectId: number | null) => {
+    setSelectedEffect(effectId);
+    
+    if (effectId !== null) {
+      const selectedEffectData = effects.find(e => e.id === effectId);
+      if (selectedEffectData) {
+        if (selectedEffectData.supportsPalette) {
+          // Effect supports palettes - set default palette if palettes are loaded
+          if (palettes.length > 0 && selectedPalette === null) {
+            // Find "Default" palette or use first palette as default
+            const defaultPalette = palettes.find(p => p.name.toLowerCase().includes('default')) || palettes[0];
+            setSelectedPalette(defaultPalette.id);
+            console.log(`Auto-selected default palette: "${defaultPalette.name}" (ID: ${defaultPalette.id})`);
+            
+            // Auto-apply the effect with the default palette
+            applyEffect(effectId, defaultPalette.id);
+            return;
+          } else if (palettes.length > 0 && selectedPalette !== null) {
+            // Keep current palette selection
+            applyEffect(effectId, selectedPalette);
+            return;
+          }
+          // If palettes aren't loaded yet, fetchPalettes will be triggered by the useEffect
+        } else {
+          // Effect doesn't support palettes - reset palette selection
+          setSelectedPalette(null);
+        }
+      }
     }
+    
+    // Auto-apply the effect
+    if (effectId !== null) {
+      applyEffect(effectId, selectedPalette);
+    }
+  };
 
+  const getSelectedEffect = () => {
+    return effects.find(e => e.id === selectedEffect);
+  };
+
+  const handlePaletteChange = (paletteId: number | null) => {
+    setSelectedPalette(paletteId);
+    // Auto-apply the effect with new palette
+    if (selectedEffect !== null) {
+      applyEffect(selectedEffect, paletteId);
+    }
+  };
+
+  const applyEffect = async (effectId: number, paletteId: number | null) => {
     if (selectedDevices.length === 0) {
-      Alert.alert('No Device Selected', 'Please select a device to test the effect.');
+      console.log('No device selected for effect application');
       return;
     }
 
     const device = selectedDevices[0];
     if (!device.isConnected) {
-      Alert.alert(
-        'Device Disconnected', 
-        `${device.name} is disconnected. Please check your device connection before testing effects.`
-      );
+      console.log('Device not connected, skipping effect application');
       return;
     }
 
-    setIsTesting(true);
     try {
-      console.log('Sending test request to device:', device.ip);
+      const currentEffect = effects.find(e => e.id === effectId);
       
+      // Build the request body - only include palette if the effect supports it
+      const requestBody: any = {
+        seg: {
+          fx: effectId,
+        },
+      };
+
+      if (currentEffect?.supportsPalette && paletteId !== null) {
+        requestBody.seg.pal = paletteId;
+      }
+
       const response = await fetch(`http://${device.ip}/json/state`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          seg: {
-            fx: selectedEffect,
-            pal: selectedPalette,
-          },
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        console.error(`Failed to apply effect: HTTP ${response.status}`);
+      } else {
+        console.log(`Applied effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
       }
-
-      const responseData = await response.json();
-      console.log('Test effect response:', responseData);
     } catch (error) {
-      console.error('Failed to test effect:', error);
-      Alert.alert(
-        'Test Failed',
-        `Could not apply the effect to the device. Please check your connection and try again.\n\nError: ${(error as Error).message}`
-      );
-    } finally {
-      setIsTesting(false);
+      console.error('Error applying effect:', error);
     }
   };
 
+
   const handleSavePreset = async (presetName: string) => {
-    if (selectedEffect === null || selectedPalette === null) {
-      Alert.alert('Incomplete Selection', 'Please select both an effect and a palette to save.');
+    const currentEffect = getSelectedEffect();
+    if (selectedEffect === null) {
+      Alert.alert('Incomplete Selection', 'Please select an effect to save.');
+      return;
+    }
+
+    if (currentEffect?.supportsPalette && selectedPalette === null) {
+      Alert.alert('Incomplete Selection', 'Please select a palette for this effect.');
       return;
     }
 
@@ -576,78 +708,13 @@ export default function CustomEffectsModal({
                   minHeight: 60,
                 }}>
                   {liveViewEnabled && liveLedData.length > 0 ? (
-                    <View>
-                      <View style={{
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
-                        maxWidth: 300, // Account for modal width
-                      }}>
-                        {liveLedData.map((color: any, index: number) => {
-                          // Calculate optimal LED size based on count (same logic as PresetGrid)
-                          const ledCount = liveLedData.length;
-                          const screenWidth = 300; // Modal content width
-                          
-                          const getOptimalSize = (count: number) => {
-                            if (count <= 20) {
-                              return Math.min(Math.floor(screenWidth / count) - 2, 12);
-                            } else if (count <= 100) {
-                              const columns = Math.ceil(Math.sqrt(count));
-                              return Math.min(Math.floor(screenWidth / columns) - 2, 8);
-                            } else if (count <= 300) {
-                              const columns = Math.ceil(Math.sqrt(count));
-                              return Math.min(Math.floor(screenWidth / columns) - 1, 4);
-                            } else {
-                              const columns = Math.min(Math.ceil(Math.sqrt(count)), 40);
-                              return Math.max(Math.floor(screenWidth / columns) - 1, 2);
-                            }
-                          };
-                          
-                          const ledSize = getOptimalSize(ledCount);
-                          const brightness = (color.r + color.g + color.b) / 3 / 255;
-                          const isActive = brightness > 0.1;
-                          
-                          return (
-                            <View
-                              key={index}
-                              style={{
-                                width: ledSize,
-                                height: ledSize,
-                                marginRight: 2,
-                                marginBottom: 2,
-                                borderRadius: Math.min(ledSize / 3, 2),
-                                backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-                                shadowColor: isActive ? `rgb(${color.r}, ${color.g}, ${color.b})` : 'transparent',
-                                shadowOpacity: isActive ? Math.min(brightness * 0.8, 0.6) : 0,
-                                shadowRadius: Math.min(ledSize / 2, 3),
-                                elevation: isActive ? 2 : 0,
-                              }}
-                            >
-                              {/* LED highlight effect for active LEDs */}
-                              {isActive && ledSize > 4 && (
-                                <View
-                                  style={{
-                                    position: 'absolute',
-                                    top: 0.5,
-                                    left: 0.5,
-                                    borderRadius: Math.min(ledSize / 4, 1),
-                                    height: Math.min(ledSize / 3, 3),
-                                    width: Math.min(ledSize / 2, 2),
-                                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-                                  }}
-                                />
-                              )}
-                            </View>
-                          );
-                        })}
-                      </View>
-                      <Text style={{
-                        fontSize: 12,
-                        color: isDark ? '#9ca3af' : '#6b7280',
-                        marginTop: 8,
-                      }}>
-                        {liveLedData.length} LED{liveLedData.length !== 1 ? 's' : ''} live
-                      </Text>
-                    </View>
+                    <LEDVisualization 
+                      ledData={liveLedData}
+                      subtextColor={isDark ? '#9ca3af' : '#6b7280'}
+                      liveViewLedSize="normal"
+                      containerWidth={300} // Modal content width
+                      showLedCount={true}
+                    />
                   ) : liveViewEnabled ? (
                     <Text style={{
                       fontSize: 14,
@@ -689,6 +756,39 @@ export default function CustomEffectsModal({
                       Loading effects...
                     </Text>
                   </View>
+                ) : effects.length === 0 ? (
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <Ionicons 
+                      name="refresh-outline" 
+                      size={32} 
+                      color={isDark ? '#9ca3af' : '#6b7280'} 
+                    />
+                    <Text style={{
+                      marginTop: 8,
+                      marginBottom: 12,
+                      color: isDark ? '#9ca3af' : '#6b7280',
+                      textAlign: 'center',
+                    }}>
+                      Failed to load effects. Please try again.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={fetchEffects}
+                      style={{
+                        backgroundColor: '#3b82f6',
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text style={{
+                        color: 'white',
+                        fontWeight: '600',
+                        fontSize: 14,
+                      }}>
+                        Retry
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   <View style={{
                     backgroundColor: isDark ? '#374151' : '#f9fafb',
@@ -698,7 +798,7 @@ export default function CustomEffectsModal({
                   }}>
                     <Picker
                       selectedValue={selectedEffect}
-                      onValueChange={(value) => setSelectedEffect(value)}
+                      onValueChange={handleEffectChange}
                       style={{
                         color: isDark ? '#ffffff' : '#111827',
                       }}
@@ -712,7 +812,7 @@ export default function CustomEffectsModal({
                       {effects.map((effect) => (
                         <Picker.Item
                           key={effect.id}
-                          label={effect.name}
+                          label={effect.displayName}
                           value={effect.id}
                           color={isDark ? '#ffffff' : '#111827'}
                         />
@@ -722,102 +822,102 @@ export default function CustomEffectsModal({
                 )}
               </View>
 
-              {/* Palettes Dropdown */}
-              <View style={sectionStyle}>
-                <Text style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: isDark ? '#ffffff' : '#111827',
-                  marginBottom: 12,
-                }}>
-                  Palette
-                </Text>
+              {/* Palettes Dropdown - Only show if effect is selected and supports palettes */}
+              {(() => {
+                const currentEffect = getSelectedEffect();
+                // Hide palette dropdown by default - only show when effect is selected and supports palettes
+                const showPalettes = selectedEffect !== null && currentEffect && currentEffect.supportsPalette;
                 
-                {isLoadingPalettes ? (
-                  <View style={{ alignItems: 'center', padding: 20 }}>
-                    <ActivityIndicator size="large" color="#3b82f6" />
+                if (!showPalettes) return null;
+                
+                return (
+                  <View style={sectionStyle}>
                     <Text style={{
-                      marginTop: 8,
-                      color: isDark ? '#9ca3af' : '#6b7280',
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: isDark ? '#ffffff' : '#111827',
+                      marginBottom: 12,
                     }}>
-                      Loading palettes...
+                      Palette
                     </Text>
+                    
+                    {isLoadingPalettes ? (
+                      <View style={{ alignItems: 'center', padding: 20 }}>
+                        <ActivityIndicator size="large" color="#3b82f6" />
+                        <Text style={{
+                          marginTop: 8,
+                          color: isDark ? '#9ca3af' : '#6b7280',
+                        }}>
+                          Loading palettes...
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={{
+                        backgroundColor: isDark ? '#374151' : '#f9fafb',
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: isDark ? '#4b5563' : '#d1d5db',
+                      }}>
+                        <Picker
+                          selectedValue={selectedPalette}
+                          onValueChange={handlePaletteChange}
+                          style={{
+                            color: isDark ? '#ffffff' : '#111827',
+                          }}
+                          dropdownIconColor={isDark ? '#ffffff' : '#111827'}
+                        >
+                          <Picker.Item
+                            label="Select a palette..."
+                            value={null}
+                            color={isDark ? '#9ca3af' : '#6b7280'}
+                          />
+                          {palettes.map((palette) => (
+                            <Picker.Item
+                              key={palette.id}
+                              label={palette.name}
+                              value={palette.id}
+                              color={isDark ? '#ffffff' : '#111827'}
+                            />
+                          ))}
+                        </Picker>
+                      </View>
+                    )}
                   </View>
-                ) : (
-                  <View style={{
-                    backgroundColor: isDark ? '#374151' : '#f9fafb',
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: isDark ? '#4b5563' : '#d1d5db',
-                  }}>
-                    <Picker
-                      selectedValue={selectedPalette}
-                      onValueChange={(value) => setSelectedPalette(value)}
-                      style={{
-                        color: isDark ? '#ffffff' : '#111827',
-                      }}
-                      dropdownIconColor={isDark ? '#ffffff' : '#111827'}
-                    >
-                      <Picker.Item
-                        label="Select a palette..."
-                        value={null}
-                        color={isDark ? '#9ca3af' : '#6b7280'}
-                      />
-                      {palettes.map((palette) => (
-                        <Picker.Item
-                          key={palette.id}
-                          label={palette.name}
-                          value={palette.id}
-                          color={isDark ? '#ffffff' : '#111827'}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                )}
-              </View>
+                );
+              })()}
 
             </>
           )}
         </ScrollView>
         
-        {/* Sticky Footer with Action Buttons */}
+        {/* Sticky Footer with Save Button */}
         {selectedDevices.length > 0 && (
           <View style={stickyFooterStyle}>
             <View style={buttonContainerStyle}>
-              <TouchableOpacity
-                onPress={testEffect}
-                disabled={isTesting || selectedEffect === null || selectedPalette === null}
-                style={[
-                  footerButtonSecondaryStyle,
-                  {
-                    backgroundColor: (isTesting || selectedEffect === null || selectedPalette === null) 
-                      ? '#9ca3af' : '#10b981',
-                    opacity: (isTesting || selectedEffect === null || selectedPalette === null) ? 0.6 : 1
-                  }
-                ]}
-              >
-                {isTesting && <ActivityIndicator size="small" color="white" />}
-                <Ionicons name="play-outline" size={20} color="white" />
-                <Text style={footerButtonTextStyle}>
-                  {isTesting ? 'Testing...' : 'Test Effect'}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={() => setShowSaveModal(true)}
-                disabled={selectedEffect === null || selectedPalette === null}
-                style={[
-                  footerButtonPrimaryStyle,
-                  {
-                    backgroundColor: (selectedEffect === null || selectedPalette === null) 
-                      ? '#9ca3af' : '#3b82f6',
-                    opacity: (selectedEffect === null || selectedPalette === null) ? 0.6 : 1
-                  }
-                ]}
-              >
-                <Ionicons name="save-outline" size={20} color="white" />
-                <Text style={footerButtonTextStyle}>Save Preset</Text>
-              </TouchableOpacity>
+              {(() => {
+                const currentEffect = getSelectedEffect();
+                const isEffectSelected = selectedEffect !== null;
+                const isPaletteRequired = currentEffect?.supportsPalette && selectedPalette === null;
+                const canSave = isEffectSelected && !isPaletteRequired;
+                
+                return (
+                  <TouchableOpacity
+                    onPress={() => setShowSaveModal(true)}
+                    disabled={!canSave}
+                    style={[
+                      footerButtonPrimaryStyle,
+                      {
+                        backgroundColor: canSave ? '#3b82f6' : '#9ca3af',
+                        opacity: canSave ? 1 : 0.6,
+                        flex: 1, // Make it take full width
+                      }
+                    ]}
+                  >
+                    <Ionicons name="save-outline" size={20} color="white" />
+                    <Text style={footerButtonTextStyle}>Save Preset</Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           </View>
         )}
