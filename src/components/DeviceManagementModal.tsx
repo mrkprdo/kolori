@@ -68,6 +68,41 @@ export default function DeviceManagementModal({
     );
   };
 
+  const confirmDeviceReboot = (device: WledDevice) => {
+    Alert.alert(
+      'Reboot Device',
+      `Are you sure you want to reboot "${device.name}"?\n\nThe device will restart and may be temporarily unavailable.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Reboot',
+          style: 'destructive',
+          onPress: () => rebootDevice(device)
+        }
+      ]
+    );
+  };
+
+  const rebootDevice = async (device: WledDevice) => {
+    try {
+      const response = await fetch(`http://${device.ip}/win&RB`, {
+        method: 'GET',
+        timeout: 5000,
+      });
+      
+      if (response.ok) {
+        Alert.alert('Success', `${device.name} has been rebooted successfully.`);
+      } else {
+        Alert.alert('Error', `Failed to reboot ${device.name}. Please try again.`);
+      }
+    } catch (error) {
+      Alert.alert('Error', `Failed to connect to ${device.name}. Please check if the device is online.`);
+    }
+  };
+
   const getStyles = (isDark: boolean) => StyleSheet.create({
     container: {
       flex: 1,
@@ -121,6 +156,12 @@ export default function DeviceManagementModal({
       padding: 5,
       borderRadius: 6,
       backgroundColor: isDark ? '#374151' : '#fef2f2',
+    },
+    rebootButton: {
+      padding: 5,
+      borderRadius: 6,
+      backgroundColor: isDark ? '#1e3a8a' : '#fff7ed',
+      marginRight: 6,
     },
     noDevicesContainer: {
       alignItems: 'center', 
@@ -221,6 +262,9 @@ export default function DeviceManagementModal({
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TouchableOpacity onPress={() => openWledPage(device.ip)} style={styles.linkButton}>
                     <Ionicons name="link-outline" size={18} color="#3B82F6" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => confirmDeviceReboot(device)} style={styles.rebootButton}>
+                    <Ionicons name="refresh-outline" size={18} color="#F97316" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => confirmDeviceRemoval(device)} style={styles.trashButton}>
                     <Ionicons name="trash-outline" size={18} color="#EF4444" />
