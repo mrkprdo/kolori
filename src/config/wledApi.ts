@@ -2,6 +2,72 @@ import { logger } from "../utils/logger";
 import { WLED_PALETTES_DATA, PaletteColor } from "../constants/palettes";
 import { ApiResponse, DeviceValidationResult } from "../types";
 
+// Generate gradient for playlists based on name and content
+const generatePlaylistGradient = (playlistName: string, itemCount: number): { colors: string[], gradient: string } => {
+  const name = playlistName.toLowerCase();
+  
+  // Name-based gradients
+  if (name.includes('fire') || name.includes('flame')) {
+    return {
+      colors: ['#ff4500', '#ff6500', '#ffb347'],
+      gradient: 'linear-gradient(135deg, #ff4500, #ff6500, #ffb347)'
+    };
+  }
+  if (name.includes('rainbow') || name.includes('colorful')) {
+    return {
+      colors: ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0077ff', '#4b0082'],
+      gradient: 'linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #4b0082)'
+    };
+  }
+  if (name.includes('ocean') || name.includes('blue') || name.includes('water')) {
+    return {
+      colors: ['#006994', '#47b5d6', '#87ceeb'],
+      gradient: 'linear-gradient(135deg, #006994, #47b5d6, #87ceeb)'
+    };
+  }
+  if (name.includes('sunset') || name.includes('orange')) {
+    return {
+      colors: ['#ff4500', '#ff6347', '#ffa500'],
+      gradient: 'linear-gradient(135deg, #ff4500, #ff6347, #ffa500)'
+    };
+  }
+  if (name.includes('forest') || name.includes('green')) {
+    return {
+      colors: ['#228b22', '#32cd32', '#90ee90'],
+      gradient: 'linear-gradient(135deg, #228b22, #32cd32, #90ee90)'
+    };
+  }
+  if (name.includes('party') || name.includes('dance')) {
+    return {
+      colors: ['#ff1493', '#00ffff', '#9400d3', '#ff4500'],
+      gradient: 'linear-gradient(135deg, #ff1493, #00ffff, #9400d3, #ff4500)'
+    };
+  }
+  if (name.includes('chill') || name.includes('relax')) {
+    return {
+      colors: ['#6a5acd', '#87ceeb', '#dda0dd'],
+      gradient: 'linear-gradient(135deg, #6a5acd, #87ceeb, #dda0dd)'
+    };
+  }
+  
+  // Fallback: Generate gradient based on playlist name hash and item count
+  const hash = name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+  const hue1 = hash % 360;
+  const hue2 = (hash + (itemCount * 30)) % 360;
+  const hue3 = (hash + (itemCount * 60)) % 360;
+  
+  const colors = [
+    `hsl(${hue1}, 70%, 50%)`,
+    `hsl(${hue2}, 70%, 60%)`,
+    `hsl(${hue3}, 70%, 55%)`
+  ];
+  
+  return {
+    colors,
+    gradient: `linear-gradient(135deg, ${colors.join(', ')})`
+  };
+};
+
 // Helper function to build WLED URLs with protocol support
 const buildWledUrl = (
   deviceAddress: string,
@@ -473,24 +539,32 @@ export const fetchWledPresets = async (
           //   (presetData as any).playlist.ps.length,
           //   "items"
           // );
+          const playlistName = (presetData as any).n || `Playlist ${presetId}`;
+          const playlistItems = (presetData as any).playlist.ps.map(
+            (psId: number, index: number) => ({
+              name: `Preset ${psId}`,
+              presetId: psId,
+              duration: (presetData as any).playlist.dur
+                ? Math.floor((presetData as any).playlist.dur[index] / 10)
+                : 30, // Convert tenths to seconds
+              gradient: "#6366f1", // Default gradient for individual items
+              playlistItemId: `${psId}_${index}`,
+            })
+          );
+          
+          // Generate gradient for the playlist based on name and content
+          const playlistGradientData = generatePlaylistGradient(playlistName, playlistItems.length);
+          
           const playlist = {
             id: `playlist_${presetId}`,
             presetId: parseInt(presetId),
-            name: (presetData as any).n || `Playlist ${presetId}`,
-            items: (presetData as any).playlist.ps.map(
-              (psId: number, index: number) => ({
-                name: `Preset ${psId}`,
-                presetId: psId,
-                duration: (presetData as any).playlist.dur
-                  ? Math.floor((presetData as any).playlist.dur[index] / 10)
-                  : 30, // Convert tenths to seconds
-                gradient: "#6366f1", // Default gradient
-                playlistItemId: `${psId}_${index}`,
-              })
-            ),
+            name: playlistName,
+            items: playlistItems,
             isActive: false,
             isWledPlaylist: true,
             method: "wled-device",
+            gradient: playlistGradientData.gradient,
+            linearGradientColors: playlistGradientData.colors,
           };
           playlists.push(playlist);
         } else {

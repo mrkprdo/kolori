@@ -45,6 +45,8 @@ export interface SavedPlaylist {
   readonly method?: string;
   readonly isWledPlaylist?: boolean;
   readonly isActive?: boolean;
+  readonly gradient?: string;
+  readonly linearGradientColors?: readonly string[]; // For enhanced gradient display
 }
 
 export interface WledEffect {

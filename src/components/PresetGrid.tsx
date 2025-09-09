@@ -70,12 +70,23 @@ const AnimatedPlaylistItem = React.memo(function AnimatedPlaylistItem({
     }
   }, [playlist.id, onPress, isDeleteMode, onToggleSelection]);
 
+  // Use LinearGradient colors for playlists if available
+  const shouldUseGradient = playlist.linearGradientColors || playlist.gradient;
+  const gradientColors = playlist.linearGradientColors || 
+    (playlist.gradient ? parseGradientString(playlist.gradient).colors : null);
+  
+  // Ensure gradient colors are valid before using LinearGradient
+  const hasValidGradient = gradientColors && 
+    Array.isArray(gradientColors) && 
+    gradientColors.length >= 2 && 
+    gradientColors.every((color: string) => typeof color === 'string' && color.length > 0);
+
   const cardStyle = useMemo(() => [
     styles.playlistCard,
-    { backgroundColor: '#8b5cf6' },
+    shouldUseGradient && hasValidGradient ? { padding: 0 } : { backgroundColor: playlist.gradient ? extractPrimaryColor(playlist.gradient) : '#8b5cf6' },
     playlist.isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6', borderRadius: 8 },
     isSelected && { borderWidth: 3, borderColor: '#ef4444', borderRadius: 8 }
-  ], [playlist.isActive, isDeleteMode, isSelected]);
+  ], [playlist.isActive, isDeleteMode, isSelected, shouldUseGradient, hasValidGradient, playlist.gradient]);
   
   return (
     <Animated.View
@@ -99,15 +110,25 @@ const AnimatedPlaylistItem = React.memo(function AnimatedPlaylistItem({
         style={styles.touchableArea}
       >
         <View style={cardStyle}>
-          <Text style={styles.playlistName}>
-            {playlist.name}
-          </Text>
-          <Text style={styles.playlistId}>
-            ID: {playlist.id}
-          </Text>
-          <Text style={styles.playlistCount}>
-            {playlist.items?.length || 0} effects
-          </Text>
+          {shouldUseGradient && hasValidGradient && (
+            <LinearGradient
+              colors={gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientBackground}
+            />
+          )}
+          <View style={shouldUseGradient && hasValidGradient ? styles.gradientContent : styles.cardContent}>
+            <Text style={styles.playlistName}>
+              {playlist.name}
+            </Text>
+            <Text style={styles.playlistId}>
+              ID: {playlist.id}
+            </Text>
+            <Text style={styles.playlistCount}>
+              {playlist.items?.length || 0} effects
+            </Text>
+          </View>
           {playlist.isActive && !isDeleteMode && (
             <View style={styles.activeIndicator}>
               <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
