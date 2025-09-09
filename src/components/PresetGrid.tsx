@@ -970,14 +970,51 @@ export default function PresetGrid({
       // Create the random custom effect preset
       const result = await createWledPreset(
         activeDevice.ip,
-        presetName,
         randomEffect.id,
         randomPalette?.id || 0,
+        presetName,
+        undefined, // Let it auto-generate preset ID
         activeDevice.protocol || 'http'
       );
 
       if (result.success && result.presetId) {
         console.log(`🎲 Successfully created random custom effect with preset ID: ${result.presetId}`);
+        
+        // Generate gradient colors based on effect and palette
+        const generateEffectGradient = (effectName: string, paletteName?: string): { colors: string[] } => {
+          const effect = effectName.toLowerCase();
+          
+          // Effect-specific gradients
+          if (effect.includes('fire')) {
+            return { colors: ['#ff4500', '#ff6500', '#ffb347'] };
+          }
+          if (effect.includes('rainbow')) {
+            return { colors: ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0077ff', '#4b0082'] };
+          }
+          if (effect.includes('ocean') || effect.includes('water') || effect.includes('blue')) {
+            return { colors: ['#006994', '#47b5d6', '#87ceeb'] };
+          }
+          if (effect.includes('plasma')) {
+            return { colors: ['#ff1493', '#00ffff', '#9400d3'] };
+          }
+          if (effect.includes('solid')) {
+            return { colors: ['#6366f1', '#8b5cf6'] };
+          }
+          
+          // Default gradient with variation
+          const hash = effect.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+          const hue1 = hash % 360;
+          const hue2 = (hash + 120) % 360;
+          
+          return {
+            colors: [
+              `hsl(${hue1}, 70%, 50%)`,
+              `hsl(${hue2}, 70%, 60%)`
+            ]
+          };
+        };
+
+        const gradientData = generateEffectGradient(randomEffect.name, randomPalette?.name);
         
         // Add to local custom effects
         const newCustomEffect: CustomEffect = {
@@ -989,7 +1026,9 @@ export default function PresetGrid({
           paletteId: randomPalette?.id || 0,
           paletteName: randomPalette?.name || '',
           isWledPreset: true,
-          gradient: '#6366f1'
+          linearGradientColors: gradientData.colors,
+          gradient: `linear-gradient(135deg, ${gradientData.colors.join(', ')})`,
+          isCustom: false
         };
 
         onAddCustomEffect(newCustomEffect);

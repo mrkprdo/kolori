@@ -24,6 +24,7 @@ export interface CustomEffect {
   readonly paletteName: string;
   readonly presetId?: number;
   readonly gradient: string;
+  readonly linearGradientColors?: readonly string[]; // For enhanced gradient display
   readonly isCustom: boolean;
   readonly isWledPreset?: boolean;
 }
