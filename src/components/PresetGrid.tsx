@@ -437,6 +437,8 @@ export default function PresetGrid({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<Set<string | number>>(new Set());
+  const [isDeletionInProgress, setIsDeletionInProgress] = useState(false);
+  const [deletionProgress, setDeletionProgress] = useState({ current: 0, total: 0, currentItem: '' });
   // UNCONTROLLED SLIDER APPROACH - Remove value prop to eliminate flicker
   const [currentBrightnessDisplay, setCurrentBrightnessDisplay] = useState<number>(activeDevice?.wledInfo?.bri || 0);
   const [isSliding, setIsSliding] = useState(false);
@@ -787,29 +789,177 @@ export default function PresetGrid({
     });
   }, []);
 
+  // Process deletion queue with proper error handling and progress tracking
+  const processDeletionQueue = useCallback(async (selectedItems: Array<{id: string | number, name: string, type: string}>) => {
+    if (selectedItems.length === 0) return;
+
+    setIsDeletionInProgress(true);
+    setDeletionProgress({ current: 0, total: selectedItems.length, currentItem: '' });
+    
+    const results = {
+      success: [] as string[],
+      failed: [] as string[],
+    };
+
+    try {
+      // Process each item in the deletion queue
+      for (let i = 0; i < selectedItems.length; i++) {
+        const item = selectedItems[i];
+        setDeletionProgress({ 
+          current: i + 1, 
+          total: selectedItems.length, 
+          currentItem: item.name 
+        });
+
+        try {
+          if (item.type === 'effect') {
+            const effect = customEffects.find(e => e.id === item.id);
+            if (effect?.presetId && activeDevice?.ip) {
+              console.log(`🗑️ Deleting effect "${item.name}" (preset ID: ${effect.presetId})`);
+              const result = await deleteWledPreset(
+                activeDevice.ip,
+                effect.presetId,
+                activeDevice.protocol || 'http'
+              );
+              
+              if (result.success) {
+                onRemoveCustomEffect(item.id as number);
+                results.success.push(item.name);
+                console.log(`✅ Successfully deleted effect "${item.name}"`);
+              } else {
+                results.failed.push(`${item.name}: ${result.message || 'Unknown error'}`);
+                console.error(`❌ Failed to delete effect "${item.name}":`, result.message);
+              }
+            } else {
+              // Local effect only, remove from local state
+              onRemoveCustomEffect(item.id as number);
+              results.success.push(item.name);
+            }
+          } else if (item.type === 'playlist') {
+            const playlist = savedPlaylists.find(p => p.id === item.id);
+            if (playlist?.id) {
+              console.log(`🗑️ Deleting playlist "${item.name}":`);
+              console.log(`   - Playlist ID: ${playlist.id}`);
+              console.log(`   - Preset ID: ${playlist.presetId}`);
+              console.log(`   - Is WLED Playlist: ${playlist.isWledPlaylist}`);
+              console.log(`   - Active Device IP: ${activeDevice?.ip}`);
+              console.log(`   - Protocol: ${activeDevice?.protocol}`);
+              
+              let deletionResult = null;
+              
+              // Try WebSocket deletion first for WLED playlists
+              if (playlist.isWledPlaylist) {
+                try {
+                  // Use presetId if available, otherwise use id
+                  const idToDelete = playlist.presetId || playlist.id;
+                  console.log(`   - Using ID for deletion: ${idToDelete}`);
+                  
+                  deletionResult = await deleteWledPlaylistViaWebSocket(
+                    idToDelete as number,
+                    activeDevice?.ip,
+                    activeDevice?.protocol || 'http'
+                  );
+                } catch (error) {
+                  console.error(`⚠️ Error during playlist deletion for "${item.name}":`, error);
+                  deletionResult = { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
+                }
+              } else {
+                // Local playlist only
+                deletionResult = { success: true };
+              }
+              
+              if (deletionResult?.success) {
+                onPlaylistRemove(item.id as number);
+                results.success.push(item.name);
+                console.log(`✅ Successfully deleted playlist "${item.name}"`);
+                
+                // Refresh presets to ensure UI is in sync with device
+                if (onRefreshPresets) {
+                  try {
+                    await onRefreshPresets();
+                    console.log(`🔄 Refreshed presets after deleting playlist "${item.name}"`);
+                  } catch (refreshError) {
+                    console.warn(`⚠️ Failed to refresh presets after deleting playlist "${item.name}":`, refreshError);
+                  }
+                }
+              } else {
+                results.failed.push(`${item.name}: ${deletionResult?.message || 'Unknown error'}`);
+                console.error(`❌ Failed to delete playlist "${item.name}":`, deletionResult?.message);
+              }
+            } else {
+              results.failed.push(`${item.name}: Playlist not found`);
+            }
+          }
+
+          // Add small delay between deletions to prevent overwhelming the device
+          if (i < selectedItems.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          results.failed.push(`${item.name}: ${errorMessage}`);
+          console.error(`💥 Unexpected error deleting "${item.name}":`, error);
+        }
+      }
+
+      // Show results summary
+      let alertTitle = 'Deletion Complete';
+      let alertMessage = '';
+
+      if (results.success.length > 0) {
+        alertMessage += `✅ Successfully deleted ${results.success.length} item${results.success.length !== 1 ? 's' : ''}`;
+        if (results.failed.length === 0) {
+          alertMessage += '.';
+        } else {
+          alertMessage += '\n\n';
+        }
+      }
+
+      if (results.failed.length > 0) {
+        alertTitle = results.success.length > 0 ? 'Deletion Partially Complete' : 'Deletion Failed';
+        alertMessage += `❌ Failed to delete ${results.failed.length} item${results.failed.length !== 1 ? 's' : ''}:\n`;
+        alertMessage += results.failed.map(item => `• ${item}`).join('\n');
+      }
+
+      Alert.alert(alertTitle, alertMessage, [{ text: 'OK' }]);
+
+    } catch (error) {
+      console.error('💥 Critical error in deletion queue:', error);
+      Alert.alert(
+        'Deletion Error', 
+        'A critical error occurred during deletion. Some items may not have been deleted.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsDeletionInProgress(false);
+      setDeletionProgress({ current: 0, total: 0, currentItem: '' });
+      exitDeleteMode();
+    }
+  }, [customEffects, savedPlaylists, activeDevice, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode]);
+
   const handleDeleteSelected = useCallback(() => {
     if (selectedForDelete.size === 0) return;
 
     const selectedItems: Array<{id: string | number, name: string, type: 'effect' | 'playlist'}> = [];
     
-    // Collect selected custom effects
-    customEffects.forEach(effect => {
-      if (selectedForDelete.has(effect.id)) {
-        selectedItems.push({
-          id: effect.id,
-          name: effect.name,
-          type: 'effect'
-        });
-      }
-    });
-
-    // Collect selected playlists
+    // Collect selected playlists FIRST (delete playlists before effects they depend on)
     savedPlaylists.forEach(playlist => {
       if (selectedForDelete.has(playlist.id)) {
         selectedItems.push({
           id: playlist.id,
           name: playlist.name,
           type: 'playlist'
+        });
+      }
+    });
+
+    // Collect selected custom effects AFTER playlists
+    customEffects.forEach(effect => {
+      if (selectedForDelete.has(effect.id)) {
+        selectedItems.push({
+          id: effect.id,
+          name: effect.name,
+          type: 'effect'
         });
       }
     });
@@ -829,62 +979,11 @@ export default function PresetGrid({
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            // Delete custom effects from WLED device
-            const effectsToDelete = selectedItems.filter(item => item.type === 'effect');
-            for (const item of effectsToDelete) {
-              const effect = customEffects.find(e => e.id === item.id);
-              if (effect?.presetId && activeDevice?.ip) {
-                try {
-                  const result = await deleteWledPreset(
-                    activeDevice.ip,
-                    effect.presetId,
-                    activeDevice.protocol || 'http'
-                  );
-                  if (!result.success) {
-                    logger.error(`Failed to delete preset ${effect.presetId} from WLED:`, result.message);
-                  }
-                } catch (error) {
-                  logger.error(`Error deleting preset ${effect.presetId}:`, error);
-                }
-              }
-              // Remove from local state
-              onRemoveCustomEffect(item.id as number);
-            }
-
-            // Delete playlists from WLED device
-            const playlistsToDelete = selectedItems.filter(item => item.type === 'playlist');
-            for (const item of playlistsToDelete) {
-              const playlist = savedPlaylists.find(p => p.id === item.id);
-              if (playlist?.id) {
-                try {
-                  // Try WebSocket deletion first, then fallback to HTTP if needed
-                  const result = await deleteWledPlaylistViaWebSocket(playlist.id as number);
-                  if (!result.success && activeDevice?.ip) {
-                    // Fallback to HTTP deletion
-                    const httpResult = await deleteWledPreset(
-                      activeDevice.ip,
-                      playlist.id as number,
-                      activeDevice.protocol || 'http'
-                    );
-                    if (!httpResult.success) {
-                      logger.error(`Failed to delete playlist ${playlist.id} from WLED:`, httpResult.message);
-                    }
-                  }
-                } catch (error) {
-                  logger.error(`Error deleting playlist ${playlist.id}:`, error);
-                }
-              }
-              // Remove from local state
-              onPlaylistRemove(item.id as number);
-            }
-
-            exitDeleteMode();
-          },
+          onPress: () => processDeletionQueue(selectedItems),
         },
       ]
     );
-  }, [selectedForDelete, customEffects, savedPlaylists, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode, activeDevice]);
+  }, [selectedForDelete, customEffects, savedPlaylists, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode, activeDevice, processDeletionQueue]);
 
   // Start wiggle animation when entering delete mode
   useEffect(() => {
@@ -1274,7 +1373,7 @@ export default function PresetGrid({
               <View style={styles.presetGrid}>
                 {seasonalPresets.map((preset, index) => (
                   <PresetCard
-                    key={preset.id}
+                    key={`seasonal-${preset.id}-${index}`}
                     preset={{
                       id: preset.presetId,
                       name: preset.name,
@@ -1338,7 +1437,7 @@ export default function PresetGrid({
                     <View style={styles.presetGrid}>
                       {customEffects.map((preset, index) => (
                         <PresetCard
-                          key={`device-${preset.id}`}
+                          key={`device-${preset.id}-${index}`}
                           preset={{...preset, _animationDelay: index * 50}}
                           isActive={activePreset?.toString() === preset.id.toString()}
                           onClick={onPresetSelect}
@@ -1398,7 +1497,7 @@ export default function PresetGrid({
                 <View style={styles.playlistGrid}>
                   {savedPlaylists.map((playlist, index) => (
                     <AnimatedPlaylistItem
-                      key={playlist.id}
+                      key={`playlist-${playlist.id}-${index}`}
                       playlist={playlist}
                       index={index}
                       onPress={onPlaylistSelect}
@@ -1495,7 +1594,7 @@ export default function PresetGrid({
             <Text style={[styles.dropdownTitle, { color: textColor }]}>Select Device</Text>
             {devices.map((device, index) => (
               <TouchableOpacity
-                key={device.id}
+                key={`device-option-${device.id}-${index}`}
                 onPress={() => {
                   if (onSetActiveDeviceId) {
                     onSetActiveDeviceId(device.id);
@@ -1823,6 +1922,36 @@ export default function PresetGrid({
         onAddDevice={onAddDevice}
         onScanForDevices={onScanForDevices}
       />
+
+      {/* Deletion Progress Modal */}
+      {isDeletionInProgress && (
+        <View style={styles.deletionProgressOverlay}>
+          <View style={[styles.deletionProgressModal, { backgroundColor: cardBackground }]}>
+            <Text style={[styles.deletionProgressTitle, { color: textColor }]}>
+              Deleting Items...
+            </Text>
+            <Text style={[styles.deletionProgressText, { color: subtextColor }]}>
+              {deletionProgress.current} of {deletionProgress.total}
+            </Text>
+            {deletionProgress.currentItem && (
+              <Text style={[styles.deletionProgressItem, { color: subtextColor }]} numberOfLines={1}>
+                {deletionProgress.currentItem}
+              </Text>
+            )}
+            <View style={[styles.progressBar, { backgroundColor: isDark ? '#374151' : '#f3f4f6' }]}>
+              <View 
+                style={[
+                  styles.progressBarFill, 
+                  { 
+                    width: `${(deletionProgress.current / deletionProgress.total) * 100}%`,
+                    backgroundColor: '#3b82f6'
+                  }
+                ]} 
+              />
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -2292,5 +2421,53 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  deletionProgressOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1003,
+  },
+  deletionProgressModal: {
+    borderRadius: 12,
+    padding: 24,
+    minWidth: 280,
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  deletionProgressTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deletionProgressText: {
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deletionProgressItem: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
   },
 });

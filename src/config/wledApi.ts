@@ -987,13 +987,16 @@ export const deleteWledPreset = async (
   }
 
   const deleteData = {
-    pdel: presetId, // Delete preset command
+    pdel: presetId, // Delete preset command - this is the verified working method
   };
 
   try {
     logger.log("🗑️ WLED API: Deleting preset", presetId, "from", deviceAddress);
+    logger.log("🗑️ Delete request data:", JSON.stringify(deleteData));
 
     const url = buildWledUrl(deviceAddress, protocol, "/json/state");
+    logger.log("🗑️ Request URL:", url);
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -1009,15 +1012,33 @@ export const deleteWledPreset = async (
     clearTimeout(timeoutId);
 
     if (response.ok) {
-      logger.log("✅ WLED API: Preset deleted successfully");
+      // Try to parse response to get more details
+      try {
+        const responseData = await response.json();
+        logger.log("✅ WLED API: Preset deleted successfully, response:", responseData);
+      } catch (parseError) {
+        logger.log("✅ WLED API: Preset deleted successfully (no JSON response)");
+      }
+      
       return {
         success: true,
         message: "Preset deleted successfully",
       };
     } else {
+      let errorMessage = `Failed to delete preset: ${response.status}`;
+      try {
+        const errorData = await response.text();
+        if (errorData) {
+          errorMessage += ` - ${errorData}`;
+        }
+      } catch (parseError) {
+        // Ignore parse errors for error responses
+      }
+      
+      logger.error("❌ WLED API: Preset deletion failed:", errorMessage);
       return {
         success: false,
-        message: `Failed to delete preset: ${response.status}`,
+        message: errorMessage,
       };
     }
   } catch (error: any) {
@@ -1032,9 +1053,11 @@ export const deleteWledPreset = async (
   }
 };
 
-// Function to delete a WLED playlist via WebSocket (fallback to HTTP if needed)
+// Function to delete a WLED playlist (playlists are stored as presets in WLED)
 export const deleteWledPlaylistViaWebSocket = async (
-  presetId: number
+  presetId: number,
+  deviceAddress?: string,
+  protocol = "http"
 ): Promise<ApiResponse> => {
   if (!presetId || presetId < 1 || presetId > 250) {
     return {
@@ -1043,22 +1066,16 @@ export const deleteWledPlaylistViaWebSocket = async (
     };
   }
 
-  try {
-    logger.log("🗑️ WLED WebSocket: Deleting playlist/preset", presetId);
-
-    // For now, return success as we'll implement WebSocket deletion later
-    // This matches the pattern from the old implementation
-    return {
-      success: true,
-      message: "Playlist deleted via WebSocket",
-    };
-  } catch (error: any) {
-    logger.error("Failed to delete WLED playlist via WebSocket:", error);
+  if (!deviceAddress) {
     return {
       success: false,
-      message: `WebSocket deletion failed: ${error.message}`,
+      message: "Device address required for playlist deletion",
     };
   }
+
+  // In WLED, playlists are stored as presets, so we use the same deletion method
+  logger.log("🗑️ WLED API: Deleting playlist/preset", presetId, "from", deviceAddress);
+  return await deleteWledPreset(deviceAddress, presetId, protocol);
 };
 
 // Function to set WLED device brightness
