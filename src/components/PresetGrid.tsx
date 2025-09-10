@@ -446,6 +446,9 @@ export default function PresetGrid({
   const sliderRef = useRef<any>(null);
   const hasUserTouchedSlider = useRef(false);
   const lastKnownDeviceBrightness = useRef<number>(activeDevice?.wledInfo?.bri || 0);
+  const [isCooldownActive, setIsCooldownActive] = useState(false);
+  const [cooldownProgress, setCooldownProgress] = useState(0);
+  const cooldownAnimRef = useRef<Animated.Value>(new Animated.Value(0)).current;
   
   // Reset slider to device value - force re-render with new defaultValue
   const resetSliderToDeviceValue = useCallback((deviceBrightness: number, reason: string) => {
@@ -994,7 +997,35 @@ export default function PresetGrid({
 
   // Random Custom Effect Generator
   const generateRandomCustomEffect = useCallback(async () => {
-    if (!activeDevice?.isConnected) return;
+    if (!activeDevice?.isConnected || isCooldownActive) return;
+
+    // Start cooldown
+    setIsCooldownActive(true);
+    setCooldownProgress(0);
+    
+    // Animate cooldown progress
+    Animated.timing(cooldownAnimRef, {
+      toValue: 1,
+      duration: 3000, // 3 seconds
+      useNativeDriver: false,
+    }).start(() => {
+      // Reset cooldown after animation completes
+      setIsCooldownActive(false);
+      setCooldownProgress(0);
+      cooldownAnimRef.setValue(0);
+    });
+    
+    // Update progress counter every 100ms for display
+    const progressInterval = setInterval(() => {
+      setCooldownProgress(prev => {
+        const newProgress = prev + (100 / 3000); // increment by 100ms/3000ms
+        if (newProgress >= 1) {
+          clearInterval(progressInterval);
+          return 1;
+        }
+        return newProgress;
+      });
+    }, 100);
 
     try {
       console.log('🎲 Generating random custom effect...');
@@ -1161,11 +1192,7 @@ export default function PresetGrid({
           await onRefreshPresets();
         }
 
-        Alert.alert(
-          '🎲 Random Effect Created!',
-          `Created "${presetName}" with effect "${randomEffect.name}"${randomPalette ? ` and palette "${randomPalette.name}"` : ''}.`,
-          [{ text: 'OK' }]
-        );
+        console.log(`🎲 Random effect created: "${presetName}" with effect "${randomEffect.name}"${randomPalette ? ` and palette "${randomPalette.name}"` : ''}.`);
       } else {
         throw new Error(result.message || 'Failed to create preset');
       }
@@ -1176,7 +1203,7 @@ export default function PresetGrid({
         error instanceof Error ? error.message : 'An unexpected error occurred.'
       );
     }
-  }, [activeDevice, onAddCustomEffect, onPresetSelect, onRefreshPresets]);
+  }, [activeDevice, onAddCustomEffect, onPresetSelect, onRefreshPresets, isCooldownActive, cooldownAnimRef]);
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
@@ -1405,15 +1432,6 @@ export default function PresetGrid({
               <Text style={[styles.sectionTitle, { color: textColor }]}>
                 Custom Effects ({customEffects.length})
               </Text>
-              {/* Random Custom Effect Dice Button */}
-              {activeDevice?.isConnected && (
-                <TouchableOpacity
-                  onPress={generateRandomCustomEffect}
-                  style={[styles.diceButton, { backgroundColor: isDark ? '#374151' : '#f3f4f6' }]}
-                >
-                  <Ionicons name="dice" size={16} color={textColor} />
-                </TouchableOpacity>
-              )}
             </View>
             <Ionicons
               name={isCustomEffectsCollapsed ? 'chevron-down' : 'chevron-up'}
@@ -1424,6 +1442,53 @@ export default function PresetGrid({
           
           {!isCustomEffectsCollapsed && (
             <View style={styles.sectionContent}>
+              {/* Random Custom Effect Button */}
+              {activeDevice?.isConnected && (
+                <View style={[styles.randomEffectContainer, { marginBottom: 16 }]}>
+                  <TouchableOpacity
+                    onPress={isCooldownActive ? undefined : generateRandomCustomEffect}
+                    disabled={isCooldownActive}
+                    style={[
+                      styles.randomEffectButton, 
+                      { 
+                        backgroundColor: isCooldownActive 
+                          ? (isDark ? '#4b5563' : '#e5e7eb')
+                          : (isDark ? '#374151' : '#f3f4f6'),
+                        borderColor: isDark ? '#6b7280' : '#d1d5db',
+                        opacity: isCooldownActive ? 0.6 : 1
+                      }
+                    ]}
+                  >
+                    <View style={styles.randomEffectButtonContent}>
+                      <Ionicons 
+                        name="dice" 
+                        size={18} 
+                        color={isCooldownActive ? subtextColor : textColor} 
+                      />
+                      <Text style={[
+                        styles.randomEffectButtonText, 
+                        { color: isCooldownActive ? subtextColor : textColor }
+                      ]}>
+                        {isCooldownActive ? `Cooldown (${Math.ceil(3 - cooldownProgress * 3)}s)` : 'Generate Random Effect'}
+                      </Text>
+                    </View>
+                    {isCooldownActive && (
+                      <Animated.View 
+                        style={[
+                          styles.cooldownProgress,
+                          {
+                            width: cooldownAnimRef.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0%', '100%']
+                            }),
+                            backgroundColor: '#3b82f6'
+                          }
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
               {!activeDevice?.isConnected ? (
                 <View style={styles.infoCard}>
                   <Ionicons name="wifi-outline" size={24} color={subtextColor} style={styles.infoIcon} />
@@ -2469,5 +2534,38 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  randomEffectContainer: {
+    alignItems: 'center',
+  },
+  randomEffectButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    minWidth: 200,
+  },
+  randomEffectButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  randomEffectButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  cooldownProgress: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#3b82f6',
+    opacity: 0.2,
+    zIndex: 0,
   },
 });
