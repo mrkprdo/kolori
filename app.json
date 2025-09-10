@@ -25,8 +25,8 @@
       "package": "dev.mrkprdo.kolori",
       "usesCleartextTraffic": true,
       "networkSecurityConfig": "@xml/network_security_config",
-      "versionCode": 4,
-      "versionName": "v0.2"
+      "versionCode": 5,
+      "versionName": "0.2.1"
     },
     "web": {
       "favicon": "./assets/kolori.png"
