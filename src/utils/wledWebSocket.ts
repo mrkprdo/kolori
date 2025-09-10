@@ -165,7 +165,7 @@ class WledWebSocketManager {
         return; // Don't propagate this specific error
       }
       
-      logger.error("WebSocket Error:", error);
+      // logger.error("WebSocket Error:", error);
       if (this.onErrorCallback) this.onErrorCallback(error);
     };
   };
