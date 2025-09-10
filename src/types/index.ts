@@ -24,6 +24,7 @@ export interface CustomEffect {
   readonly paletteName: string;
   readonly presetId?: number;
   readonly gradient: string;
+  readonly linearGradientColors?: readonly string[]; // For enhanced gradient display
   readonly isCustom: boolean;
   readonly isWledPreset?: boolean;
 }
@@ -44,6 +45,8 @@ export interface SavedPlaylist {
   readonly method?: string;
   readonly isWledPlaylist?: boolean;
   readonly isActive?: boolean;
+  readonly gradient?: string;
+  readonly linearGradientColors?: readonly string[]; // For enhanced gradient display
 }
 
 export interface WledEffect {
