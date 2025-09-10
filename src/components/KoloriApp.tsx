@@ -584,7 +584,7 @@ function KoloriApp({
             return;
           }
           
-          logger.error('Global WebSocket error for device:', currentActiveDevice?.name || 'unknown', error);
+          // logger.error('Global WebSocket error for device:', currentActiveDevice?.name || 'unknown', error);
           if (isMounted) {
             setLiveLedData([]);
           }

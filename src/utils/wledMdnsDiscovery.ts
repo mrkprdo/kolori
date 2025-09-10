@@ -259,6 +259,81 @@ export class WledMdnsDiscovery {
     return this.isScanning;
   }
 
+  // Get WLED device name from /win endpoint
+  public async getWledDeviceName(device: MdnsWledDevice | any): Promise<{
+    success: boolean;
+    deviceName?: string;
+    error?: string;
+  }> {
+    // Handle different device formats
+    const address = device.addresses?.[0] || device.host || device.ip;
+    const port = device.port || 80;
+    
+    // Construct URL - omit port if it's 80 (standard HTTP)
+    const url = port === 80 ? `http://${address}/win` : `http://${address}:${port}/win`;
+
+    try {
+      console.log(`Getting WLED device name from ${url}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          'Accept': 'text/xml,application/xml,text/plain',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log(`Response status: ${response.status}, OK: ${response.ok}`);
+
+      if (response.ok) {
+        const xmlData = await response.text();
+        console.log('XML response data:', xmlData);
+
+        // Parse XML to find <ds>...</ds> tag
+        const dsMatch = xmlData.match(/<ds>([^<]*)<\/ds>/);
+        if (dsMatch && dsMatch[1]) {
+          const deviceName = dsMatch[1].trim();
+          console.log('Extracted device name:', deviceName);
+          return {
+            success: true,
+            deviceName,
+          };
+        } else {
+          console.log('No <ds> tag found in XML response');
+          return {
+            success: false,
+            error: 'Device name not found in response',
+          };
+        }
+      } else {
+        console.log(`HTTP Error: ${response.status} ${response.statusText}`);
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+    } catch (error: any) {
+      console.error('Device name fetch error:', error);
+      
+      let errorMessage = 'Unknown error';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return {
+        success: false,
+        error: `Failed to get device name: ${errorMessage}`,
+      };
+    }
+  }
+
   // Validate WLED device by making HTTP request to /json/info
   public async validateWledDevice(device: MdnsWledDevice | any): Promise<{
     isValid: boolean;

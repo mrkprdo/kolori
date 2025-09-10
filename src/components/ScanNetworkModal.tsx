@@ -19,6 +19,7 @@ interface ScanNetworkModalProps {
 
 interface DeviceWithStatus extends MdnsWledDevice {
   status: 'discovered' | 'connecting' | 'connected' | 'failed' | 'alreadyAdded';
+  enhancedName?: string; // Enhanced name in format <device_name>-<mDNS>
 }
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
@@ -169,23 +170,45 @@ export default function ScanNetworkModal({
     };
   }, [isVisible]);
 
-  const preLoadBackgroundDevices = () => {
-    const preLoadedDevices: DeviceWithStatus[] = backgroundScanDevices.map(device => ({
-      ...device,
-      status: isDeviceAlreadyAdded(device.name, device.addresses?.[0] || device.host) ? 'alreadyAdded' : 'discovered',
-    }));
+  const preLoadBackgroundDevices = async () => {
+    const preLoadedDevices: DeviceWithStatus[] = [];
+    for (const device of backgroundScanDevices) {
+      const enhancedName = await enhanceDeviceName(device);
+      const deviceWithStatus: DeviceWithStatus = {
+        ...device,
+        status: isDeviceAlreadyAdded(device.name, device.addresses?.[0] || device.host) ? 'alreadyAdded' : 'discovered',
+        enhancedName,
+      };
+      preLoadedDevices.push(deviceWithStatus);
+    }
     setDiscoveredDevices(preLoadedDevices);
+  };
+
+  const enhanceDeviceName = async (device: MdnsWledDevice): Promise<string> => {
+    try {
+      const nameResult = await wledMdnsDiscovery.getWledDeviceName(device);
+      if (nameResult.success && nameResult.deviceName) {
+        // Format: <device_name>-<mDNS>
+        return `${nameResult.deviceName}-${device.name}`;
+      }
+    } catch (error) {
+      console.log('Failed to get enhanced name for device:', device.name, error);
+    }
+    // Fallback to original mDNS name
+    return device.name;
   };
 
   const scanForDevices = async () => {
     if (isScanning) return;
     wledMdnsDiscovery.setListeners({
-      onDeviceFound: (device: MdnsWledDevice) => {
+      onDeviceFound: async (device: MdnsWledDevice) => {
         const primaryIP = device.addresses?.[0] || device.host;
+        const enhancedName = await enhanceDeviceName(device);
         const isAlreadyAdded = isDeviceAlreadyAdded(device.name, primaryIP);
         const deviceWithStatus: DeviceWithStatus = {
           ...device,
           status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
+          enhancedName,
         };
         setDiscoveredDevices(prev => {
           const exists = prev.some(d => d.name === device.name);
@@ -215,7 +238,7 @@ export default function ScanNetworkModal({
         const primaryIP = device.addresses?.[0] || device.host;
         const newDevice: Device = {
           id: ipToDeviceId(primaryIP),
-          name: device.name,
+          name: device.enhancedName || device.name, // Use enhanced name if available
           ip: primaryIP,
           protocol: 'http',
           isConnected: true,
@@ -336,7 +359,7 @@ export default function ScanNetworkModal({
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <View style={[styles.statusDot, { backgroundColor: device.status === 'connected' || device.status === 'alreadyAdded' ? '#10b981' : device.status === 'failed' ? '#ef4444' : '#f59e0b' }]} />
-                    <Text style={styles.deviceName}>{device.name}</Text>
+                    <Text style={styles.deviceName}>{device.enhancedName || device.name}</Text>
                   </View>
                   <Text style={styles.deviceIP}>{device.addresses?.[0] || device.host}</Text>
                 </View>
