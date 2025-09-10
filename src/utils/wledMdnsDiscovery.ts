@@ -137,7 +137,7 @@ export class WledMdnsDiscovery {
 
     // Error handling
     this.zeroconf.on("error", (error: any) => {
-      console.error("mDNS error:", error);
+      // console.error("mDNS error:", error);
       this.isScanning = false;
       if (this.listeners.onError) {
         this.listeners.onError(error.toString());

@@ -14,7 +14,8 @@
       "backgroundColor": "#4F46E5"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.mrkprdo.kolori"
     },
     "android": {
       "adaptiveIcon": {
