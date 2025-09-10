@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 import { Device } from '../types';
 import { ipToDeviceId } from '../utils/deviceId';
@@ -15,6 +14,7 @@ interface ScanNetworkModalProps {
   existingDevices: Device[];
   backgroundScanDevices?: MdnsWledDevice[];
   setIsDiscoveryInProgress?: (inProgress: boolean) => void;
+  onManualEntry?: () => void;
 }
 
 interface DeviceWithStatus extends MdnsWledDevice {
@@ -137,6 +137,67 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
+  warningModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  warningModalContent: {
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  warningModalTitle: {
+    color: isDark ? '#ffffff' : '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  warningModalMessage: {
+    color: isDark ? '#9ca3af' : '#6b7280',
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  warningModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  warningModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  warningModalButtonPrimary: {
+    backgroundColor: '#059669',
+  },
+  warningModalButtonSecondary: {
+    backgroundColor: isDark ? '#374151' : '#e5e7eb',
+  },
+  warningModalButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  warningModalButtonTextPrimary: {
+    color: 'white',
+  },
+  warningModalButtonTextSecondary: {
+    color: isDark ? '#d1d5db' : '#374151',
+  },
 });
 
 export default function ScanNetworkModal({
@@ -147,10 +208,12 @@ export default function ScanNetworkModal({
   existingDevices = [],
   backgroundScanDevices = [],
   setIsDiscoveryInProgress,
+  onManualEntry,
 }: ScanNetworkModalProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [discoveredDevices, setDiscoveredDevices] = useState<DeviceWithStatus[]>([]);
   const [scanTimeout, setScanTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showNetworkWarning, setShowNetworkWarning] = useState(false);
 
   const styles = getStyles(isDark);
 
@@ -195,7 +258,10 @@ export default function ScanNetworkModal({
       },
       onScanStart: () => setIsScanning(true),
       onScanStop: () => setIsScanning(false),
-      onError: (error: string) => Alert.alert('mDNS Error', error),
+      onError: (error: string) => {
+        console.warn('Network scan unavailable:', error);
+        setShowNetworkWarning(true);
+      },
     });
     await wledMdnsDiscovery.startScan();
     const timeout = setTimeout(() => wledMdnsDiscovery.stopScan(), 2000);
@@ -380,6 +446,55 @@ export default function ScanNetworkModal({
           </View>
         </View>
       </View>
+
+      {/* Network Warning Modal */}
+      <Modal
+        visible={showNetworkWarning}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNetworkWarning(false)}
+      >
+        <View style={styles.warningModalOverlay}>
+          <View style={styles.warningModalContent}>
+            <Ionicons 
+              name="warning-outline" 
+              size={48} 
+              color="#f59e0b" 
+              style={{ alignSelf: 'center', marginBottom: 16 }}
+            />
+            <Text style={styles.warningModalTitle}>
+              Network Scan Unavailable
+            </Text>
+            <Text style={styles.warningModalMessage}>
+              Network discovery is not available at the moment. You can try scanning again or manually enter your WLED device's IP address.
+            </Text>
+            <View style={styles.warningModalButtons}>
+              <TouchableOpacity
+                style={[styles.warningModalButton, styles.warningModalButtonSecondary]}
+                onPress={() => setShowNetworkWarning(false)}
+              >
+                <Text style={[styles.warningModalButtonText, styles.warningModalButtonTextSecondary]}>
+                  Try Again Later
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.warningModalButton, styles.warningModalButtonPrimary]}
+                onPress={() => {
+                  setShowNetworkWarning(false);
+                  onClose();
+                  setTimeout(() => {
+                    onManualEntry?.();
+                  }, 100);
+                }}
+              >
+                <Text style={[styles.warningModalButtonText, styles.warningModalButtonTextPrimary]}>
+                  Manual Entry
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </FloatingModal>
   );
 }
