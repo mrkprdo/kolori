@@ -10,11 +10,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { createWledPreset } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
 import LEDVisualization from './LEDVisualization';
-import { WLEDEffectData, getEffectData, getEffectByName } from '../data/wledEffects';
+import CustomDropdown from './CustomDropdown';
+import { WLEDEffectData, getEffectByName } from '../data/wledEffects';
 
 interface Palette {
   id: number;
@@ -448,11 +448,11 @@ export default function CustomEffectsModal({
   }, [selectedDevices.length > 0 ? selectedDevices[0]?.ip : null]);
 
   useEffect(() => {
-    if (visible) {
+    if (visible && selectedDevices.length > 0) {
       fetchEffects();
       fetchPalettes();
     }
-  }, [visible, fetchEffects, fetchPalettes]);
+  }, [visible, selectedDevices.length > 0 ? selectedDevices[0]?.ip : null]);
 
   const handleEffectChange = (effectId: number | null) => {
     setSelectedEffect(effectId);
@@ -790,35 +790,18 @@ export default function CustomEffectsModal({
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View style={{
-                    backgroundColor: isDark ? '#374151' : '#f9fafb',
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: isDark ? '#4b5563' : '#d1d5db',
-                  }}>
-                    <Picker
-                      selectedValue={selectedEffect}
-                      onValueChange={handleEffectChange}
-                      style={{
-                        color: isDark ? '#ffffff' : '#111827',
-                      }}
-                      dropdownIconColor={isDark ? '#ffffff' : '#111827'}
-                    >
-                      <Picker.Item
-                        label="Select an effect..."
-                        value={null}
-                        color={isDark ? '#9ca3af' : '#6b7280'}
-                      />
-                      {effects.map((effect) => (
-                        <Picker.Item
-                          key={effect.id}
-                          label={effect.displayName}
-                          value={effect.id}
-                          color={isDark ? '#ffffff' : '#111827'}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                  <CustomDropdown
+                    data={effects.map(effect => ({
+                      id: effect.id,
+                      label: effect.displayName,
+                      value: effect.id,
+                    }))}
+                    selectedValue={selectedEffect}
+                    onValueChange={handleEffectChange}
+                    placeholder="Select an effect..."
+                    isDark={isDark}
+                    searchable={true}
+                  />
                 )}
               </View>
 
@@ -852,35 +835,18 @@ export default function CustomEffectsModal({
                         </Text>
                       </View>
                     ) : (
-                      <View style={{
-                        backgroundColor: isDark ? '#374151' : '#f9fafb',
-                        borderRadius: 8,
-                        borderWidth: 1,
-                        borderColor: isDark ? '#4b5563' : '#d1d5db',
-                      }}>
-                        <Picker
-                          selectedValue={selectedPalette}
-                          onValueChange={handlePaletteChange}
-                          style={{
-                            color: isDark ? '#ffffff' : '#111827',
-                          }}
-                          dropdownIconColor={isDark ? '#ffffff' : '#111827'}
-                        >
-                          <Picker.Item
-                            label="Select a palette..."
-                            value={null}
-                            color={isDark ? '#9ca3af' : '#6b7280'}
-                          />
-                          {palettes.map((palette) => (
-                            <Picker.Item
-                              key={palette.id}
-                              label={palette.name}
-                              value={palette.id}
-                              color={isDark ? '#ffffff' : '#111827'}
-                            />
-                          ))}
-                        </Picker>
-                      </View>
+                      <CustomDropdown
+                        data={palettes.map(palette => ({
+                          id: palette.id,
+                          label: palette.name,
+                          value: palette.id,
+                        }))}
+                        selectedValue={selectedPalette}
+                        onValueChange={handlePaletteChange}
+                        placeholder="Select a palette..."
+                        isDark={isDark}
+                        searchable={true}
+                      />
                     )}
                   </View>
                 );
