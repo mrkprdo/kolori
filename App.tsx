@@ -377,6 +377,7 @@ export default function App() {
         existingDevices={devices}
         backgroundScanDevices={backgroundScanDevices}
         setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+        onManualEntry={handleOpenAddManuallyModalFromMain}
       />
       
       {/* Global SettingsModal */}
