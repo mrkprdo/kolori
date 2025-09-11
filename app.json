@@ -26,7 +26,7 @@
       "package": "dev.mrkprdo.kolori",
       "usesCleartextTraffic": true,
       "networkSecurityConfig": "@xml/network_security_config",
-      "versionCode": 7,
+      "versionCode": 8
       "versionName": "0.2.2"
     },
     "web": {
