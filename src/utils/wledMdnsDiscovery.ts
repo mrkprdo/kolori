@@ -1,4 +1,5 @@
-import Zeroconf from "react-native-zeroconf";
+import * as ServiceDiscovery from '@inthepocket/react-native-service-discovery';
+import type { Service, Subscription } from '@inthepocket/react-native-service-discovery';
 import Constants from "expo-constants";
 
 export interface MdnsWledDevice {
@@ -9,7 +10,7 @@ export interface MdnsWledDevice {
   txt: Record<string, string>;
   fullName: string;
   type: string;
-  protocol: string;
+  domain: string;
   wledInfo?: {
     version?: string;
     brand?: string;
@@ -27,20 +28,22 @@ export interface MdnsDiscoveryListeners {
 }
 
 export class WledMdnsDiscovery {
-  private zeroconf: Zeroconf | null = null;
   private isScanning: boolean = false;
   private discoveredDevices: Map<string, MdnsWledDevice> = new Map();
   private listeners: MdnsDiscoveryListeners = {};
   private isInitialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
+  private serviceFoundSubscription: Subscription | null = null;
+  private serviceLostSubscription: Subscription | null = null;
+  private scanTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.initializationPromise = this.initializeZeroconf();
+    this.initializationPromise = this.initializeServiceDiscovery();
   }
 
-  private async initializeZeroconf(): Promise<void> {
+  private async initializeServiceDiscovery(): Promise<void> {
     try {
-      console.log("Initializing mDNS Zeroconf...");
+      console.log("Initializing mDNS Service Discovery...");
 
       // Check if running in Expo Go (which doesn't support native modules)
       if (Constants.appOwnership === "expo") {
@@ -57,43 +60,29 @@ export class WledMdnsDiscovery {
       // Add a small delay to ensure the native module is ready
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      this.zeroconf = new Zeroconf();
-
-      // Wait a bit more for the native initialization
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
       this.setupEventListeners();
       this.isInitialized = true;
-      console.log("mDNS Zeroconf initialized successfully");
+      console.log("mDNS Service Discovery initialized successfully");
     } catch (error) {
-      console.error("Failed to initialize mDNS Zeroconf:", error);
+      console.error("Failed to initialize mDNS Service Discovery:", error);
       this.isInitialized = false;
     }
   }
 
-  private setupEventListeners() {
-    if (!this.zeroconf) return;
+  private setupEventListeners(): void {
+    this.serviceFoundSubscription = ServiceDiscovery.addEventListener('serviceFound', (service: Service) => {
+      console.log("mDNS service found:", service.name, service);
 
-    // Service found
-    this.zeroconf.on("found", (service: any) => {
-      console.log("mDNS service found:", service.name);
-    });
-
-    // Service resolved with full details
-    this.zeroconf.on("resolved", (service: any) => {
-      console.log("mDNS service resolved:", service);
-
-      // Check if this is a WLED device
       if (this.isWledService(service)) {
         const device: MdnsWledDevice = {
           name: service.name,
-          host: service.host,
+          host: service.hostName,
           port: service.port || 80,
           addresses: service.addresses || [],
           txt: service.txt || {},
-          fullName: service.fullName,
+          fullName: `${service.name}.${service.type}${service.domain}`,
           type: service.type,
-          protocol: service.protocol,
+          domain: service.domain,
           wledInfo: this.extractWledInfo(service.txt || {}),
         };
 
@@ -105,51 +94,21 @@ export class WledMdnsDiscovery {
       }
     });
 
-    // Service removed
-    this.zeroconf.on("remove", (service: any) => {
+    this.serviceLostSubscription = ServiceDiscovery.addEventListener('serviceLost', (service: Service) => {
       console.log("mDNS service removed:", service.name);
       const device = this.discoveredDevices.get(service.name);
-      if (device) {
+      if (device && this.listeners.onDeviceRemoved) {
         this.discoveredDevices.delete(service.name);
-        if (this.listeners.onDeviceRemoved) {
-          this.listeners.onDeviceRemoved(device);
-        }
-      }
-    });
-
-    // Scan started
-    this.zeroconf.on("start", () => {
-      console.log("mDNS scan started");
-      this.isScanning = true;
-      if (this.listeners.onScanStart) {
-        this.listeners.onScanStart();
-      }
-    });
-
-    // Scan stopped
-    this.zeroconf.on("stop", () => {
-      console.log("mDNS scan stopped");
-      this.isScanning = false;
-      if (this.listeners.onScanStop) {
-        this.listeners.onScanStop();
-      }
-    });
-
-    // Error handling
-    this.zeroconf.on("error", (error: any) => {
-      // console.error("mDNS error:", error);
-      this.isScanning = false;
-      if (this.listeners.onError) {
-        this.listeners.onError(error.toString());
+        this.listeners.onDeviceRemoved(device);
       }
     });
   }
 
   // Determine if a service is a WLED device
-  private isWledService(service: any): boolean {
+  private isWledService(service: Service): boolean {
     const name = service.name?.toLowerCase() || "";
     const txt = service.txt || {};
-    const host = service.host?.toLowerCase() || "";
+    const host = service.hostName?.toLowerCase() || "";
 
     // Primary checks for WLED devices
     if (name.includes("wled")) {
@@ -183,8 +142,7 @@ export class WledMdnsDiscovery {
     );
   }
 
-  // Extract WLED-specific information from TXT records
-  private extractWledInfo(txt: Record<string, string>): any {
+  private extractWledInfo(txt: Record<string, string>) {
     return {
       version: txt.ver || txt.version || txt.v,
       brand: txt.brand || txt.b,
@@ -207,7 +165,7 @@ export class WledMdnsDiscovery {
       await this.initializationPromise;
     }
 
-    if (!this.isInitialized || !this.zeroconf) {
+    if (!this.isInitialized) {
       console.log(
         "mDNS discovery not available - running in Expo Go or initialization failed"
       );
@@ -215,33 +173,79 @@ export class WledMdnsDiscovery {
     }
 
     try {
+      // Clear any existing timeout
+      if (this.scanTimeout) {
+        clearTimeout(this.scanTimeout);
+        this.scanTimeout = null;
+      }
+
       // Clear previous discoveries
       this.discoveredDevices.clear();
 
-      // Scan for HTTP services where WLED devices announce themselves
-      this.zeroconf.scan("http", "tcp", "local.");
+      // Start scan and mark as scanning
+      this.isScanning = true;
+      if (this.listeners.onScanStart) {
+        this.listeners.onScanStart();
+      }
 
+      // Scan for HTTP services where WLED devices announce themselves
+      await ServiceDiscovery.startSearch('http');
       console.log("Started mDNS scan for WLED devices on _http._tcp");
+
+      // Auto-stop scan after 2 seconds - simple approach
+      this.scanTimeout = setTimeout(() => {
+        console.log("Auto-stopping mDNS scan after 2 seconds");
+        this.forceStopScan();
+      }, 2000);
+
     } catch (error) {
       console.error("Failed to start mDNS scan:", error);
+      this.isScanning = false;
       if (this.listeners.onError) {
         this.listeners.onError(`Failed to start scan: ${error}`);
       }
     }
   }
 
-  // Stop mDNS scanning
-  public stopScan(): void {
-    if (!this.isScanning || !this.zeroconf || !this.isInitialized) {
+  // Force stop scan - internal method for timeout
+  private forceStopScan(): void {
+    if (!this.isScanning) {
       return;
     }
 
-    try {
-      this.zeroconf.stop();
-      console.log("Stopped mDNS scanning");
-    } catch (error) {
-      console.error("Failed to stop mDNS scan:", error);
+    console.log("Force stopping mDNS scan...");
+    
+    // Update state immediately
+    this.isScanning = false;
+    
+    // Clear timeout
+    if (this.scanTimeout) {
+      clearTimeout(this.scanTimeout);
+      this.scanTimeout = null;
     }
+
+    // Try to stop the native scan, but don't wait for it
+    ServiceDiscovery.stopSearch('http').then(() => {
+      console.log("Native scan stopped successfully");
+    }).catch(error => {
+      console.log("Native scan stop failed, but state already updated:", error);
+    });
+
+    // Notify listeners
+    if (this.listeners.onScanStop) {
+      this.listeners.onScanStop();
+    }
+    
+    console.log("mDNS scan force stopped and state updated");
+  }
+
+  // Stop mDNS scanning
+  public async stopScan(): Promise<void> {
+    if (!this.isInitialized || !this.isScanning) {
+      return;
+    }
+
+    this.forceStopScan();
   }
 
   // Get all discovered WLED devices
@@ -410,17 +414,19 @@ export class WledMdnsDiscovery {
   }
 
   // Clean up resources
-  public destroy(): void {
-    this.stopScan();
+  public async destroy(): Promise<void> {
+    this.forceStopScan();
     this.discoveredDevices.clear();
     this.listeners = {};
 
-    if (this.zeroconf) {
-      try {
-        this.zeroconf.removeAllListeners();
-      } catch (error) {
-        console.error("Error cleaning up zeroconf listeners:", error);
-      }
+    // Remove event listeners
+    if (this.serviceFoundSubscription) {
+      this.serviceFoundSubscription.remove();
+      this.serviceFoundSubscription = null;
+    }
+    if (this.serviceLostSubscription) {
+      this.serviceLostSubscription.remove();
+      this.serviceLostSubscription = null;
     }
   }
 }

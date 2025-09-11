@@ -213,7 +213,6 @@ export default function ScanNetworkModal({
 }: ScanNetworkModalProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [discoveredDevices, setDiscoveredDevices] = useState<DeviceWithStatus[]>([]);
-  const [scanTimeout, setScanTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showNetworkWarning, setShowNetworkWarning] = useState(false);
 
   const styles = getStyles(isDark);
@@ -228,8 +227,9 @@ export default function ScanNetworkModal({
       setTimeout(() => scanForDevices(), 500);
     }
     return () => {
-      if (isScanning) wledMdnsDiscovery.stopScan();
-      if (scanTimeout) clearTimeout(scanTimeout);
+      if (isScanning) {
+        wledMdnsDiscovery.stopScan();
+      }
     };
   }, [isVisible]);
 
@@ -263,6 +263,7 @@ export default function ScanNetworkModal({
 
   const scanForDevices = async () => {
     if (isScanning) return;
+    
     wledMdnsDiscovery.setListeners({
       onDeviceFound: async (device: MdnsWledDevice) => {
         const primaryIP = device.addresses?.[0] || device.host;
@@ -287,8 +288,6 @@ export default function ScanNetworkModal({
       },
     });
     await wledMdnsDiscovery.startScan();
-    const timeout = setTimeout(() => wledMdnsDiscovery.stopScan(), 2000);
-    setScanTimeout(timeout);
   };
 
   const connectToDevice = async (device: DeviceWithStatus, setConnectingStatus = true) => {
