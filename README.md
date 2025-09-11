@@ -155,7 +155,7 @@ kolori/
 
 #### Networking & Device Discovery
 
-- **react-native-zeroconf ^0.13.8** - mDNS/Zeroconf for device discovery
+- **@inthepocket/react-native-service-discovery ^0.2.2** - mDNS/Zeroconf for device discovery
 - **Built-in WebSocket** support for real-time WLED communication
 - **React Native Networking** - HTTP requests and device communication
 
