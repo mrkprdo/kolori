@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SheetProvider } from 'react-native-actions-sheet';
+import { useColorScheme } from 'react-native';
 import { BackHandler, Animated } from 'react-native';
 
 // Components
@@ -37,6 +38,7 @@ const DEFAULT_SEASONAL_PRESETS = [
 ];
 
 export default function App() {
+  const systemColorScheme = useColorScheme();
   const [isLoading, setIsLoading] = useState(true);
   const [devices, setDevices] = useState<Device[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -47,6 +49,15 @@ export default function App() {
   const [addModalOpenedFrom, setAddModalOpenedFrom] = useState<'main' | 'settings'>('main');
   const [showSettings, setShowSettings] = useState(false);
   const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
+  
+  // Helper function to determine if theme should be dark
+  const getIsDark = (theme: string | undefined) => {
+    if (!theme) return false;
+    if (theme === 'system') {
+      return systemColorScheme === 'dark';
+    }
+    return theme === 'dark';
+  };
   
   // Debug modal state changes
   const debugSetShowScanNetworkModal = (show: boolean) => {
@@ -300,14 +311,14 @@ export default function App() {
 
   const renderContent = () => {
     if (isLoading || hasAgreed === null || settings === null || currentScreen === 'loading') {
-      return <LoadingScreen isDark={settings?.theme !== 'light'} activeDevice={activeDevice} />;
+      return <LoadingScreen isDark={getIsDark(settings?.theme)} activeDevice={activeDevice} />;
     }
 
     if (currentScreen === 'agreement') {
-      return <UserAgreement isDark={settings.theme !== 'light'} onAccept={handleAgreementAccept} onReject={() => BackHandler.exitApp()} />;
+      return <UserAgreement isDark={getIsDark(settings.theme)} onAccept={handleAgreementAccept} onReject={() => BackHandler.exitApp()} />;
     }
 
-    const isDark = settings.theme !== 'light';
+    const isDark = getIsDark(settings.theme);
 
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -373,7 +384,7 @@ export default function App() {
         isVisible={showScanNetworkModal}
         onClose={handleCloseScanModal}
         onDeviceAdded={handleAddDevice}
-        isDark={settings?.theme !== 'light'}
+        isDark={getIsDark(settings?.theme)}
         existingDevices={devices}
         backgroundScanDevices={backgroundScanDevices}
         setIsDiscoveryInProgress={setIsDiscoveryInProgress}
@@ -385,7 +396,7 @@ export default function App() {
         <SettingsModal
           isVisible={showSettings}
           onClose={() => setShowSettings(false)}
-          isDark={settings.theme !== 'light'}
+          isDark={getIsDark(settings.theme)}
           theme={settings.theme}
           onThemeChange={(theme) => handleUpdateSettings({ ...settings, theme })}
           scheduleMode={settings.scheduleMode}
@@ -401,7 +412,7 @@ export default function App() {
         isVisible={showAddManuallyModal}
         onClose={handleCloseAddManuallyModal}
         onDeviceAdded={handleAddDevice}
-        isDark={settings?.theme !== 'light'}
+        isDark={getIsDark(settings?.theme)}
         existingDevices={devices}
       />
     </Animated.View>

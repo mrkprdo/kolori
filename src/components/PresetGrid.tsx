@@ -476,6 +476,24 @@ export default function PresetGrid({
   const fabScaleAnim3 = useRef(new Animated.Value(0)).current;
   const fabScaleAnim4 = useRef(new Animated.Value(0)).current;
   const wiggleAnim = useRef(new Animated.Value(0)).current;
+  
+  // Cleanup animations on unmount to prevent memory leaks and race conditions
+  useEffect(() => {
+    return () => {
+      // Stop all running animations
+      fabRotateAnim.stopAnimation();
+      fabScaleAnim1.stopAnimation();
+      fabScaleAnim2.stopAnimation();
+      fabScaleAnim3.stopAnimation();
+      fabScaleAnim4.stopAnimation();
+      wiggleAnim.stopAnimation();
+      fadeAnim.stopAnimation();
+      scaleAnim.stopAnimation();
+      
+      // Animation cleanup completed
+    };
+  }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4, wiggleAnim, fadeAnim, scaleAnim]);
+
   // Device presets are now passed via customEffects prop from parent
   const devicePresets = customEffects; // Use customEffects directly
   const loadingPresets = customEffects.length === 0 && activeDevice?.isConnected;
@@ -634,78 +652,151 @@ export default function PresetGrid({
     }
   }, [onRefreshPresets, isRefreshing, resetBrightnessSync]);
 
-  const toggleFabOptions = useCallback(() => {
-    const newValue = !showFabOptions;
-    setShowFabOptions(newValue);
+  // Animation coordination (non-blocking)
+  const fabAnimationInProgress = useRef(false);
+
+  // Improved animation system with proper sequencing
+  const animateFabOpen = useCallback(() => {
+    // if (fabAnimationInProgress.current) return;
+    // fabAnimationInProgress.current = true;
+    console.log('animateFabOpen called');
     
-    if (newValue) {
-      // Expand animation - faster
-      Animated.parallel([
-        Animated.timing(fabRotateAnim, {
+    // Ensure animations start from 0 (closed state)
+    fabRotateAnim.setValue(0);
+    fabScaleAnim1.setValue(0);
+    fabScaleAnim2.setValue(0);
+    fabScaleAnim3.setValue(0);
+    fabScaleAnim4.setValue(0);
+    
+    console.log('Animation values reset to 0, starting animations...');
+    
+    Animated.parallel([
+      Animated.timing(fabRotateAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.stagger(60, [
+        Animated.timing(fabScaleAnim4, {
           toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.stagger(50, [
-          Animated.spring(fabScaleAnim4, {
-            toValue: 1,
-            tension: 200,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-          Animated.spring(fabScaleAnim3, {
-            toValue: 1,
-            tension: 200,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-          Animated.spring(fabScaleAnim2, {
-            toValue: 1,
-            tension: 200,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-          Animated.spring(fabScaleAnim1, {
-            toValue: 1,
-            tension: 200,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-    } else {
-      // Collapse animation
-      Animated.parallel([
-        Animated.timing(fabRotateAnim, {
-          toValue: 0,
           duration: 200,
           useNativeDriver: true,
         }),
-        Animated.stagger(40, [
-          Animated.timing(fabScaleAnim1, {
-            toValue: 0,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(fabScaleAnim2, {
-            toValue: 0,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(fabScaleAnim3, {
-            toValue: 0,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(fabScaleAnim4, {
-            toValue: 0,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
+        Animated.timing(fabScaleAnim3, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabScaleAnim2, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabScaleAnim1, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // fabAnimationInProgress.current = false;
+      console.log('animateFabOpen completed');
+    });
+  }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
+
+  const animateFabClose = useCallback(() => {
+    // if (fabAnimationInProgress.current) return;
+    // fabAnimationInProgress.current = true;
+    console.log('animateFabClose called');
+    
+    Animated.parallel([
+      Animated.timing(fabRotateAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      // Stagger closing animation in reverse order (top to bottom) for smooth "folding" effect
+      Animated.stagger(50, [
+        Animated.timing(fabScaleAnim1, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabScaleAnim2, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabScaleAnim3, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabScaleAnim4, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // fabAnimationInProgress.current = false;
+      setShowFabOptions(false);
+      console.log('animateFabClose completed');
+    });
+  }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
+
+  const toggleFabOptions = useCallback(() => {
+    console.log('🔵 FAB toggle called, current showFabOptions:', showFabOptions);
+    console.log('🔵 Function entering with showFabOptions:', showFabOptions);
+    
+    if (showFabOptions) {
+      console.log('🔴 Closing FAB - setting state to false');
+      setShowFabOptions(false);
+      console.log('🔴 Reset animations to closed state');
+      // Reset animations to closed state
+      fabRotateAnim.setValue(0);
+      fabScaleAnim1.setValue(0);
+      fabScaleAnim2.setValue(0);
+      fabScaleAnim3.setValue(0);
+      fabScaleAnim4.setValue(0);
+      console.log('🔴 FAB close complete');
+    } else {
+      console.log('🟢 Opening FAB - setting state to true');
+      setShowFabOptions(true);
+      console.log('🟢 Setting animations to open state (no animation)');
+      // Set animations to open state immediately
+      fabRotateAnim.setValue(1);
+      fabScaleAnim1.setValue(1);
+      fabScaleAnim2.setValue(1);
+      fabScaleAnim3.setValue(1);
+      fabScaleAnim4.setValue(1);
+      console.log('🟢 FAB open complete');
     }
   }, [showFabOptions, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('⭐ showFabOptions state changed to:', showFabOptions);
+  }, [showFabOptions]);
+
+  // Safety mechanism to reset stuck animation flag
+  useEffect(() => {
+    if (fabAnimationInProgress.current) {
+      const timeout = setTimeout(() => {
+        console.log('Animation progress flag stuck, resetting...');
+        // fabAnimationInProgress.current = false;
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [showFabOptions]);
+
+  // Simple function to close FAB and open modal immediately
+  const closeFabAndOpenModal = useCallback((modalOpenFunction: () => void) => {
+    // Close animations and open modal immediately - no blocking
+    animateFabClose();
+    modalOpenFunction();
+  }, [animateFabClose]);
 
   const startWiggleAnimation = useCallback(() => {
     const wiggle = () => {
@@ -745,40 +836,8 @@ export default function PresetGrid({
     setIsDeleteMode(false);
     setSelectedForDelete(new Set());
     wiggleAnim.setValue(0);
-    
-    // Animate FAB options closed
-    Animated.parallel([
-      Animated.timing(fabRotateAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.parallel([
-        Animated.timing(fabScaleAnim1, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fabScaleAnim2, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fabScaleAnim3, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fabScaleAnim4, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      setShowFabOptions(false);
-    });
-  }, [wiggleAnim, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
+    animateFabClose();
+  }, [wiggleAnim, animateFabClose]);
 
   const toggleCardSelection = useCallback((id: string | number) => {
     setSelectedForDelete(prev => {
@@ -1706,8 +1765,7 @@ export default function PresetGrid({
         >
           <TouchableOpacity
             onPress={() => {
-              toggleFabOptions();
-              setShowCreateNewOptions(true);
+              closeFabAndOpenModal(() => setShowCreateNewOptions(true));
             }}
             style={[
               styles.miniFabButton,
@@ -1734,8 +1792,7 @@ export default function PresetGrid({
         >
           <TouchableOpacity
             onPress={() => {
-              toggleFabOptions();
-              setShowDeviceManagementModal(true);
+              closeFabAndOpenModal(() => setShowDeviceManagementModal(true));
             }}
             style={[
               styles.miniFabButton,
@@ -1762,8 +1819,7 @@ export default function PresetGrid({
         >
           <TouchableOpacity
             onPress={() => {
-              toggleFabOptions();
-              enterDeleteMode();
+              closeFabAndOpenModal(() => enterDeleteMode());
             }}
             style={[
               styles.miniFabButton,
@@ -1790,8 +1846,7 @@ export default function PresetGrid({
         >
           <TouchableOpacity
             onPress={() => {
-              toggleFabOptions();
-              setShowSettings(true);
+              closeFabAndOpenModal(() => setShowSettings(true));
             }}
             style={[
               styles.miniFabButton,
@@ -1821,11 +1876,14 @@ export default function PresetGrid({
         >
           <TouchableOpacity
             onPress={toggleFabOptions}
+            disabled={false}
+            activeOpacity={0.8}
             style={[
               styles.mainFabButton,
               { 
                 backgroundColor: '#3b82f6',
-                shadowColor: isDark ? '#000' : '#3b82f6'
+                shadowColor: isDark ? '#000' : '#3b82f6',
+                opacity: 1
               }
             ]}
           >
@@ -1848,39 +1906,7 @@ export default function PresetGrid({
             <TouchableOpacity
               onPress={() => {
                 setShowCreateNewOptions(false);
-                setShowCustomEffectsModal(true);
-                // Close FAB options
-                Animated.parallel([
-                  Animated.timing(fabRotateAnim, {
-                    toValue: 0,
-                    duration: 200,
-                    useNativeDriver: true,
-                  }),
-                  Animated.parallel([
-                    Animated.timing(fabScaleAnim1, {
-                      toValue: 0,
-                      duration: 150,
-                      useNativeDriver: true,
-                    }),
-                    Animated.timing(fabScaleAnim2, {
-                      toValue: 0,
-                      duration: 150,
-                      useNativeDriver: true,
-                    }),
-                    Animated.timing(fabScaleAnim3, {
-                      toValue: 0,
-                      duration: 150,
-                      useNativeDriver: true,
-                    }),
-                    Animated.timing(fabScaleAnim4, {
-                      toValue: 0,
-                      duration: 150,
-                      useNativeDriver: true,
-                    }),
-                  ]),
-                ]).start(() => {
-                  setShowFabOptions(false);
-                });
+                closeFabAndOpenModal(() => setShowCustomEffectsModal(true));
               }}
               style={styles.fabOption}
             >
@@ -1894,39 +1920,7 @@ export default function PresetGrid({
               <TouchableOpacity
                 onPress={() => {
                   setShowCreateNewOptions(false);
-                  setShowPlaylistCreationModal(true);
-                  // Close FAB options
-                  Animated.parallel([
-                    Animated.timing(fabRotateAnim, {
-                      toValue: 0,
-                      duration: 200,
-                      useNativeDriver: true,
-                    }),
-                    Animated.parallel([
-                      Animated.timing(fabScaleAnim1, {
-                        toValue: 0,
-                        duration: 150,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(fabScaleAnim2, {
-                        toValue: 0,
-                        duration: 150,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(fabScaleAnim3, {
-                        toValue: 0,
-                        duration: 150,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(fabScaleAnim4, {
-                        toValue: 0,
-                        duration: 150,
-                        useNativeDriver: true,
-                      }),
-                    ]),
-                  ]).start(() => {
-                    setShowFabOptions(false);
-                  });
+                  closeFabAndOpenModal(() => setShowPlaylistCreationModal(true));
                 }}
                 style={styles.fabOption}
               >
