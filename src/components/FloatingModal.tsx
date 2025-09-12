@@ -6,6 +6,8 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,7 +82,11 @@ const FloatingModal: React.FC<FloatingModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={containerStyle}>
+      <KeyboardAvoidingView 
+        style={containerStyle}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <SafeAreaView style={{ flex: 1 }}>
           <View style={modalStyle}>
             {/* Header */}
@@ -97,7 +103,7 @@ const FloatingModal: React.FC<FloatingModalProps> = ({
             {content}
           </View>
         </SafeAreaView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

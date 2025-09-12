@@ -116,7 +116,7 @@ export default function AddDeviceManuallyModal({
                 styles.input,
                 getValidationMessage() ? styles.inputError : null
               ]}
-              keyboardType="decimal-pad"
+              keyboardType="default"
             />
             {getValidationMessage() && (
               <Text style={styles.warningText}>{getValidationMessage()}</Text>
