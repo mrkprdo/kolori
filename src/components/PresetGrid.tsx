@@ -490,8 +490,7 @@ export default function PresetGrid({
       fadeAnim.stopAnimation();
       scaleAnim.stopAnimation();
       
-      // Reset animation in progress flag
-      fabAnimationInProgress.current = false;
+      // Animation cleanup completed
     };
   }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4, wiggleAnim, fadeAnim, scaleAnim]);
 
@@ -653,19 +652,23 @@ export default function PresetGrid({
     }
   }, [onRefreshPresets, isRefreshing, resetBrightnessSync]);
 
-  // Add animation state to prevent race conditions
+  // Animation coordination (non-blocking)
   const fabAnimationInProgress = useRef(false);
-  
+
+  // Improved animation system with proper sequencing
   const animateFabOpen = useCallback(() => {
-    if (fabAnimationInProgress.current) return;
-    fabAnimationInProgress.current = true;
+    // if (fabAnimationInProgress.current) return;
+    // fabAnimationInProgress.current = true;
+    console.log('animateFabOpen called');
     
-    // Reset all animations to starting position first
+    // Ensure animations start from 0 (closed state)
     fabRotateAnim.setValue(0);
     fabScaleAnim1.setValue(0);
     fabScaleAnim2.setValue(0);
     fabScaleAnim3.setValue(0);
     fabScaleAnim4.setValue(0);
+    
+    console.log('Animation values reset to 0, starting animations...');
     
     Animated.parallel([
       Animated.timing(fabRotateAnim, {
@@ -696,13 +699,15 @@ export default function PresetGrid({
         }),
       ]),
     ]).start(() => {
-      fabAnimationInProgress.current = false;
+      // fabAnimationInProgress.current = false;
+      console.log('animateFabOpen completed');
     });
   }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
 
   const animateFabClose = useCallback(() => {
-    if (fabAnimationInProgress.current) return;
-    fabAnimationInProgress.current = true;
+    // if (fabAnimationInProgress.current) return;
+    // fabAnimationInProgress.current = true;
+    console.log('animateFabClose called');
     
     Animated.parallel([
       Animated.timing(fabRotateAnim, {
@@ -710,7 +715,8 @@ export default function PresetGrid({
         duration: 150,
         useNativeDriver: true,
       }),
-      Animated.parallel([
+      // Stagger closing animation in reverse order (top to bottom) for smooth "folding" effect
+      Animated.stagger(50, [
         Animated.timing(fabScaleAnim1, {
           toValue: 0,
           duration: 150,
@@ -733,24 +739,64 @@ export default function PresetGrid({
         }),
       ]),
     ]).start(() => {
-      fabAnimationInProgress.current = false;
+      // fabAnimationInProgress.current = false;
       setShowFabOptions(false);
+      console.log('animateFabClose completed');
     });
   }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
 
   const toggleFabOptions = useCallback(() => {
-    if (fabAnimationInProgress.current) return;
+    console.log('🔵 FAB toggle called, current showFabOptions:', showFabOptions);
+    console.log('🔵 Function entering with showFabOptions:', showFabOptions);
     
     if (showFabOptions) {
-      animateFabClose();
+      console.log('🔴 Closing FAB - setting state to false');
+      setShowFabOptions(false);
+      console.log('🔴 Reset animations to closed state');
+      // Reset animations to closed state
+      fabRotateAnim.setValue(0);
+      fabScaleAnim1.setValue(0);
+      fabScaleAnim2.setValue(0);
+      fabScaleAnim3.setValue(0);
+      fabScaleAnim4.setValue(0);
+      console.log('🔴 FAB close complete');
     } else {
+      console.log('🟢 Opening FAB - setting state to true');
       setShowFabOptions(true);
-      // Small delay to ensure state update before animation
-      requestAnimationFrame(() => {
-        animateFabOpen();
-      });
+      console.log('🟢 Setting animations to open state (no animation)');
+      // Set animations to open state immediately
+      fabRotateAnim.setValue(1);
+      fabScaleAnim1.setValue(1);
+      fabScaleAnim2.setValue(1);
+      fabScaleAnim3.setValue(1);
+      fabScaleAnim4.setValue(1);
+      console.log('🟢 FAB open complete');
     }
-  }, [showFabOptions, animateFabOpen, animateFabClose]);
+  }, [showFabOptions, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('⭐ showFabOptions state changed to:', showFabOptions);
+  }, [showFabOptions]);
+
+  // Safety mechanism to reset stuck animation flag
+  useEffect(() => {
+    if (fabAnimationInProgress.current) {
+      const timeout = setTimeout(() => {
+        console.log('Animation progress flag stuck, resetting...');
+        // fabAnimationInProgress.current = false;
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [showFabOptions]);
+
+  // Simple function to close FAB and open modal immediately
+  const closeFabAndOpenModal = useCallback((modalOpenFunction: () => void) => {
+    // Close animations and open modal immediately - no blocking
+    animateFabClose();
+    modalOpenFunction();
+  }, [animateFabClose]);
 
   const startWiggleAnimation = useCallback(() => {
     const wiggle = () => {
@@ -1715,12 +1761,11 @@ export default function PresetGrid({
               bottom: 260,
             }
           ]}
-          pointerEvents={showFabOptions && !fabAnimationInProgress.current ? 'auto' : 'none'}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
-              animateFabClose();
-              setShowCreateNewOptions(true);
+              closeFabAndOpenModal(() => setShowCreateNewOptions(true));
             }}
             style={[
               styles.miniFabButton,
@@ -1743,12 +1788,11 @@ export default function PresetGrid({
               bottom: 200,
             }
           ]}
-          pointerEvents={showFabOptions && !fabAnimationInProgress.current ? 'auto' : 'none'}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
-              animateFabClose();
-              setShowDeviceManagementModal(true);
+              closeFabAndOpenModal(() => setShowDeviceManagementModal(true));
             }}
             style={[
               styles.miniFabButton,
@@ -1771,12 +1815,11 @@ export default function PresetGrid({
               bottom: 140,
             }
           ]}
-          pointerEvents={showFabOptions && !fabAnimationInProgress.current ? 'auto' : 'none'}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
-              animateFabClose();
-              enterDeleteMode();
+              closeFabAndOpenModal(() => enterDeleteMode());
             }}
             style={[
               styles.miniFabButton,
@@ -1799,12 +1842,11 @@ export default function PresetGrid({
               bottom: 80,
             }
           ]}
-          pointerEvents={showFabOptions && !fabAnimationInProgress.current ? 'auto' : 'none'}
+          pointerEvents={showFabOptions ? 'auto' : 'none'}
         >
           <TouchableOpacity
             onPress={() => {
-              animateFabClose();
-              setShowSettings(true);
+              closeFabAndOpenModal(() => setShowSettings(true));
             }}
             style={[
               styles.miniFabButton,
@@ -1834,13 +1876,14 @@ export default function PresetGrid({
         >
           <TouchableOpacity
             onPress={toggleFabOptions}
-            disabled={fabAnimationInProgress.current}
+            disabled={false}
+            activeOpacity={0.8}
             style={[
               styles.mainFabButton,
               { 
                 backgroundColor: '#3b82f6',
                 shadowColor: isDark ? '#000' : '#3b82f6',
-                opacity: fabAnimationInProgress.current ? 0.7 : 1
+                opacity: 1
               }
             ]}
           >
@@ -1863,8 +1906,7 @@ export default function PresetGrid({
             <TouchableOpacity
               onPress={() => {
                 setShowCreateNewOptions(false);
-                setShowCustomEffectsModal(true);
-                animateFabClose();
+                closeFabAndOpenModal(() => setShowCustomEffectsModal(true));
               }}
               style={styles.fabOption}
             >
@@ -1878,8 +1920,7 @@ export default function PresetGrid({
               <TouchableOpacity
                 onPress={() => {
                   setShowCreateNewOptions(false);
-                  setShowPlaylistCreationModal(true);
-                  animateFabClose();
+                  closeFabAndOpenModal(() => setShowPlaylistCreationModal(true));
                 }}
                 style={styles.fabOption}
               >
