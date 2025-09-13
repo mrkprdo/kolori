@@ -320,10 +320,39 @@ export default function ScanNetworkModal({
 
   const styles = getStyles(isDark);
 
-  const isDeviceAlreadyAdded = (deviceName: string, deviceIP: string): boolean => {
-    return existingDevices.some(device => 
-      device.name === deviceName || device.ip === deviceIP
-    );
+  const isDeviceAlreadyAdded = (mdnsDevice: MdnsWledDevice): boolean => {
+    const deviceName = mdnsDevice.name;
+    const deviceIPs = mdnsDevice.addresses || [];
+    const deviceHost = mdnsDevice.host;
+    
+    return existingDevices.some(existingDevice => {
+      // Check for exact name match
+      if (existingDevice.name === deviceName) {
+        return true;
+      }
+      
+      // Check if existing device name ends with the mDNS name (for enhanced names)
+      if (existingDevice.name.endsWith(`-${deviceName}`)) {
+        return true;
+      }
+      
+      // Check for IP address matches
+      if (deviceIPs.includes(existingDevice.ip)) {
+        return true;
+      }
+      
+      // Check host match
+      if (deviceHost && existingDevice.ip === deviceHost) {
+        return true;
+      }
+      
+      // Check if existing device IP is in the discovered device's address list
+      if (deviceIPs.length > 0 && deviceIPs.includes(existingDevice.ip)) {
+        return true;
+      }
+      
+      return false;
+    });
   };
 
   useEffect(() => {
@@ -343,8 +372,7 @@ export default function ScanNetworkModal({
     
     for (const device of backgroundScanDevices) {
       const enhancedName = await enhanceDeviceName(device);
-      const primaryIP = device.addresses?.[0] || device.host;
-      const isAlreadyAdded = isDeviceAlreadyAdded(device.name, primaryIP);
+      const isAlreadyAdded = isDeviceAlreadyAdded(device);
       
       preLoadedDevices.push({
         ...device,
@@ -373,9 +401,8 @@ export default function ScanNetworkModal({
     
     wledMdnsDiscovery.setListeners({
       onDeviceFound: async (device: MdnsWledDevice) => {
-        const primaryIP = device.addresses?.[0] || device.host;
         const enhancedName = await enhanceDeviceName(device);
-        const isAlreadyAdded = isDeviceAlreadyAdded(device.name, primaryIP);
+        const isAlreadyAdded = isDeviceAlreadyAdded(device);
         
         const deviceWithStatus: DeviceWithStatus = {
           ...device,
@@ -384,8 +411,30 @@ export default function ScanNetworkModal({
         };
         
         setDiscoveredDevices(prev => {
-          const exists = prev.some(d => d.name === device.name);
-          return exists ? prev : [...prev, deviceWithStatus];
+          // Check if device already exists by name or IP addresses
+          const exists = prev.some(d => {
+            // Match by name
+            if (d.name === device.name) return true;
+            
+            // Match by any IP address
+            const existingIPs = d.addresses || [];
+            const newIPs = device.addresses || [];
+            return existingIPs.some(ip => newIPs.includes(ip));
+          });
+          
+          if (exists) {
+            // Update existing device status if it's more current
+            return prev.map(d => {
+              if (d.name === device.name || 
+                  (d.addresses && device.addresses && 
+                   d.addresses.some(ip => device.addresses?.includes(ip)))) {
+                return { ...d, status: deviceWithStatus.status };
+              }
+              return d;
+            });
+          }
+          
+          return [...prev, deviceWithStatus];
         });
       },
       onScanStart: () => setIsScanning(true),
