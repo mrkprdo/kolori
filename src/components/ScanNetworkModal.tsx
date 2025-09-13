@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Alert, 
+  StyleSheet, 
+  Modal 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { wledMdnsDiscovery, MdnsWledDevice } from '../utils/wledMdnsDiscovery';
 import { Device } from '../types';
@@ -17,10 +26,104 @@ interface ScanNetworkModalProps {
   onManualEntry?: () => void;
 }
 
+type DeviceStatus = 'discovered' | 'connecting' | 'connected' | 'failed' | 'alreadyAdded';
+
 interface DeviceWithStatus extends MdnsWledDevice {
-  status: 'discovered' | 'connecting' | 'connected' | 'failed' | 'alreadyAdded';
-  enhancedName?: string; // Enhanced name in format <device_name>-<mDNS>
+  status: DeviceStatus;
+  enhancedName?: string;
 }
+
+interface DeviceCardProps {
+  device: DeviceWithStatus;
+  styles: any;
+  onConnect: () => void;
+}
+
+const DeviceCard: React.FC<DeviceCardProps> = ({ device, styles, onConnect }) => {
+  const getStatusColor = (status: DeviceStatus) => {
+    switch (status) {
+      case 'connected':
+      case 'alreadyAdded':
+        return '#10b981';
+      case 'failed':
+        return '#ef4444';
+      default:
+        return '#f59e0b';
+    }
+  };
+
+  const getStatusIcon = (status: DeviceStatus) => {
+    switch (status) {
+      case 'connecting':
+        return <ActivityIndicator size="small" color="#3b82f6" />;
+      case 'discovered':
+        return <Ionicons name="add-circle-outline" size={18} color="#3b82f6" />;
+      case 'failed':
+        return <Ionicons name="close-circle-outline" size={18} color="#ef4444" />;
+      case 'connected':
+      case 'alreadyAdded':
+        return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+    }
+  };
+
+  const isDisabled = ['connecting', 'connected', 'alreadyAdded'].includes(device.status);
+
+  return (
+    <View style={styles.deviceCard}>
+      <View style={styles.deviceCardHeader}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor(device.status) }]} />
+            <Text style={styles.deviceName}>{device.enhancedName || device.name}</Text>
+          </View>
+          <Text style={styles.deviceIP}>{device.addresses?.[0] || device.host}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={onConnect}
+          disabled={isDisabled}
+          style={styles.connectButton}
+        >
+          {getStatusIcon(device.status)}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+interface AddAllDevicesButtonProps {
+  availableDevices: DeviceWithStatus[];
+  isScanning: boolean;
+  onPress: () => void;
+  styles: any;
+}
+
+const AddAllDevicesButton: React.FC<AddAllDevicesButtonProps> = ({ 
+  availableDevices, 
+  isScanning, 
+  onPress, 
+  styles 
+}) => {
+  const isEnabled = !isScanning && availableDevices.length > 0;
+  
+  return (
+    <TouchableOpacity 
+      onPress={onPress} 
+      disabled={!isEnabled}
+      style={[
+        styles.footerButtonPrimary, 
+        { 
+          backgroundColor: isEnabled ? '#059669' : '#9ca3af',
+          opacity: isEnabled ? 1 : 0.6
+        }
+      ]}
+    >
+      <Ionicons name="add-circle" size={20} color="white" />
+      <Text style={styles.footerButtonText}>
+        Add All Devices ({availableDevices.length})
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
   container: {
@@ -218,7 +321,9 @@ export default function ScanNetworkModal({
   const styles = getStyles(isDark);
 
   const isDeviceAlreadyAdded = (deviceName: string, deviceIP: string): boolean => {
-    return existingDevices.some(device => device.name === deviceName || device.ip === deviceIP);
+    return existingDevices.some(device => 
+      device.name === deviceName || device.ip === deviceIP
+    );
   };
 
   useEffect(() => {
@@ -235,15 +340,19 @@ export default function ScanNetworkModal({
 
   const preLoadBackgroundDevices = async () => {
     const preLoadedDevices: DeviceWithStatus[] = [];
+    
     for (const device of backgroundScanDevices) {
       const enhancedName = await enhanceDeviceName(device);
-      const deviceWithStatus: DeviceWithStatus = {
+      const primaryIP = device.addresses?.[0] || device.host;
+      const isAlreadyAdded = isDeviceAlreadyAdded(device.name, primaryIP);
+      
+      preLoadedDevices.push({
         ...device,
-        status: isDeviceAlreadyAdded(device.name, device.addresses?.[0] || device.host) ? 'alreadyAdded' : 'discovered',
+        status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
         enhancedName,
-      };
-      preLoadedDevices.push(deviceWithStatus);
+      });
     }
+    
     setDiscoveredDevices(preLoadedDevices);
   };
 
@@ -251,13 +360,11 @@ export default function ScanNetworkModal({
     try {
       const nameResult = await wledMdnsDiscovery.getWledDeviceName(device);
       if (nameResult.success && nameResult.deviceName) {
-        // Format: <device_name>-<mDNS>
         return `${nameResult.deviceName}-${device.name}`;
       }
     } catch (error) {
       console.log('Failed to get enhanced name for device:', device.name, error);
     }
-    // Fallback to original mDNS name
     return device.name;
   };
 
@@ -269,15 +376,16 @@ export default function ScanNetworkModal({
         const primaryIP = device.addresses?.[0] || device.host;
         const enhancedName = await enhanceDeviceName(device);
         const isAlreadyAdded = isDeviceAlreadyAdded(device.name, primaryIP);
+        
         const deviceWithStatus: DeviceWithStatus = {
           ...device,
           status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
           enhancedName,
         };
+        
         setDiscoveredDevices(prev => {
           const exists = prev.some(d => d.name === device.name);
-          if (exists) return prev;
-          return [...prev, deviceWithStatus];
+          return exists ? prev : [...prev, deviceWithStatus];
         });
       },
       onScanStart: () => setIsScanning(true),
@@ -287,23 +395,40 @@ export default function ScanNetworkModal({
         setShowNetworkWarning(true);
       },
     });
+    
     await wledMdnsDiscovery.startScan();
   };
 
+  const updateDeviceStatus = (deviceName: string, status: DeviceStatus) => {
+    setDiscoveredDevices(prev => 
+      prev.map(d => d.name === deviceName ? { ...d, status } : d)
+    );
+  };
+
   const connectToDevice = async (device: DeviceWithStatus, setConnectingStatus = true) => {
-    console.log('🔵 connectToDevice called for:', device.name);
+    console.log('🔵 Connecting to device:', device.name);
+    console.log('🔵 Device details:', {
+      name: device.name,
+      host: device.host,
+      addresses: device.addresses,
+      port: device.port,
+    });
     
     if (setConnectingStatus) {
-      setDiscoveredDevices(prev => prev.map(d => d.name === device.name ? { ...d, status: 'connecting' } : d));
+      updateDeviceStatus(device.name, 'connecting');
     }
     
     try {
       const validation = await wledMdnsDiscovery.validateWledDevice(device as any);
+      console.log('🔍 Validation result:', validation);
+      
       if (validation.isValid) {
         const primaryIP = device.addresses?.[0] || device.host;
+        console.log('✅ Device validated, using IP:', primaryIP);
+        
         const newDevice: Device = {
           id: ipToDeviceId(primaryIP),
-          name: device.enhancedName || device.name, // Use enhanced name if available
+          name: device.enhancedName || device.name,
           ip: primaryIP,
           protocol: 'http',
           isConnected: true,
@@ -312,29 +437,40 @@ export default function ScanNetworkModal({
           maxBrightness: 255,
         };
         
-        // Update to connected status and show green checkmark
-        setDiscoveredDevices(prev => prev.map(d => d.name === device.name ? { ...d, status: 'connected' } : d));
+        updateDeviceStatus(device.name, 'connected');
         
-        // Add device after a short delay to show the green checkmark
         setTimeout(() => {
           onDeviceAdded(newDevice);
-          // Update to alreadyAdded status
-          setDiscoveredDevices(prev => prev.map(d => d.name === device.name ? { ...d, status: 'alreadyAdded' } : d));
-          // Don't close modal - let user see results and close manually
+          updateDeviceStatus(device.name, 'alreadyAdded');
         }, 1000);
       } else {
-        setDiscoveredDevices(prev => prev.map(d => d.name === device.name ? { ...d, status: 'failed' } : d));
-        Alert.alert('Connection Failed', validation.error || 'Could not connect to device');
+        console.error('❌ Validation failed:', validation.error);
+        updateDeviceStatus(device.name, 'failed');
+        
+        const primaryIP = device.addresses?.[0] || device.host;
+        Alert.alert(
+          'Validation Failed', 
+          `Device: ${device.name}\nIP: ${primaryIP}\n\nError: ${validation.error || 'Could not connect to device'}\n\nTip: Check if the device is a WLED device and accessible on the network.`
+        );
       }
     } catch (error) {
-      setDiscoveredDevices(prev => prev.map(d => d.name === device.name ? { ...d, status: 'failed' } : d));
-      Alert.alert('Connection Error', 'Failed to connect to device');
+      console.error('❌ Connection error:', error);
+      updateDeviceStatus(device.name, 'failed');
+      
+      const primaryIP = device.addresses?.[0] || device.host;
+      Alert.alert(
+        'Connection Error', 
+        `Device: ${device.name}\nIP: ${primaryIP}\n\nError: ${error}\n\nThis might be a network or permissions issue.`
+      );
     }
   };
 
   const addAllDevices = () => {
     const availableDevices = discoveredDevices.filter(device => device.status === 'discovered');
-    console.log('🚀 Starting Add All Devices:', { availableCount: availableDevices.length, deviceNames: availableDevices.map(d => d.name) });
+    console.log('🚀 Starting Add All Devices:', { 
+      availableCount: availableDevices.length, 
+      deviceNames: availableDevices.map(d => d.name) 
+    });
     
     if (availableDevices.length === 0) {
       Alert.alert('No Devices', 'No devices available to add.');
@@ -342,13 +478,10 @@ export default function ScanNetworkModal({
     }
     
     // Prevent navigation during discovery process
-    if (setIsDiscoveryInProgress) {
-      setIsDiscoveryInProgress(true);
-      console.log('🔒 Discovery in progress - navigation disabled');
-    }
+    setIsDiscoveryInProgress?.(true);
+    console.log('🔒 Discovery in progress - navigation disabled');
     
-    // Mark all available devices as "connecting" immediately
-    // This prevents the button from being clickable again and gives immediate feedback
+    // Mark all available devices as connecting
     setDiscoveredDevices(prev => 
       prev.map(device => 
         availableDevices.some(ad => ad.name === device.name) 
@@ -360,16 +493,15 @@ export default function ScanNetworkModal({
     let completedDevices = 0;
     const totalDevices = availableDevices.length;
     
-    // Trigger each device connection with staggered delays
-    // This approach is more resilient to navigation interruptions
+    // Connect to devices with staggered delays
     availableDevices.forEach((device, index) => {
-      const delay = index * 1000; // 1 second between each device start
-      console.log(`📱 Scheduling device ${index + 1}/${availableDevices.length} (${device.name}) with ${delay}ms delay`);
+      const delay = index * 1000; // 1 second between each device
+      console.log(`📱 Scheduling device ${index + 1}/${totalDevices} (${device.name}) with ${delay}ms delay`);
       
       setTimeout(async () => {
         console.log(`🔵 Starting connection for device: ${device.name}`);
         try {
-          await connectToDevice(device, false); // Don't set connecting status - already set
+          await connectToDevice(device, false);
           console.log(`✅ Completed device: ${device.name}`);
         } catch (error) {
           console.log(`❌ Failed device: ${device.name}`, error);
@@ -379,16 +511,16 @@ export default function ScanNetworkModal({
         console.log(`📊 Progress: ${completedDevices}/${totalDevices} devices completed`);
         
         // Re-enable navigation after all devices are completed
-        if (completedDevices === totalDevices && setIsDiscoveryInProgress) {
+        if (completedDevices === totalDevices) {
           setTimeout(() => {
-            setIsDiscoveryInProgress(false);
+            setIsDiscoveryInProgress?.(false);
             console.log('🔓 Discovery completed - navigation re-enabled');
-          }, 2000); // Wait 2 seconds after completion before allowing navigation
+          }, 2000);
         }
       }, delay);
     });
     
-    console.log('🏁 Add All Devices scheduled - connections will happen over time');
+    console.log('🏁 Add All Devices scheduled');
   };
 
   return (
@@ -419,26 +551,12 @@ export default function ScanNetworkModal({
         
         <ScrollView contentContainerStyle={styles.contentContainer}>
           {discoveredDevices.map((device) => (
-            <View key={device.name} style={styles.deviceCard}>
-              <View style={styles.deviceCardHeader}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={[styles.statusDot, { backgroundColor: device.status === 'connected' || device.status === 'alreadyAdded' ? '#10b981' : device.status === 'failed' ? '#ef4444' : '#f59e0b' }]} />
-                    <Text style={styles.deviceName}>{device.enhancedName || device.name}</Text>
-                  </View>
-                  <Text style={styles.deviceIP}>{device.addresses?.[0] || device.host}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => connectToDevice(device)}
-                  disabled={device.status === 'connecting' || device.status === 'connected' || device.status === 'alreadyAdded'}
-                  style={styles.connectButton}>
-                  {device.status === 'connecting' && <ActivityIndicator size="small" color="#3b82f6" />}
-                  {device.status === 'discovered' && <Ionicons name="add-circle-outline" size={18} color="#3b82f6" />}
-                  {device.status === 'failed' && <Ionicons name="close-circle-outline" size={18} color="#ef4444" />}
-                  {(device.status === 'connected' || device.status === 'alreadyAdded') && <Ionicons name="checkmark-circle" size={18} color="#10b981" />}
-                </TouchableOpacity>
-              </View>
-            </View>
+            <DeviceCard 
+              key={device.name}
+              device={device}
+              styles={styles}
+              onConnect={() => connectToDevice(device)}
+            />
           ))}
           {!isScanning && discoveredDevices.length === 0 && (
             <View style={styles.noDevicesContainer}>
@@ -450,21 +568,12 @@ export default function ScanNetworkModal({
         
         <View style={styles.stickyFooter}>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              onPress={addAllDevices} 
-              disabled={isScanning || discoveredDevices.filter(d => d.status === 'discovered').length === 0}
-              style={[
-                styles.footerButtonPrimary, 
-                { 
-                  backgroundColor: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? '#059669' : '#9ca3af',
-                  opacity: (!isScanning && discoveredDevices.filter(d => d.status === 'discovered').length > 0) ? 1 : 0.6
-                }
-              ]}>
-              <Ionicons name="add-circle" size={20} color="white" />
-              <Text style={styles.footerButtonText}>
-                Add All Devices ({discoveredDevices.filter(d => d.status === 'discovered').length})
-              </Text>
-            </TouchableOpacity>
+            <AddAllDevicesButton
+              availableDevices={discoveredDevices.filter(d => d.status === 'discovered')}
+              isScanning={isScanning}
+              onPress={addAllDevices}
+              styles={styles}
+            />
           </View>
         </View>
       </View>
