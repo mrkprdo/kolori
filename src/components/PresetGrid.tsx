@@ -793,10 +793,17 @@ export default function PresetGrid({
 
   // Simple function to close FAB and open modal immediately
   const closeFabAndOpenModal = useCallback((modalOpenFunction: () => void) => {
-    // Close animations and open modal immediately - no blocking
-    animateFabClose();
+    // Hide FAB options immediately to prevent background visibility
+    setShowFabOptions(false);
+    // Reset animations to closed state immediately
+    fabRotateAnim.setValue(0);
+    fabScaleAnim1.setValue(0);
+    fabScaleAnim2.setValue(0);
+    fabScaleAnim3.setValue(0);
+    fabScaleAnim4.setValue(0);
+    // Open modal immediately
     modalOpenFunction();
-  }, [animateFabClose]);
+  }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
 
   const startWiggleAnimation = useCallback(() => {
     const wiggle = () => {

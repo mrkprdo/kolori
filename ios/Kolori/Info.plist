@@ -44,6 +44,13 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSBonjourServices</key>
+    <array>
+      <string>_http._tcp</string>
+      <string>_http._tcp.local</string>
+    </array>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>This app uses the local network to discover and connect to WLED-enabled devices on your network.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

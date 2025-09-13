@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -182,6 +182,16 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   );
 };
 
+// Simple cache for device data
+const deviceCache = new Map<string, {
+  effects: WLEDEffectData[];
+  palettes: Palette[];
+  dimensions: '1D' | '2D' | null;
+  timestamp: number;
+}>();
+
+const CACHE_DURATION = 30000; // 30 seconds cache
+
 export default function CustomEffectsModal({
   visible,
   isDark = false,
@@ -200,6 +210,8 @@ export default function CustomEffectsModal({
   const [isLoadingPalettes, setIsLoadingPalettes] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const loadingRef = useRef<string | null>(null);
+  const lastLoadedDeviceRef = useRef<string | null>(null);
 
   const sectionStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
@@ -267,9 +279,7 @@ export default function CustomEffectsModal({
   // Function to detect if WLED device is configured for 1D or 2D
   const detectWledDimensions = async (deviceIp: string): Promise<'1D' | '2D' | null> => {
     try {
-      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`, {
-        timeout: 5000,
-      });
+      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
@@ -303,19 +313,28 @@ export default function CustomEffectsModal({
       return;
     }
 
+    const device = selectedDevices[0];
+    const cacheKey = `${device.ip}-effects`;
+    const cached = deviceCache.get(cacheKey);
+    
+    // Return cached data if still valid
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      console.log('Using cached effects data');
+      setEffects(cached.effects);
+      return;
+    }
+
     setIsLoadingEffects(true);
     try {
-      const device = selectedDevices[0]; // Use first selected device
       console.log('Loading effects from device and lookup table:', device.ip);
       
-      // First, detect if the device is configured for 1D or 2D
-      const deviceDimensions = await detectWledDimensions(device.ip);
-      console.log('Device dimensions detected:', deviceDimensions);
+      // Load device dimensions and effects list in parallel for better performance
+      const [deviceDimensions, effectsResponse] = await Promise.all([
+        detectWledDimensions(device.ip),
+        fetch(`http://${device.ip}/json/eff`)
+      ]);
       
-      // Get the effects list from the device
-      const effectsResponse = await fetch(`http://${device.ip}/json/eff`, {
-        timeout: 8000, // 8 second timeout
-      });
+      console.log('Device dimensions detected:', deviceDimensions);
       
       if (!effectsResponse.ok) {
         throw new Error(`HTTP ${effectsResponse.status}: ${effectsResponse.statusText || 'Unknown error'}`);
@@ -324,11 +343,10 @@ export default function CustomEffectsModal({
       const deviceEffectsData: string[] = await effectsResponse.json();
       console.log('Successfully loaded effects list from device:', deviceEffectsData.length, 'effects');
       
-      // Build the effects list using device data + our lookup table for capabilities
+      // Process effects in batches to avoid blocking the main thread
       const effectsList: WLEDEffectData[] = [];
       
-      deviceEffectsData.forEach((effectName: string, index: number) => {
-        // Get effect data from our lookup table by matching the name
+      for (const effectName of deviceEffectsData) {
         const lookupEffect = getEffectByName(effectName);
 
         if (lookupEffect) {
@@ -337,44 +355,48 @@ export default function CustomEffectsModal({
           
           if (deviceDimensions === '1D' && !lookupEffect.supports1D) {
             shouldInclude = false;
-            console.log(`Skipping 2D-only effect "${effectName}" for 1D device`);
           } else if (deviceDimensions === '2D' && !lookupEffect.supports2D) {
             shouldInclude = false;
-            console.log(`Skipping 1D-only effect "${effectName}" for 2D device`);
           }
           
           if (shouldInclude) {
-            // Effect found in lookup table and compatible with device - add it to our list
             effectsList.push(lookupEffect);
-            console.log(`Added effect: "${effectName}" (ID: ${lookupEffect.id}) - supports ${deviceDimensions}`);
           }
-        } else {
-          // Effect not found in lookup table - skip it
-          console.log(`Effect "${effectName}" not found in lookup table, skipping`);
         }
-      });
+      }
       
       // Sort effects alphabetically, but keep "Solid" first
       const sortedEffectsList = effectsList.sort((a, b) => {
-        // Always put "Solid" first
         if (a.name === 'Solid') return -1;
         if (b.name === 'Solid') return 1;
-        
-        // Sort all other effects alphabetically by name
         return a.name.localeCompare(b.name);
       });
       
       console.log(`Processed effects list: ${sortedEffectsList.length} effects from device (filtered for ${deviceDimensions})`);
+      
+      // Cache the results
+      const existingCache = deviceCache.get(cacheKey) || { 
+        effects: [], 
+        palettes: [], 
+        dimensions: null, 
+        timestamp: 0 
+      };
+      deviceCache.set(cacheKey, {
+        ...existingCache,
+        effects: sortedEffectsList,
+        dimensions: deviceDimensions,
+        timestamp: Date.now()
+      });
+      
       setEffects(sortedEffectsList);
       
     } catch (error) {
       console.error('Failed to load effects from device:', error);
-      // Don't show any effects if we can't connect to the device
       setEffects([]);
     } finally {
       setIsLoadingEffects(false);
     }
-  }, [selectedDevices.length > 0 ? selectedDevices[0]?.ip : null]);
+  }, [selectedDevices]);
 
   const fetchPalettes = useCallback(async () => {
     if (selectedDevices.length === 0) {
@@ -382,13 +404,21 @@ export default function CustomEffectsModal({
       return;
     }
 
+    const device = selectedDevices[0];
+    const cacheKey = `${device.ip}-palettes`;
+    const cached = deviceCache.get(cacheKey);
+    
+    // Return cached data if still valid
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      console.log('Using cached palettes data');
+      setPalettes(cached.palettes);
+      return;
+    }
+
     setIsLoadingPalettes(true);
     try {
-      const device = selectedDevices[0]; // Use first selected device
       console.log('Fetching palettes from device:', device.ip);
-      const response = await fetch(`http://${device.ip}/json/pal`, {
-        timeout: 10000, // 10 second timeout
-      });
+      const response = await fetch(`http://${device.ip}/json/pal`);
       
       if (!response.ok) {
         const errorMsg = response.statusText || 'Unknown error';
@@ -410,21 +440,22 @@ export default function CustomEffectsModal({
       }));
       
       console.log('Processed palettes list:', palettesList.length, 'palettes');
+      
+      // Cache the results
+      const existingCache = deviceCache.get(cacheKey) || { 
+        effects: [], 
+        palettes: [], 
+        dimensions: null, 
+        timestamp: 0 
+      };
+      deviceCache.set(cacheKey, {
+        ...existingCache,
+        palettes: palettesList,
+        timestamp: Date.now()
+      });
+      
       setPalettes(palettesList);
       
-      // Auto-select default palette if an effect that supports palettes is already selected
-      if (selectedEffect !== null && selectedPalette === null && palettesList.length > 0) {
-        const currentEffect = effects.find(e => e.id === selectedEffect);
-        if (currentEffect && currentEffect.supportsPalette) {
-          // Find "Default" palette or use first palette as default
-          const defaultPalette = palettesList.find(p => p.name.toLowerCase().includes('default')) || palettesList[0];
-          setSelectedPalette(defaultPalette.id);
-          console.log(`Auto-selected default palette after loading: "${defaultPalette.name}" (ID: ${defaultPalette.id})`);
-          
-          // Auto-apply the effect with the default palette
-          applyEffect(selectedEffect, defaultPalette.id);
-        }
-      }
     } catch (error) {
       console.error('Failed to fetch palettes:', error);
       
@@ -445,14 +476,52 @@ export default function CustomEffectsModal({
     } finally {
       setIsLoadingPalettes(false);
     }
-  }, [selectedDevices.length > 0 ? selectedDevices[0]?.ip : null]);
+  }, [selectedDevices]);
+
+  // Memoize the current device IP to prevent infinite re-renders
+  const currentDeviceIp = useMemo(() => {
+    if (selectedDevices.length === 0) return null;
+    const firstDevice = selectedDevices[0];
+    return firstDevice?.ip || null;
+  }, [selectedDevices.length, selectedDevices[0]?.ip]);
 
   useEffect(() => {
-    if (visible && selectedDevices.length > 0) {
-      fetchEffects();
-      fetchPalettes();
+    if (!visible || !currentDeviceIp) {
+      return;
     }
-  }, [visible, selectedDevices.length > 0 ? selectedDevices[0]?.ip : null]);
+    
+    // Only load if the device has actually changed
+    if (lastLoadedDeviceRef.current === currentDeviceIp) {
+      return;
+    }
+    
+    // Prevent multiple simultaneous loads for the same device
+    if (loadingRef.current === currentDeviceIp) {
+      return;
+    }
+    
+    // Check if we already have cached data for this device
+    const cacheKey = `${currentDeviceIp}-effects`;
+    const cached = deviceCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      // We have valid cached data, use it directly
+      console.log('Using cached data for device:', currentDeviceIp);
+      setEffects(cached.effects);
+      setPalettes(cached.palettes);
+      lastLoadedDeviceRef.current = currentDeviceIp;
+      return;
+    }
+    
+    loadingRef.current = currentDeviceIp;
+    
+    // Load effects and palettes in parallel for better performance
+    Promise.all([fetchEffects(), fetchPalettes()]).finally(() => {
+      loadingRef.current = null;
+      lastLoadedDeviceRef.current = currentDeviceIp;
+    }).catch(error => {
+      console.error('Error loading effects or palettes:', error);
+    });
+  }, [visible, currentDeviceIp]);
 
   const handleEffectChange = (effectId: number | null) => {
     setSelectedEffect(effectId);
@@ -478,13 +547,15 @@ export default function CustomEffectsModal({
           }
           // If palettes aren't loaded yet, fetchPalettes will be triggered by the useEffect
         } else {
-          // Effect doesn't support palettes - reset palette selection
+          // Effect doesn't support palettes - reset palette selection and auto-apply
           setSelectedPalette(null);
+          applyEffect(effectId, null);
+          return;
         }
       }
     }
     
-    // Auto-apply the effect
+    // Auto-apply the effect (for effects that support palettes but none selected yet)
     if (effectId !== null) {
       applyEffect(effectId, selectedPalette);
     }
@@ -572,7 +643,7 @@ export default function CustomEffectsModal({
       // Use the new createWledPreset function from wledApi
       const result = await createWledPreset(
         device.ip,
-        selectedEffect,
+        selectedEffect!,
         selectedPalette,
         presetName,
         undefined, // Let it auto-generate preset ID
@@ -620,6 +691,9 @@ export default function CustomEffectsModal({
     setPalettes([]);
     setSelectedEffect(null);
     setSelectedPalette(null);
+    // Reset loading refs so fresh data can be loaded on next open
+    lastLoadedDeviceRef.current = null;
+    loadingRef.current = null;
     onClose();
   };
 

@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		3240CA318F47266BEA8D8C01 /* libPods-Kolori.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 55EC74CEB73175ED2552FDB6 /* libPods-Kolori.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		5144230A7C3D7A9CB8557006 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EC1DBE6CACBF38E9F5A0CFE9 /* PrivacyInfo.xcprivacy */; };
+		809C46228D4AB0ACBFF19578 /* libPods-Kolori.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B3325548A33D96A8452966C5 /* libPods-Kolori.a */; };
+		87B2DD10ACA446B16F86461E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7CB09FBA35CDB9B90F3F5E /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		C67F1D88390325DFC94D6D3A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 730A71A773C934D4B3E0B699 /* ExpoModulesProvider.swift */; };
-		D761B2BB34C6768373522087 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 927E948895D41637B5919C8C /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
@@ -20,13 +20,13 @@
 		13B07F961A680F5B00A75B9A /* Kolori.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kolori.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Kolori/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Kolori/Info.plist; sourceTree = "<group>"; };
-		55EC74CEB73175ED2552FDB6 /* libPods-Kolori.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Kolori.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		61A8369999A9BBEA45564030 /* Pods-Kolori.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Kolori.debug.xcconfig"; path = "Target Support Files/Pods-Kolori/Pods-Kolori.debug.xcconfig"; sourceTree = "<group>"; };
-		730A71A773C934D4B3E0B699 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Kolori/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		927E948895D41637B5919C8C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Kolori/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		460DD4779A3ADD43AD25125A /* Pods-Kolori.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Kolori.debug.xcconfig"; path = "Target Support Files/Pods-Kolori/Pods-Kolori.debug.xcconfig"; sourceTree = "<group>"; };
+		765CE851C5C4B6E6F0059F0A /* Pods-Kolori.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Kolori.release.xcconfig"; path = "Target Support Files/Pods-Kolori/Pods-Kolori.release.xcconfig"; sourceTree = "<group>"; };
+		7E7CB09FBA35CDB9B90F3F5E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Kolori/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Kolori/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B3325548A33D96A8452966C5 /* libPods-Kolori.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Kolori.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C00B0651C2578CB26EF2032E /* Pods-Kolori.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Kolori.release.xcconfig"; path = "Target Support Files/Pods-Kolori/Pods-Kolori.release.xcconfig"; sourceTree = "<group>"; };
+		EC1DBE6CACBF38E9F5A0CFE9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Kolori/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Kolori/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Kolori-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Kolori-Bridging-Header.h"; path = "Kolori/Kolori-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3240CA318F47266BEA8D8C01 /* libPods-Kolori.a in Frameworks */,
+				809C46228D4AB0ACBFF19578 /* libPods-Kolori.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				927E948895D41637B5919C8C /* PrivacyInfo.xcprivacy */,
+				EC1DBE6CACBF38E9F5A0CFE9 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Kolori;
 			sourceTree = "<group>";
@@ -62,9 +62,35 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				55EC74CEB73175ED2552FDB6 /* libPods-Kolori.a */,
+				B3325548A33D96A8452966C5 /* libPods-Kolori.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3B2013367862A40695D43641 /* Kolori */ = {
+			isa = PBXGroup;
+			children = (
+				7E7CB09FBA35CDB9B90F3F5E /* ExpoModulesProvider.swift */,
+			);
+			name = Kolori;
+			sourceTree = "<group>";
+		};
+		3F5BD81012C355C6B17376D2 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				3B2013367862A40695D43641 /* Kolori */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		766D00EE7A7890E21DB4B478 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				460DD4779A3ADD43AD25125A /* Pods-Kolori.debug.xcconfig */,
+				765CE851C5C4B6E6F0059F0A /* Pods-Kolori.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -81,8 +107,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				B9043820A4709287E0CC2A2C /* Pods */,
-				B97F9CD5B74E629A3C1A41CF /* ExpoModulesProviders */,
+				766D00EE7A7890E21DB4B478 /* Pods */,
+				3F5BD81012C355C6B17376D2 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -95,31 +121,6 @@
 				13B07F961A680F5B00A75B9A /* Kolori.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		B39F6C3A9B152CA5D6A48DA9 /* Kolori */ = {
-			isa = PBXGroup;
-			children = (
-				730A71A773C934D4B3E0B699 /* ExpoModulesProvider.swift */,
-			);
-			name = Kolori;
-			sourceTree = "<group>";
-		};
-		B9043820A4709287E0CC2A2C /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				61A8369999A9BBEA45564030 /* Pods-Kolori.debug.xcconfig */,
-				C00B0651C2578CB26EF2032E /* Pods-Kolori.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		B97F9CD5B74E629A3C1A41CF /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				B39F6C3A9B152CA5D6A48DA9 /* Kolori */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -139,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Kolori" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				EA11D509A598DB7E994118EC /* [Expo] Configure project */,
+				5FB989FED1D33C0C13F26360 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				6B6182A50CD613EF93C0368C /* [CP] Embed Pods Frameworks */,
+				4595014B103C037F26BA2966 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				D761B2BB34C6768373522087 /* PrivacyInfo.xcprivacy in Resources */,
+				5144230A7C3D7A9CB8557006 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,7 +240,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		6B6182A50CD613EF93C0368C /* [CP] Embed Pods Frameworks */ = {
+		4595014B103C037F26BA2966 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -256,6 +257,25 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Kolori/Pods-Kolori-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		5FB989FED1D33C0C13F26360 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Kolori/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -295,25 +315,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Kolori/Pods-Kolori-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		EA11D509A598DB7E994118EC /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Kolori/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -322,7 +323,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				C67F1D88390325DFC94D6D3A /* ExpoModulesProvider.swift in Sources */,
+				87B2DD10ACA446B16F86461E /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,27 +332,24 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 61A8369999A9BBEA45564030 /* Pods-Kolori.debug.xcconfig */;
+			baseConfigurationReference = 460DD4779A3ADD43AD25125A /* Pods-Kolori.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Kolori/Kolori.entitlements;
-				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = GBPM7A3YZ7;
+				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = Kolori/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Kolori;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.2;
+				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -360,10 +358,6 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.mrkprdo.kolori;
 				PRODUCT_NAME = Kolori;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Kolori/Kolori-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -374,22 +368,19 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C00B0651C2578CB26EF2032E /* Pods-Kolori.release.xcconfig */;
+			baseConfigurationReference = 765CE851C5C4B6E6F0059F0A /* Pods-Kolori.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Kolori/Kolori.entitlements;
-				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = GBPM7A3YZ7;
+				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Kolori/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Kolori;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.2;
+				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -398,10 +389,6 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = dev.mrkprdo.kolori;
 				PRODUCT_NAME = Kolori;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Kolori/Kolori-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -464,7 +451,10 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -519,7 +509,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

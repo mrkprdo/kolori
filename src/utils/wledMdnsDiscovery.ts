@@ -140,6 +140,15 @@ export class WledMdnsDiscovery {
     const txt = service.txt || {};
     const host = service.hostName?.toLowerCase() || '';
 
+    console.log('🔍 Evaluating service for WLED:', {
+      name: service.name,
+      host: service.hostName,
+      port: service.port,
+      txt: service.txt,
+      type: service.type,
+      domain: service.domain
+    });
+
     // Check direct WLED indicators
     if (this.hasDirectWledIndicators(name, txt)) {
       return true;
@@ -151,7 +160,16 @@ export class WledMdnsDiscovery {
     }
 
     // Check common WLED device patterns
-    return this.hasWledPatterns(name, host);
+    if (this.hasWledPatterns(name, host)) {
+      return true;
+    }
+
+    // iOS-specific: Be more permissive for HTTP services on port 80
+    if (this.isLikelyWledOnIOS(service)) {
+      return true;
+    }
+
+    return false;
   }
 
   private hasDirectWledIndicators(name: string, txt: Record<string, string>): boolean {
@@ -172,6 +190,33 @@ export class WledMdnsDiscovery {
   private hasWledPatterns(name: string, host: string): boolean {
     const wledPatterns = ['wled-', 'esp32-', 'esp8266-', 'pixelblaze', 'fastled'];
     return wledPatterns.some(pattern => name.includes(pattern) || host.includes(pattern));
+  }
+
+  private isLikelyWledOnIOS(service: Service): boolean {
+    // On iOS, mDNS responses might be different, so be more permissive
+    const isHttpService = service.type?.includes('_http._tcp') || service.port === 80;
+    const hasValidHost = service.hostName && service.hostName.length > 0;
+    const hasValidName = service.name && service.name.length > 0;
+    
+    // For iOS, accept any HTTP service that we can validate later
+    if (isHttpService && hasValidHost && hasValidName) {
+      // Additional checks to avoid false positives
+      const name = service.name?.toLowerCase() || '';
+      const host = service.hostName?.toLowerCase() || '';
+      
+      // Skip common non-WLED services
+      const skipPatterns = ['airplay', 'homekit', 'printer', 'scanner', 'apple', 'iphone', 'ipad', 'mac'];
+      const shouldSkip = skipPatterns.some(pattern => 
+        name.includes(pattern) || host.includes(pattern)
+      );
+      
+      if (!shouldSkip) {
+        console.log('🍎 iOS permissive mode: accepting HTTP service for validation');
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   private extractWledInfo(txt: Record<string, string>): WledDeviceInfo {
