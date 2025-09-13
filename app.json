@@ -15,7 +15,17 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dev.mrkprdo.kolori"
+      "bundleIdentifier": "dev.mrkprdo.kolori",
+      "entitlements": {
+        "com.apple.developer.networking.multicast": true
+      },
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "This app uses the local network to discover and connect to WLED-enabled devices on your network.",
+        "NSBonjourServices": [
+          "_http._tcp",
+          "_http._tcp.local"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
