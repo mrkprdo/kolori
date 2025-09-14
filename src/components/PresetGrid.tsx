@@ -22,7 +22,7 @@ import {
   LEDColor 
 } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
-import { deleteWledPreset, deleteWledPlaylistViaWebSocket, createWledPreset } from '../config/wledApi';
+import { deleteWledPreset, deleteWledPlaylistViaWebSocket, createWledPreset, turnWledOn, turnWledOff } from '../config/wledApi';
 import CustomEffectsModal from './CustomEffectsModal';
 import PlaylistCreationModal from './PlaylistCreationModal';
 import DeviceManagementModal from './DeviceManagementModal';
@@ -435,6 +435,7 @@ export default function PresetGrid({
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
   const [showDeviceManagementModal, setShowDeviceManagementModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isTogglingDevice, setIsTogglingDevice] = useState(false);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<Set<string | number>>(new Set());
   const [isDeletionInProgress, setIsDeletionInProgress] = useState(false);
@@ -636,6 +637,29 @@ export default function PresetGrid({
       ]).start();
     });
   };
+
+  const handleDeviceToggle = useCallback(async (turnOn: boolean) => {
+    if (!activeDevice?.ip || isTogglingDevice) return;
+
+    setIsTogglingDevice(true);
+    try {
+      const result = turnOn
+        ? await turnWledOn(activeDevice.ip)
+        : await turnWledOff(activeDevice.ip);
+
+      if (!result.success) {
+        Alert.alert('Error', `Failed to ${turnOn ? 'turn on' : 'turn off'} device: ${result.message}`);
+      }
+    } catch (error) {
+      Alert.alert('Error', `Failed to ${turnOn ? 'turn on' : 'turn off'} device`);
+    } finally {
+      setIsTogglingDevice(false);
+      // Refresh device state after toggle
+      if (onRefreshPresets) {
+        onRefreshPresets();
+      }
+    }
+  }, [activeDevice?.ip, isTogglingDevice, onRefreshPresets]);
 
   const handleRefresh = useCallback(async () => {
     if (!onRefreshPresets || isRefreshing) return;
@@ -1657,27 +1681,51 @@ export default function PresetGrid({
         </View>
       </ScrollView>
 
-      {/* Floating Device Dropdown - Hidden in delete mode */}
+      {/* Floating Device Controls - Hidden in delete mode */}
       {!isDeleteMode && (
         <View style={[styles.floatingDropdown, { backgroundColor: `${cardBackground}CC`, borderColor }]}>
+          {/* On/Off Button */}
+          <TouchableOpacity
+            onPress={() => handleDeviceToggle(!activeDevice?.wledInfo?.on)}
+            disabled={!activeDevice?.isConnected || isTogglingDevice}
+            style={[
+              styles.powerButton,
+              {
+                backgroundColor: activeDevice?.wledInfo?.on ? '#10b981' : '#6b7280',
+                opacity: (!activeDevice?.isConnected || isTogglingDevice) ? 0.5 : 1
+              }
+            ]}
+          >
+            {isTogglingDevice ? (
+              <Ionicons name="refresh" size={20} color="#ffffff" style={{ transform: [{ rotate: '180deg' }] }} />
+            ) : (
+              <Ionicons
+                name={activeDevice?.wledInfo?.on ? 'power' : 'power-outline'}
+                size={20}
+                color="#ffffff"
+              />
+            )}
+          </TouchableOpacity>
+
+          {/* Device Dropdown */}
           <TouchableOpacity
             onPress={() => setShowDeviceDropdown(!showDeviceDropdown)}
             style={styles.dropdownButton}
           >
             <View style={styles.dropdownContent}>
-              <View 
+              <View
                 style={[
-                  styles.statusDot, 
+                  styles.statusDot,
                   { backgroundColor: activeDevice?.isConnected ? '#10b981' : '#ef4444' }
-                ]} 
+                ]}
               />
               <Text style={[styles.dropdownText, { color: textColor }]} numberOfLines={1}>
                 {activeDevice?.name || 'No Device'}
               </Text>
-              <Ionicons 
-                name={showDeviceDropdown ? 'chevron-up' : 'chevron-down'} 
-                size={16} 
-                color={subtextColor} 
+              <Ionicons
+                name={showDeviceDropdown ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={subtextColor}
               />
             </View>
           </TouchableOpacity>
@@ -2290,12 +2338,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
+  powerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   dropdownButton: {
     flex: 1,
   },
   dropdownContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   dropdownText: {
     fontSize: 16,
