@@ -784,6 +784,18 @@ export const createWledPreset = async (
   presetId?: number,
   protocol = "http"
 ): Promise<ApiResponse & { presetId?: number }> => {
+  // Validate and sanitize preset name
+  if (!presetName || presetName.trim().length === 0) {
+    return {
+      success: false,
+      message: "Preset name cannot be empty",
+    };
+  }
+
+  // Trim and limit preset name length (WLED has limits)
+  const sanitizedName = presetName.trim().substring(0, 32);
+  console.log('📝 Using preset name:', sanitizedName);
+
   // Generate a preset ID if not provided
   const targetPresetId = presetId || 50 + Math.floor(Math.random() * 200);
 
@@ -820,31 +832,54 @@ export const createWledPreset = async (
     const saveController = new AbortController();
     const saveTimeoutId = setTimeout(() => saveController.abort(), 10000);
 
+    const savePayload = {
+      psave: targetPresetId,
+      n: sanitizedName,
+      // Include current brightness and segment settings
+      ib: true, // Include brightness
+      sb: true, // Include segment brightness
+    };
+
+    console.log('💾 Saving WLED preset with payload:', JSON.stringify(savePayload, null, 2));
+
     const saveResponse = await fetch(saveUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        psave: targetPresetId,
-        n: presetName,
-        // Include current brightness and segment settings
-        ib: true, // Include brightness
-        sb: true, // Include segment brightness
-      }),
+      body: JSON.stringify(savePayload),
       signal: saveController.signal,
     });
 
     clearTimeout(saveTimeoutId);
 
     if (saveResponse.ok) {
+      // Try to get the response text to see what WLED returned
+      try {
+        const responseText = await saveResponse.text();
+        console.log('✅ WLED preset save response:', responseText);
+      } catch (parseError) {
+        console.log('✅ WLED preset saved successfully (no response body)');
+      }
+
       return {
         success: true,
         message: "Preset saved successfully",
         presetId: targetPresetId,
       };
     } else {
+      let errorMessage = `Failed to save preset: ${saveResponse.status}`;
+      try {
+        const errorText = await saveResponse.text();
+        if (errorText) {
+          errorMessage += ` - ${errorText}`;
+          console.error('❌ WLED preset save error response:', errorText);
+        }
+      } catch (parseError) {
+        // Ignore parse errors for error responses
+      }
+
       return {
         success: false,
-        message: `Failed to save preset: ${saveResponse.status}`,
+        message: errorMessage,
       };
     }
   } catch (error: any) {

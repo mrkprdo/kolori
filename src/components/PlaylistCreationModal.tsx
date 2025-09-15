@@ -171,6 +171,15 @@ export default function PlaylistCreationModal({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Clear form when modal opens
+  React.useEffect(() => {
+    if (visible) {
+      setPlaylistItems([{ id: '1', presetId: null }]);
+      setShowSaveModal(false);
+      setIsSaving(false);
+    }
+  }, [visible]);
+
   const containerStyle = {
     flex: 1,
   };
@@ -277,8 +286,15 @@ export default function PlaylistCreationModal({
       return;
     }
 
-    if (!device.ip) {
+    // Enhanced device validation
+    if (!device || !device.ip) {
       Alert.alert('Error', 'No WLED device connected. Please connect to a device first.');
+      return;
+    }
+
+    // Validate device is actually connected
+    if (!device.isConnected) {
+      Alert.alert('Error', 'WLED device is not connected. Please check your device connection.');
       return;
     }
 
@@ -325,7 +341,14 @@ export default function PlaylistCreationModal({
         duration: 30 // Default 30 seconds
       }));
 
-      // Save playlist to WLED device
+      // Save playlist to WLED device with enhanced error handling
+      console.log('🔄 Attempting to save playlist to WLED device:', {
+        deviceIp: device.ip,
+        protocol: device.protocol || 'http',
+        playlistName,
+        itemCount: wledPlaylistItems.length
+      });
+
       const result = await createWledPlaylist(
         device.ip,
         wledPlaylistItems,
@@ -333,8 +356,16 @@ export default function PlaylistCreationModal({
         device.protocol || 'http'
       );
 
+      console.log('📡 WLED API Response:', result);
+
       if (!result.success) {
-        throw new Error(result.message || 'Failed to save playlist to WLED device');
+        const errorMessage = result.message || 'Failed to save playlist to WLED device';
+        console.error('❌ Playlist save failed:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      if (!result.presetId) {
+        console.warn('⚠️ Playlist saved but no preset ID returned');
       }
 
       // Generate gradient for playlist based on name and content
@@ -382,8 +413,18 @@ export default function PlaylistCreationModal({
       const playlistGradientData = generatePlaylistGradient(playlistName, validItems.length);
 
       // Create local playlist data for storage
+      // IMPORTANT: For playlists to be activatable on WLED device, we must use the presetId from WLED
+      // If no presetId is returned, this means the playlist creation failed on the device
+      if (!result.presetId) {
+        throw new Error('WLED device did not return a preset ID for the playlist. Playlist may not have been saved properly.');
+      }
+
+      const playlistId = result.presetId;
+      console.log('💾 Creating local playlist data with WLED preset ID:', playlistId);
+
       const playlistData: SavedPlaylist = {
-        id: result.presetId || Date.now(),
+        id: playlistId,
+        presetId: playlistId, // Store the WLED preset ID for activation
         name: playlistName,
         items: validItems.map((item, index) => {
           const effect = customEffects.find(e => (e.presetId || e.id) === item.presetId);
@@ -400,6 +441,7 @@ export default function PlaylistCreationModal({
         linearGradientColors: playlistGradientData.colors,
       };
 
+      console.log('✅ Calling onSavePlaylist with data:', playlistData);
       onSavePlaylist(playlistData);
       
       // Refresh presets if callback is provided
@@ -423,8 +465,19 @@ export default function PlaylistCreationModal({
         }
       ]);
     } catch (error) {
-      console.error('Failed to save playlist:', error);
-      Alert.alert('Error', `Failed to save playlist: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Playlist save error - Full details:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        deviceInfo: {
+          ip: device?.ip,
+          protocol: device?.protocol,
+          isConnected: device?.isConnected
+        }
+      });
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Alert.alert('Playlist Save Failed', `Could not save playlist to WLED device:\n\n${errorMessage}\n\nPlease check:\n• Device is connected\n• Device is responding\n• Network connection is stable`);
     } finally {
       setIsSaving(false);
     }
@@ -439,8 +492,11 @@ export default function PlaylistCreationModal({
         console.error('Failed to refresh presets on modal close:', error);
       }
     }
-    
+
+    // Clear all form data and reset state
     setPlaylistItems([{ id: '1', presetId: null }]);
+    setShowSaveModal(false);
+    setIsSaving(false);
     onClose();
   };
 

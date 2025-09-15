@@ -485,6 +485,16 @@ export default function CustomEffectsModal({
     return firstDevice?.ip || null;
   }, [selectedDevices.length, selectedDevices[0]?.ip]);
 
+  // Clear form when modal opens
+  useEffect(() => {
+    if (visible) {
+      setSelectedEffect(null);
+      setSelectedPalette(null);
+      setShowSaveModal(false);
+      setIsSaving(false);
+    }
+  }, [visible]);
+
   useEffect(() => {
     if (!visible || !currentDeviceIp) {
       return;
@@ -635,51 +645,91 @@ export default function CustomEffectsModal({
       return;
     }
 
+    const device = selectedDevices[0];
+
+    // Enhanced device validation
+    if (!device || !device.ip) {
+      Alert.alert('Error', 'No WLED device connected. Please connect to a device first.');
+      return;
+    }
+
+    // Validate device is actually connected
+    if (!device.isConnected) {
+      Alert.alert('Error', 'WLED device is not connected. Please check your device connection.');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const device = selectedDevices[0];
-      console.log('Saving preset:', presetName, 'with effect:', selectedEffect, 'palette:', selectedPalette);
-      
-      // Use the new createWledPreset function from wledApi
+      console.log('🔄 Attempting to save preset to WLED device:', {
+        deviceIp: device.ip,
+        protocol: device.protocol || 'http',
+        presetName,
+        effectId: selectedEffect,
+        paletteId: selectedPalette
+      });
+
+      // Use the new createWledPreset function from wledApi with enhanced error handling
       const result = await createWledPreset(
         device.ip,
         selectedEffect!,
-        selectedPalette,
+        selectedPalette || 0, // Use 0 as default palette ID if null
         presetName,
         undefined, // Let it auto-generate preset ID
         device.protocol || 'http'
       );
-      
-      if (result.success) {
-        console.log('Preset saved successfully:', result);
-        setShowSaveModal(false);
-        
-        // Refresh the preset list from the device
-        if (onRefreshPresets) {
-          try {
-            await onRefreshPresets();
-          } catch (error) {
-            console.error('Failed to refresh presets:', error);
+
+      console.log('📡 WLED API Response:', result);
+
+      if (!result.success) {
+        const errorMessage = result.message || 'Failed to save preset to WLED device';
+        console.error('❌ Preset save failed:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      if (!result.presetId) {
+        console.warn('⚠️ Preset saved but no preset ID returned');
+      }
+
+      console.log('✅ Preset saved successfully:', result);
+      setShowSaveModal(false);
+
+      // Refresh the preset list from the device
+      if (onRefreshPresets) {
+        try {
+          await onRefreshPresets();
+        } catch (error) {
+          console.error('Failed to refresh presets:', error);
+        }
+      }
+
+      Alert.alert('Preset Saved', `"${presetName}" has been saved to your WLED device!`, [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Reset form and close modal
+            setSelectedEffect(null);
+            setSelectedPalette(null);
+            onClose();
           }
         }
-        
-        Alert.alert('Preset Saved', `"${presetName}" has been saved to your WLED device!`, [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Close modal after refresh
-              onClose();
-            }
-          }
-        ]);
-      } else {
-        throw new Error(result.message);
-      }
+      ]);
     } catch (error) {
-      console.error('Failed to save preset:', error);
+      console.error('❌ Preset save error - Full details:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        deviceInfo: {
+          ip: device?.ip,
+          protocol: device?.protocol,
+          isConnected: device?.isConnected
+        }
+      });
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Alert.alert(
-        'Save Failed',
-        `Could not save the preset to the device. Please check your connection and try again.\n\nError: ${(error as Error).message}`
+        'Preset Save Failed',
+        `Could not save preset to WLED device:\n\n${errorMessage}\n\nPlease check:\n• Device is connected\n• Device is responding\n• Network connection is stable`
       );
     } finally {
       setIsSaving(false);
@@ -687,10 +737,13 @@ export default function CustomEffectsModal({
   };
 
   const handleClose = () => {
+    // Clear all form data and reset state
     setEffects([]);
     setPalettes([]);
     setSelectedEffect(null);
     setSelectedPalette(null);
+    setShowSaveModal(false);
+    setIsSaving(false);
     // Reset loading refs so fresh data can be loaded on next open
     lastLoadedDeviceRef.current = null;
     loadingRef.current = null;
