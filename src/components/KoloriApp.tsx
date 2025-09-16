@@ -799,15 +799,9 @@ function KoloriApp({
     }
   };
 
-  const showNotification = (type: string, title: string, message: string) => {
-    // Notification removed - using console logging instead
-    console.log(`${type.toUpperCase()}: ${title} - ${message}`);
-  };
-
   // Handle preset activation on device - memoized to prevent unnecessary re-creation
   const handlePresetSelect = useCallback(async (presetId: string | number) => {
     if (!activeDevice?.isConnected) {
-      showNotification('error', 'Device Offline', 'Connect to a WLED device to activate presets.');
       return;
     }
 
@@ -828,7 +822,6 @@ function KoloriApp({
       );
 
       if (!preset) {
-        showNotification('error', 'Preset Not Found', 'The selected preset could not be found.');
         return;
       }
 
@@ -874,12 +867,6 @@ function KoloriApp({
           isActive: false 
         })));
         
-        showNotification(
-          'success', 
-          'Preset Activated', 
-          `"${preset.name}" is now active on ${activeDevice.name}.`
-        );
-        
         logger.log('✅ Successfully activated preset:', preset.name);
       } else {
         throw new Error(result.message || 'Failed to activate preset');
@@ -887,11 +874,6 @@ function KoloriApp({
       
     } catch (error: any) {
       logger.error('❌ Failed to activate preset:', error.message.toString());
-      showNotification(
-        'error',
-        'Activation Failed',
-        `Could not activate preset: ${error.message}`
-      );
     }
   }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, customEffects, getDeviceAddress, onDeviceUpdate]);
 
@@ -904,11 +886,6 @@ function KoloriApp({
   // Handle brightness change from slider
   const handleBrightnessChange = useCallback(async (brightness: number) => {
     if (!activeDevice?.isConnected) {
-      showNotification(
-        "error",
-        "Device Offline", 
-        "Connect to a WLED device to change brightness."
-      );
       return;
     }
 
@@ -956,11 +933,6 @@ function KoloriApp({
       // Release lock on error
       isChangingBrightness.current = false;
       logger.error('❌ Failed to set brightness:', error.message);
-      showNotification(
-        'error',
-        'Brightness Change Failed',
-        `Could not set brightness: ${error.message}`
-      );
     }
   }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, activeDevice?.wledInfo, getDeviceAddress, onDeviceUpdate]);
 
@@ -1013,11 +985,6 @@ function KoloriApp({
   // Fetch WLED presets and playlists from device - memoized
   const fetchWledPresets = useCallback(async () => {
     if (!activeDevice?.isConnected) {
-      showNotification(
-        "error",
-        "Device Offline",
-        "Connect to a WLED device to fetch presets."
-      );
       return;
     }
 
@@ -1084,25 +1051,6 @@ function KoloriApp({
           updatedCount += fetchedPlaylists.length;
         }
 
-        // Show notification only if something actually changed
-        if (presetsChanged || playlistsChanged) {
-          const totalItems = fetchedPresets.length + fetchedPlaylists.length;
-          const itemType =
-            fetchedPresets.length > 0 && fetchedPlaylists.length > 0
-              ? "presets and playlists"
-              : fetchedPresets.length > 0
-              ? "presets"
-              : "playlists";
-
-          showNotification(
-            "success",
-            presetsChanged && playlistsChanged ? "Data Updated" : presetsChanged ? "Presets Updated" : "Playlists Updated",
-            `Successfully updated ${totalItems} ${itemType} from your WLED device.`
-          );
-        } else {
-          logger.log('📦 No changes detected, using cached data');
-        }
-        
         // Always clear loading state
         setIsLoadingPlaylists(false);
       } else {
@@ -1110,11 +1058,6 @@ function KoloriApp({
       }
     } catch (error: any) {
       logger.error("❌ Failed to fetch WLED presets:", error.message);
-      showNotification(
-        "error",
-        "Import Failed",
-        `Could not fetch presets: ${error.message}`
-      );
     }
   }, [activeDevice?.isConnected, activeDevice?.id, activeDevice?.name, activeDevice?.protocol, getDeviceAddress, generateHash, hasDataChanged]);
 
