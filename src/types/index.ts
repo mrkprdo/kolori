@@ -68,13 +68,6 @@ export interface LEDColor {
   w?: number;
 }
 
-export interface NotificationState {
-  isVisible: boolean;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message: string;
-}
-
 export interface DeviceValidationResult {
   readonly success: boolean;
   readonly bestAddress?: string;

@@ -7,10 +7,9 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { CustomEffect, SavedPlaylist, Device } from '../types';
 import { createWledPlaylist } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
@@ -62,19 +61,25 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+      transparent={Platform.OS !== 'ios'}
+    >
       <View style={{
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: Platform.OS === 'ios' ? (isDark ? '#1f2937' : '#ffffff') : 'rgba(0, 0, 0, 0.5)',
+        justifyContent: Platform.OS === 'ios' ? 'flex-start' : 'center',
+        alignItems: Platform.OS === 'ios' ? 'stretch' : 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 0,
       }}>
         <View style={{
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          borderRadius: 12,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : (isDark ? '#1f2937' : '#ffffff'),
+          borderRadius: Platform.OS === 'ios' ? 0 : 12,
           padding: 24,
-          marginHorizontal: 32,
-          minWidth: 280,
+          marginHorizontal: Platform.OS === 'ios' ? 0 : 32,
+          minWidth: Platform.OS === 'ios' ? '100%' : 280,
         }}>
           <Text style={{
             fontSize: 18,
@@ -85,7 +90,7 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
           }}>
             Save Playlist
           </Text>
-          
+
           <TextInput
             value={playlistName}
             onChangeText={setPlaylistName}
@@ -101,11 +106,20 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
               paddingVertical: 12,
               fontSize: 16,
               color: isDark ? '#ffffff' : '#111827',
-              marginBottom: 20,
+              marginBottom: 8,
             }}
             autoFocus
           />
-          
+
+          <Text style={{
+            fontSize: 12,
+            color: isDark ? '#9ca3af' : '#6b7280',
+            textAlign: 'right',
+            marginBottom: 20,
+          }}>
+            {playlistName.length}/50
+          </Text>
+
           <View style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -129,7 +143,7 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
                 Cancel
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               onPress={handleSave}
               disabled={!playlistName.trim() || isLoading}
@@ -172,7 +186,7 @@ export default function PlaylistCreationModal({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Clear form when modal opens
+  // Clear form when modal opens - memoized to prevent unnecessary re-renders
   React.useEffect(() => {
     if (visible) {
       setPlaylistItems([{ id: '1', presetId: null }]);
@@ -181,87 +195,64 @@ export default function PlaylistCreationModal({
     }
   }, [visible]);
 
-  const containerStyle = {
-    flex: 1,
-  };
-
-  const contentContainerStyle = {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  };
-
-  const sectionStyle = {
-    backgroundColor: isDark ? '#1f2937' : '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: isDark ? 0.25 : 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: isDark ? '#374151' : '#e5e7eb',
-  };
-
-  const stickyFooterStyle = {
-    borderTopWidth: 1, 
-    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
-    backgroundColor: isDark ? '#1f2937' : '#ffffff',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: isDark ? 0.25 : 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  };
-
-  const buttonContainerStyle = {
-    padding: 16,
-    flexDirection: 'row' as const,
-    gap: 8,
-  };
-
-  const footerButtonPrimaryStyle = {
-    flex: 1, 
-    flexDirection: 'row' as const, 
-    alignItems: 'center' as const, 
-    justifyContent: 'center' as const, 
-    paddingVertical: 14, 
-    paddingHorizontal: 20,
-    borderRadius: 12, 
-    gap: 6,
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  };
-
-  const footerButtonSecondaryStyle = {
-    flex: 1, 
-    flexDirection: 'row' as const, 
-    alignItems: 'center' as const, 
-    justifyContent: 'center' as const, 
-    paddingVertical: 14, 
-    paddingHorizontal: 20,
-    borderRadius: 12, 
-    backgroundColor: isDark ? '#374151' : '#ffffff', 
-    gap: 6,
-    borderWidth: 1,
-    borderColor: isDark ? '#4b5563' : '#d1d5db',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: isDark ? 0.25 : 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  };
-
-  const footerButtonTextStyle = {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: 'white',
-  };
+  const styles = React.useMemo(() => ({
+    container: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    section: {
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.25 : 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: isDark ? '#374151' : '#e5e7eb',
+    },
+    stickyFooter: {
+      borderTopWidth: 1,
+      borderTopColor: isDark ? '#374151' : '#e5e7eb',
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: isDark ? 0.25 : 0.1,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    buttonContainer: {
+      padding: 16,
+      flexDirection: 'row' as const,
+      gap: 8,
+    },
+    footerButtonPrimary: {
+      flex: 1,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      borderRadius: 12,
+      gap: 6,
+      shadowColor: '#3b82f6',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    footerButtonText: {
+      fontSize: 15,
+      fontWeight: '600' as const,
+      color: 'white',
+    },
+  }), [isDark]);
 
   const addNewPlaylistItem = () => {
     const newId = (playlistItems.length + 1).toString();
@@ -510,9 +501,9 @@ export default function PlaylistCreationModal({
       title="Create Playlist"
       scrollable={false}
     >
-      <View style={containerStyle}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={contentContainerStyle}>
-          <View style={sectionStyle}>
+      <View style={styles.container}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.section}>
               <Text style={{
                 fontSize: 16,
                 fontWeight: '600',
@@ -616,45 +607,69 @@ export default function PlaylistCreationModal({
         </ScrollView>
         
         {/* Sticky Footer with Action Buttons */}
-        <View style={stickyFooterStyle}>
-          <View style={buttonContainerStyle}>
+        <View style={styles.stickyFooter}>
+          <View style={styles.buttonContainer}>
             <TouchableOpacity
-              onPress={handleClose}
-              style={footerButtonSecondaryStyle}
-            >
-              <Ionicons name="close-outline" size={20} color={isDark ? '#FFF' : '#6B7280'} />
-              <Text style={[footerButtonTextStyle, { color: isDark ? '#FFF' : '#6B7280' }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              onPress={() => setShowSaveModal(true)}
-              disabled={playlistItems.filter(item => item.presetId !== null).length === 0}
+              onPress={() => {
+                if (Platform.OS === 'ios') {
+                  Alert.prompt(
+                    'Save Playlist',
+                    'Enter playlist name:',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Save',
+                        onPress: (text) => {
+                          if (text && text.trim()) {
+                            handleSavePlaylist(text.trim());
+                          }
+                        }
+                      }
+                    ],
+                    'plain-text',
+                    '',
+                    'default'
+                  );
+                } else {
+                  setShowSaveModal(true);
+                }
+              }}
+              disabled={
+                playlistItems.filter(item => item.presetId !== null).length === 0 ||
+                customEffects.length === 0
+              }
               style={[
-                footerButtonPrimaryStyle,
+                styles.footerButtonPrimary,
                 {
-                  backgroundColor: playlistItems.filter(item => item.presetId !== null).length === 0 ? '#9ca3af' : '#3b82f6',
-                  opacity: playlistItems.filter(item => item.presetId !== null).length === 0 ? 0.6 : 1
+                  backgroundColor: (
+                    playlistItems.filter(item => item.presetId !== null).length === 0 ||
+                    customEffects.length === 0
+                  ) ? '#9ca3af' : '#3b82f6',
+                  opacity: (
+                    playlistItems.filter(item => item.presetId !== null).length === 0 ||
+                    customEffects.length === 0
+                  ) ? 0.6 : 1
                 }
               ]}
             >
               <Ionicons name="save-outline" size={20} color="white" />
-              <Text style={footerButtonTextStyle}>Save Playlist</Text>
+              <Text style={styles.footerButtonText}>Save Playlist</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </FloatingModal>
 
-      {/* Save Playlist Modal */}
-      <SavePlaylistModal
-        visible={showSaveModal}
-        isDark={isDark}
-        onClose={() => setShowSaveModal(false)}
-        onSave={handleSavePlaylist}
-        isLoading={isSaving}
-      />
+      {/* Save Playlist Modal - Only for non-iOS platforms */}
+      {Platform.OS !== 'ios' && (
+        <SavePlaylistModal
+          visible={showSaveModal}
+          isDark={isDark}
+          onClose={() => setShowSaveModal(false)}
+          onSave={handleSavePlaylist}
+          isLoading={isSaving}
+        />
+      )}
     </>
   );
 }

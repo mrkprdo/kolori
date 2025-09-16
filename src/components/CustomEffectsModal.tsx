@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createWledPreset } from '../config/wledApi';
@@ -401,19 +402,25 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+      transparent={Platform.OS !== 'ios'}
+    >
       <View style={{
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: Platform.OS === 'ios' ? (isDark ? '#1f2937' : '#ffffff') : 'rgba(0, 0, 0, 0.5)',
+        justifyContent: Platform.OS === 'ios' ? 'flex-start' : 'center',
+        alignItems: Platform.OS === 'ios' ? 'stretch' : 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 0,
       }}>
         <View style={{
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          borderRadius: 12,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : (isDark ? '#1f2937' : '#ffffff'),
+          borderRadius: Platform.OS === 'ios' ? 0 : 12,
           padding: 24,
-          marginHorizontal: 32,
-          minWidth: 280,
+          marginHorizontal: Platform.OS === 'ios' ? 0 : 32,
+          minWidth: Platform.OS === 'ios' ? '100%' : 280,
         }}>
           <Text style={{
             fontSize: 18,
@@ -531,22 +538,78 @@ export default function CustomEffectsModal({
   const [selectedPalette, setSelectedPalette] = useState<number | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [deviceDimensions, setDeviceDimensions] = useState<'1D' | '2D' | null>(null);
   const selectedEffectRef = useRef<number | null>(null);
 
-  // Memoized static data - no need to query device
+  // Detect WLED device dimensions
+  const detectWledDimensions = useCallback(async (deviceIp: string): Promise<'1D' | '2D' | null> => {
+    try {
+      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`, {
+        timeout: 5000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+      }
+
+      const responseText = await response.text();
+      const sompMatch = responseText.match(/d\.Sf\.SOMP\.value\s*=\s*(\d+)/);
+
+      if (sompMatch) {
+        const sompValue = parseInt(sompMatch[1]);
+        return sompValue === 0 ? '1D' : '2D';
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to detect WLED dimensions:', error);
+      return null;
+    }
+  }, []);
+
+  // Detect device dimensions when modal opens and device is available
+  useEffect(() => {
+    if (visible && selectedDevices.length > 0 && selectedDevices[0].isConnected) {
+      detectWledDimensions(selectedDevices[0].ip)
+        .then(dimensions => {
+          setDeviceDimensions(dimensions);
+          console.log(`🔍 Device dimensions detected: ${dimensions || 'unknown'}`);
+        })
+        .catch(error => {
+          console.error('Failed to detect device dimensions:', error);
+          setDeviceDimensions(null);
+        });
+    } else {
+      setDeviceDimensions(null);
+    }
+  }, [visible, selectedDevices, detectWledDimensions]);
+
+  // Filter effects based on device capabilities
   const effects = useMemo(() => {
-    // Filter effects that have valid data and support both 1D and 2D
-    return WLED_EFFECTS.filter(effect =>
-      effect &&
-      effect.name !== `Unknown Effect ${effect.id}` &&
-      (effect.supports1D || effect.supports2D)
-    ).sort((a, b) => {
+    return WLED_EFFECTS.filter(effect => {
+      if (!effect || effect.name === `Unknown Effect ${effect.id}`) {
+        return false;
+      }
+
+      // If device dimensions are unknown, default to 1D filtering (safer)
+      if (deviceDimensions === null) {
+        return effect.supports1D;
+      }
+
+      // Filter based on detected device dimensions
+      if (deviceDimensions === '1D') {
+        return effect.supports1D; // Include effects that support 1D
+      } else if (deviceDimensions === '2D') {
+        return effect.supports1D || effect.supports2D; // Include both 1D and 2D effects
+      }
+
+      return false;
+    }).sort((a, b) => {
       // Keep "Solid" first, then alphabetical
       if (a.name === 'Solid') return -1;
       if (b.name === 'Solid') return 1;
       return a.name.localeCompare(b.name);
     });
-  }, []);
+  }, [deviceDimensions]);
 
   const palettes = useMemo(() => {
     // Use the static palette definitions
@@ -626,13 +689,16 @@ export default function CustomEffectsModal({
   };
 
   // Clear form when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       selectedEffectRef.current = null;
       setSelectedEffect(null);
       setSelectedPalette(null);
       setShowSaveModal(false);
       setIsSaving(false);
+    } else {
+      // Reset device dimensions when modal closes
+      setDeviceDimensions(null);
     }
   }, [visible]);
 
@@ -848,6 +914,7 @@ export default function CustomEffectsModal({
     setSelectedPalette(null);
     setShowSaveModal(false);
     setIsSaving(false);
+    setDeviceDimensions(null);
     onClose();
   };
 
@@ -965,14 +1032,27 @@ export default function CustomEffectsModal({
 
               {/* Effects Dropdown */}
               <View style={sectionStyle}>
-                <Text style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: isDark ? '#ffffff' : '#111827',
-                  marginBottom: 12,
-                }}>
-                  Effect
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: isDark ? '#ffffff' : '#111827',
+                  }}>
+                    Effect
+                  </Text>
+                  {deviceDimensions && (
+                    <Text style={{
+                      fontSize: 12,
+                      color: isDark ? '#9ca3af' : '#6b7280',
+                      backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 4,
+                    }}>
+                      {deviceDimensions} Device
+                    </Text>
+                  )}
+                </View>
 
                 <CustomDropdown
                   data={effects.map(effect => ({
@@ -1034,7 +1114,30 @@ export default function CustomEffectsModal({
 
                 return (
                   <TouchableOpacity
-                    onPress={() => setShowSaveModal(true)}
+                    onPress={() => {
+                      if (Platform.OS === 'ios') {
+                        Alert.prompt(
+                          'Save Custom Preset',
+                          'Enter preset name:',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Save',
+                              onPress: (text) => {
+                                if (text && text.trim()) {
+                                  handleSavePreset(text.trim());
+                                }
+                              }
+                            }
+                          ],
+                          'plain-text',
+                          '',
+                          'default'
+                        );
+                      } else {
+                        setShowSaveModal(true);
+                      }
+                    }}
                     disabled={!canSave}
                     style={[
                       footerButtonPrimaryStyle,
@@ -1056,14 +1159,16 @@ export default function CustomEffectsModal({
       </View>
     </FloatingModal>
 
-      {/* Save Preset Modal */}
-      <SavePresetModal
-        visible={showSaveModal}
-        isDark={isDark}
-        onClose={() => setShowSaveModal(false)}
-        onSave={handleSavePreset}
-        isLoading={isSaving}
-      />
+      {/* Save Preset Modal - Only for non-iOS platforms */}
+      {Platform.OS !== 'ios' && (
+        <SavePresetModal
+          visible={showSaveModal}
+          isDark={isDark}
+          onClose={() => setShowSaveModal(false)}
+          onSave={handleSavePreset}
+          isLoading={isSaving}
+        />
+      )}
     </>
   );
 }

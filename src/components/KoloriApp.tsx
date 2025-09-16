@@ -56,6 +56,9 @@ interface KoloriAppProps {
   onShowSettings: () => void;
   onScanFromMain: () => void;
   onShowAddManually: () => void;
+  isAnyModalOpen: boolean;
+  isCustomEffectsModalOpen: boolean;
+  updateChildModalState: (modalName: string, isOpen: boolean) => void;
 }
 
 /**
@@ -82,16 +85,13 @@ function KoloriApp({
   onShowSettings,
   onScanFromMain,
   onShowAddManually,
+  isAnyModalOpen,
+  isCustomEffectsModalOpen,
+  updateChildModalState,
 }: KoloriAppProps) {
   
   const systemColorScheme = useColorScheme();
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
-  
-  // Debug logging for playlist state changes - memoized to prevent unnecessary logging
-  useEffect(() => {
-    logger.log('📋 Current playlist state changed:', 
-      `${currentPlaylist.length} items, device ${activeDeviceId} (${activeDevice?.name})`);
-  }, [currentPlaylist.length, activeDeviceId, activeDevice?.name]); // Only log on meaningful changes
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
@@ -108,6 +108,11 @@ function KoloriApp({
   }>({});
   
   const [showPlaylist, setShowPlaylist] = useState(false);
+
+  // Report playlist modal state to parent
+  useEffect(() => {
+    updateChildModalState('showPlaylist', showPlaylist);
+  }, [showPlaylist, updateChildModalState]);
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
   const [currentWebSocketDeviceId, setCurrentWebSocketDeviceId] = useState<number | null>(null);
@@ -230,17 +235,27 @@ function KoloriApp({
     loadLocalData();
   }, []);
 
-  // Device monitoring setup
+  // Device monitoring setup - pause when modals are open for better performance
+  // Exception: CustomEffectsModal needs device monitoring for connectivity status
   useEffect(() => {
-    if (devices.length === 0) {
+    if (devices.length === 0 || (isAnyModalOpen && !isCustomEffectsModalOpen)) {
       deviceMonitor.stop();
+      logger.log((isAnyModalOpen && !isCustomEffectsModalOpen) ? '⏸️ Device monitoring paused - modal is open (not CustomEffectsModal)' : '⏸️ Device monitoring stopped - no devices');
       return;
     }
 
+    logger.log('▶️ Device monitoring started - no modals open');
+
     // Set up status callback
     const handleStatusUpdate = (statuses: DeviceStatus[]) => {
+      // Skip updates if modal opened while monitoring was running (except CustomEffectsModal)
+      if (isAnyModalOpen && !isCustomEffectsModalOpen) {
+        logger.log('⏸️ Skipping device status update - modal is open (not CustomEffectsModal)');
+        return;
+      }
+
       setDeviceStatuses(statuses);
-      
+
       // Update device connection status
       statuses.forEach(status => {
         const device = devices.find(d => d.id === status.deviceId);
@@ -258,7 +273,7 @@ function KoloriApp({
       deviceMonitor.removeStatusCallback(handleStatusUpdate);
       deviceMonitor.stop();
     };
-  }, [devices, onDeviceUpdate]);
+  }, [devices, onDeviceUpdate, isAnyModalOpen, isCustomEffectsModalOpen]);
 
   // Cleanup on unmount to prevent memory leaks
   useEffect(() => {
@@ -302,15 +317,28 @@ function KoloriApp({
   }, []); // Empty dependency array - runs once on mount
 
   // Global WebSocket connection manager - maintains single connection to active device
+  // Pauses WebSocket operations when modals are open for better performance
   useEffect(() => {
     let isMounted = true;
-    
+
     logger.log('🔄 WebSocket useEffect triggered with:', {
       activeDeviceId: activeDevice?.id,
       activeDeviceName: activeDevice?.name,
       isConnected: activeDevice?.isConnected,
-      currentWebSocketDeviceId: currentWebSocketDeviceId
+      currentWebSocketDeviceId: currentWebSocketDeviceId,
+      isAnyModalOpen: isAnyModalOpen
     });
+
+    // If any modal is open except CustomEffectsModal, pause WebSocket operations
+    // CustomEffectsModal needs WebSocket for LED live view functionality
+    if (isAnyModalOpen && !isCustomEffectsModalOpen) {
+      logger.log('⏸️ WebSocket operations paused - modal is open (not CustomEffectsModal)');
+      if (currentWebSocketDeviceId !== null) {
+        // Disable live view but keep connection for when modal closes
+        sendWebSocketCommand({ lv: false });
+      }
+      return;
+    }
 
     // FIRST: If we have an active connection, disable live view on previous device before switching
     if (currentWebSocketDeviceId !== null) {
@@ -615,7 +643,7 @@ function KoloriApp({
       setCurrentWebSocketDeviceId(null);
       disconnectWebSocket();
     };
-  }, [activeDevice?.id, activeDevice?.isConnected]); // Reconnect on device change or connection status change
+  }, [activeDevice?.id, activeDevice?.isConnected, isAnyModalOpen, isCustomEffectsModalOpen]); // Reconnect on device change, connection status change, or modal state change
 
   // Handle live view toggle for existing connection
   useEffect(() => {
@@ -720,6 +748,12 @@ function KoloriApp({
   const loadDevicePresets = async () => {
     const currentActiveDevice = activeDeviceRef.current || activeDevice;
 
+    // Skip loading presets when modals are open for better performance
+    if (isAnyModalOpen) {
+      logger.log('⏸️ Skipping preset load - modal is open');
+      return;
+    }
+
     // Prevent duplicate calls for the same device
     if (currentActiveDevice?.id && lastPresetLoadDeviceId.current === currentActiveDevice.id) {
       logger.log('🔄 Skipping duplicate preset load for device:', currentActiveDevice.name);
@@ -799,15 +833,9 @@ function KoloriApp({
     }
   };
 
-  const showNotification = (type: string, title: string, message: string) => {
-    // Notification removed - using console logging instead
-    console.log(`${type.toUpperCase()}: ${title} - ${message}`);
-  };
-
   // Handle preset activation on device - memoized to prevent unnecessary re-creation
   const handlePresetSelect = useCallback(async (presetId: string | number) => {
     if (!activeDevice?.isConnected) {
-      showNotification('error', 'Device Offline', 'Connect to a WLED device to activate presets.');
       return;
     }
 
@@ -828,7 +856,6 @@ function KoloriApp({
       );
 
       if (!preset) {
-        showNotification('error', 'Preset Not Found', 'The selected preset could not be found.');
         return;
       }
 
@@ -874,12 +901,6 @@ function KoloriApp({
           isActive: false 
         })));
         
-        showNotification(
-          'success', 
-          'Preset Activated', 
-          `"${preset.name}" is now active on ${activeDevice.name}.`
-        );
-        
         logger.log('✅ Successfully activated preset:', preset.name);
       } else {
         throw new Error(result.message || 'Failed to activate preset');
@@ -887,11 +908,6 @@ function KoloriApp({
       
     } catch (error: any) {
       logger.error('❌ Failed to activate preset:', error.message.toString());
-      showNotification(
-        'error',
-        'Activation Failed',
-        `Could not activate preset: ${error.message}`
-      );
     }
   }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, customEffects, getDeviceAddress, onDeviceUpdate]);
 
@@ -904,11 +920,6 @@ function KoloriApp({
   // Handle brightness change from slider
   const handleBrightnessChange = useCallback(async (brightness: number) => {
     if (!activeDevice?.isConnected) {
-      showNotification(
-        "error",
-        "Device Offline", 
-        "Connect to a WLED device to change brightness."
-      );
       return;
     }
 
@@ -956,11 +967,6 @@ function KoloriApp({
       // Release lock on error
       isChangingBrightness.current = false;
       logger.error('❌ Failed to set brightness:', error.message);
-      showNotification(
-        'error',
-        'Brightness Change Failed',
-        `Could not set brightness: ${error.message}`
-      );
     }
   }, [activeDevice?.isConnected, activeDevice?.name, activeDevice?.id, activeDevice?.protocol, activeDevice?.wledInfo, getDeviceAddress, onDeviceUpdate]);
 
@@ -1013,11 +1019,6 @@ function KoloriApp({
   // Fetch WLED presets and playlists from device - memoized
   const fetchWledPresets = useCallback(async () => {
     if (!activeDevice?.isConnected) {
-      showNotification(
-        "error",
-        "Device Offline",
-        "Connect to a WLED device to fetch presets."
-      );
       return;
     }
 
@@ -1084,25 +1085,6 @@ function KoloriApp({
           updatedCount += fetchedPlaylists.length;
         }
 
-        // Show notification only if something actually changed
-        if (presetsChanged || playlistsChanged) {
-          const totalItems = fetchedPresets.length + fetchedPlaylists.length;
-          const itemType =
-            fetchedPresets.length > 0 && fetchedPlaylists.length > 0
-              ? "presets and playlists"
-              : fetchedPresets.length > 0
-              ? "presets"
-              : "playlists";
-
-          showNotification(
-            "success",
-            presetsChanged && playlistsChanged ? "Data Updated" : presetsChanged ? "Presets Updated" : "Playlists Updated",
-            `Successfully updated ${totalItems} ${itemType} from your WLED device.`
-          );
-        } else {
-          logger.log('📦 No changes detected, using cached data');
-        }
-        
         // Always clear loading state
         setIsLoadingPlaylists(false);
       } else {
@@ -1110,11 +1092,6 @@ function KoloriApp({
       }
     } catch (error: any) {
       logger.error("❌ Failed to fetch WLED presets:", error.message);
-      showNotification(
-        "error",
-        "Import Failed",
-        `Could not fetch presets: ${error.message}`
-      );
     }
   }, [activeDevice?.isConnected, activeDevice?.id, activeDevice?.name, activeDevice?.protocol, getDeviceAddress, generateHash, hasDataChanged]);
 
@@ -1127,8 +1104,6 @@ function KoloriApp({
           activePreset={activePreset}
           onPresetSelect={handlePresetSelect}
           isDark={isDark}
-          currentPlaylist={currentPlaylist}
-          onShowPlaylist={() => setShowPlaylist(true)}
           activeDevice={activeDevice}
           devices={devices}
           activeDeviceId={activeDeviceId}
@@ -1136,11 +1111,10 @@ function KoloriApp({
           customEffects={customEffects}
           onAddCustomEffect={(effect) => setCustomEffects(prev => [...prev, effect])}
           onRemoveCustomEffect={(id) => setCustomEffects(prev => prev.filter(e => e.id !== id))}
-          onCustomEffectUpdate={setCustomEffects}
           savedPlaylists={savedPlaylists}
           isLoadingPlaylists={isLoadingPlaylists}
-          onPlaylistEdit={(playlist) => {}}
           onPlaylistRemove={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
+          updateChildModalState={updateChildModalState}
           onPlaylistSelect={useCallback(async (id: number) => {
             const selectedPlaylist = savedPlaylists.find(p => p.id === id);
             if (selectedPlaylist) {
