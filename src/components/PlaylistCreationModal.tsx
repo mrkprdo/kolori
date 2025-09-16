@@ -7,6 +7,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomEffect, SavedPlaylist, Device } from '../types';
@@ -60,19 +61,25 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+      transparent={Platform.OS !== 'ios'}
+    >
       <View style={{
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: Platform.OS === 'ios' ? (isDark ? '#1f2937' : '#ffffff') : 'rgba(0, 0, 0, 0.5)',
+        justifyContent: Platform.OS === 'ios' ? 'flex-start' : 'center',
+        alignItems: Platform.OS === 'ios' ? 'stretch' : 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 0,
       }}>
         <View style={{
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          borderRadius: 12,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : (isDark ? '#1f2937' : '#ffffff'),
+          borderRadius: Platform.OS === 'ios' ? 0 : 12,
           padding: 24,
-          marginHorizontal: 32,
-          minWidth: 280,
+          marginHorizontal: Platform.OS === 'ios' ? 0 : 32,
+          minWidth: Platform.OS === 'ios' ? '100%' : 280,
         }}>
           <Text style={{
             fontSize: 18,
@@ -83,7 +90,7 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
           }}>
             Save Playlist
           </Text>
-          
+
           <TextInput
             value={playlistName}
             onChangeText={setPlaylistName}
@@ -104,7 +111,6 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
             autoFocus
           />
 
-          {/* Character counter */}
           <Text style={{
             fontSize: 12,
             color: isDark ? '#9ca3af' : '#6b7280',
@@ -113,7 +119,7 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
           }}>
             {playlistName.length}/50
           </Text>
-          
+
           <View style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -137,7 +143,7 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
                 Cancel
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               onPress={handleSave}
               disabled={!playlistName.trim() || isLoading}
@@ -604,7 +610,30 @@ export default function PlaylistCreationModal({
         <View style={styles.stickyFooter}>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              onPress={() => setShowSaveModal(true)}
+              onPress={() => {
+                if (Platform.OS === 'ios') {
+                  Alert.prompt(
+                    'Save Playlist',
+                    'Enter playlist name:',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Save',
+                        onPress: (text) => {
+                          if (text && text.trim()) {
+                            handleSavePlaylist(text.trim());
+                          }
+                        }
+                      }
+                    ],
+                    'plain-text',
+                    '',
+                    'default'
+                  );
+                } else {
+                  setShowSaveModal(true);
+                }
+              }}
               disabled={
                 playlistItems.filter(item => item.presetId !== null).length === 0 ||
                 customEffects.length === 0
@@ -631,14 +660,16 @@ export default function PlaylistCreationModal({
       </View>
     </FloatingModal>
 
-      {/* Save Playlist Modal */}
-      <SavePlaylistModal
-        visible={showSaveModal}
-        isDark={isDark}
-        onClose={() => setShowSaveModal(false)}
-        onSave={handleSavePlaylist}
-        isLoading={isSaving}
-      />
+      {/* Save Playlist Modal - Only for non-iOS platforms */}
+      {Platform.OS !== 'ios' && (
+        <SavePlaylistModal
+          visible={showSaveModal}
+          isDark={isDark}
+          onClose={() => setShowSaveModal(false)}
+          onSave={handleSavePlaylist}
+          isLoading={isSaving}
+        />
+      )}
     </>
   );
 }

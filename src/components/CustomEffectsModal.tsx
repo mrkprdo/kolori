@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createWledPreset } from '../config/wledApi';
@@ -401,19 +402,25 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+      transparent={Platform.OS !== 'ios'}
+    >
       <View style={{
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: Platform.OS === 'ios' ? (isDark ? '#1f2937' : '#ffffff') : 'rgba(0, 0, 0, 0.5)',
+        justifyContent: Platform.OS === 'ios' ? 'flex-start' : 'center',
+        alignItems: Platform.OS === 'ios' ? 'stretch' : 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 0,
       }}>
         <View style={{
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          borderRadius: 12,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : (isDark ? '#1f2937' : '#ffffff'),
+          borderRadius: Platform.OS === 'ios' ? 0 : 12,
           padding: 24,
-          marginHorizontal: 32,
-          minWidth: 280,
+          marginHorizontal: Platform.OS === 'ios' ? 0 : 32,
+          minWidth: Platform.OS === 'ios' ? '100%' : 280,
         }}>
           <Text style={{
             fontSize: 18,
@@ -1034,7 +1041,30 @@ export default function CustomEffectsModal({
 
                 return (
                   <TouchableOpacity
-                    onPress={() => setShowSaveModal(true)}
+                    onPress={() => {
+                      if (Platform.OS === 'ios') {
+                        Alert.prompt(
+                          'Save Custom Preset',
+                          'Enter preset name:',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Save',
+                              onPress: (text) => {
+                                if (text && text.trim()) {
+                                  handleSavePreset(text.trim());
+                                }
+                              }
+                            }
+                          ],
+                          'plain-text',
+                          '',
+                          'default'
+                        );
+                      } else {
+                        setShowSaveModal(true);
+                      }
+                    }}
                     disabled={!canSave}
                     style={[
                       footerButtonPrimaryStyle,
@@ -1056,14 +1086,16 @@ export default function CustomEffectsModal({
       </View>
     </FloatingModal>
 
-      {/* Save Preset Modal */}
-      <SavePresetModal
-        visible={showSaveModal}
-        isDark={isDark}
-        onClose={() => setShowSaveModal(false)}
-        onSave={handleSavePreset}
-        isLoading={isSaving}
-      />
+      {/* Save Preset Modal - Only for non-iOS platforms */}
+      {Platform.OS !== 'ios' && (
+        <SavePresetModal
+          visible={showSaveModal}
+          isDark={isDark}
+          onClose={() => setShowSaveModal(false)}
+          onSave={handleSavePreset}
+          isLoading={isSaving}
+        />
+      )}
     </>
   );
 }
