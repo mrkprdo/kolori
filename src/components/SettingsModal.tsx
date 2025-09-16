@@ -220,7 +220,10 @@ export default function SettingsModal({
       <View style={styles.settingsGroup}>
         <TouchableOpacity
           style={[styles.optionButton, { justifyContent: 'space-between' }]}
-          onPress={() => setShowSeasonalPresets(true)}
+          onPress={() => {
+            setShowSeasonalPresets(true);
+            onClose();
+          }}
         >
           <View>
             <Text style={styles.optionText}>Seasonal Presets</Text>
@@ -295,7 +298,10 @@ export default function SettingsModal({
       <View style={styles.settingsGroup}>
         <TouchableOpacity
           style={[styles.optionButton, { justifyContent: 'space-between' }]}
-          onPress={() => setShowAbout(true)}
+          onPress={() => {
+            setShowAbout(true);
+            onClose();
+          }}
         >
           <View>
             <Text style={styles.optionText}>App Info</Text>
