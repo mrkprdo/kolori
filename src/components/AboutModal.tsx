@@ -1,7 +1,8 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Linking, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Using Ionicons for icons
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { APP_VERSION } from '../constants/version';
+import FloatingModal from './FloatingModal';
 
 interface AboutModalProps {
   isVisible: boolean;
@@ -22,26 +23,14 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
   };
 
   const styles = StyleSheet.create({
-    modalContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)', // bg-black bg-opacity-50
-    },
-    modalContent: {
-      width: '90%',
-      maxWidth: 500, // max-w-lg
-      borderRadius: 12, // rounded-2xl
-      overflow: 'hidden',
-      backgroundColor: isDark ? '#1F2937' : '#FFF', // bg-gray-900 or bg-white
-    },
-    header: {
+    content: {
       padding: 24, // p-6
+      gap: 24, // space-y-6
+    },
+    headerSection: {
+      paddingBottom: 16,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#374151' : '#E5E7EB', // border-gray-700 or border-gray-200
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      borderBottomColor: isDark ? '#374151' : '#E5E7EB',
     },
     headerLeft: {
       flexDirection: 'row',
@@ -62,7 +51,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
     titleContainer: {
       // No specific styles needed here, Text components handle it
     },
-    title: {
+    appTitle: {
       fontSize: 20, // text-xl
       fontWeight: 'bold',
       color: isDark ? '#FFF' : '#111827', // text-white or text-gray-900
@@ -70,21 +59,6 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
     version: {
       fontSize: 12, // text-sm
       color: isDark ? '#9CA3AF' : '#6B7280', // text-gray-400 or text-gray-600
-    },
-    closeButton: {
-      padding: 8, // p-2
-      borderRadius: 999, // rounded-full
-      // text-xl leading-none
-      backgroundColor: isDark ? 'transparent' : 'transparent', // hover:bg-gray-800 or hover:bg-gray-100
-    },
-    closeButtonText: {
-      fontSize: 24, // text-xl
-      color: isDark ? '#FFF' : '#000', // text-white or text-gray-900
-    },
-    content: {
-      padding: 24, // p-6
-      gap: 24, // space-y-6
-      color: isDark ? '#FFF' : '#111827', // text-white or text-gray-900
     },
     descriptionSection: {
       textAlign: 'center', // text-center
@@ -171,79 +145,72 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
   });
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
+    <FloatingModal
       visible={isVisible}
-      onRequestClose={onClose}
+      isDark={isDark}
+      onClose={onClose}
+      title="About Kolori"
+      scrollable={true}
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../assets/icon.png')} 
-                  style={styles.logoImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={styles.titleContainer}>
-                <Text style={styles.title}>About Kolori</Text>
-                <Text style={styles.version}>v{APP_VERSION}</Text>
-              </View>
+      <View style={styles.content}>
+        {/* Header with logo and version */}
+        <View style={styles.headerSection}>
+          <View style={styles.headerLeft}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/icon.png')}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} style={styles.closeButtonText} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Content */}
-          <View style={styles.content}>
-            {/* Description */}
-            <View style={styles.descriptionSection}>
-              <View style={styles.appNameContainer}>
-                <Text style={styles.appName}>Kolori</Text>
-                <Text style={styles.plusText}>+</Text>
-                <View style={styles.wledContainer}>
-                  <Image 
-                    source={require('../../assets/wled_logo_akemi.png')} 
-                    style={styles.wledLogo}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
-              <Text style={styles.descriptionText}>
-                A modern, intuitive interface for controlling WLED devices with style and ease.
-              </Text>
-            </View>
-
-            {/* Developer */}
-            <View style={styles.developerSection}>
-              <Text style={styles.developerText}>Developed with ❤️ by</Text>
-              <TouchableOpacity onPress={openProfile}>
-                <Text style={styles.developerLink}>@mrkprdo</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Actions */}
-            <View style={styles.actionsSection}>
-              <TouchableOpacity onPress={openGitHub} style={styles.githubButton}>
-                <Ionicons name="logo-github" size={20} color="#FFF" />
-                <Text style={styles.githubButtonText}>View on GitHub</Text>
-              </TouchableOpacity>
-
-              <View>
-                <Text style={styles.openSourceText}>
-                  This is an open-source project. Contributions are welcome!
-                </Text>
-              </View>
+            <View style={styles.titleContainer}>
+              <Text style={styles.appTitle}>Kolori</Text>
+              <Text style={styles.version}>v{APP_VERSION}</Text>
             </View>
           </View>
         </View>
+
+        {/* Description */}
+        <View style={styles.descriptionSection}>
+          <View style={styles.appNameContainer}>
+            <Text style={styles.appName}>Kolori</Text>
+            <Text style={styles.plusText}>+</Text>
+            <View style={styles.wledContainer}>
+              <Image
+                source={require('../../assets/wled_logo_akemi.png')}
+                style={styles.wledLogo}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+          <Text style={styles.descriptionText}>
+            A modern, intuitive interface for controlling WLED devices with style and ease.
+          </Text>
+        </View>
+
+        {/* Developer */}
+        <View style={styles.developerSection}>
+          <Text style={styles.developerText}>Developed with ❤️ by</Text>
+          <TouchableOpacity onPress={openProfile}>
+            <Text style={styles.developerLink}>@mrkprdo</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Actions */}
+        <View style={styles.actionsSection}>
+          <TouchableOpacity onPress={openGitHub} style={styles.githubButton}>
+            <Ionicons name="logo-github" size={20} color="#FFF" />
+            <Text style={styles.githubButtonText}>View on GitHub</Text>
+          </TouchableOpacity>
+
+          <View>
+            <Text style={styles.openSourceText}>
+              This is an open-source project. Contributions are welcome!
+            </Text>
+          </View>
+        </View>
       </View>
-    </Modal>
+    </FloatingModal>
   );
 };
 
