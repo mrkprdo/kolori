@@ -57,6 +57,9 @@ export default function App() {
   const isAnyModalOpen = showScanNetworkModal || showSettings || showAddManuallyModal ||
                          Object.values(childModalStates).some(isOpen => isOpen);
 
+  // Check if CustomEffectsModal specifically is open (needs WebSocket for live view)
+  const isCustomEffectsModalOpen = childModalStates.showCustomEffectsModal || false;
+
   // Callback for child components to report their modal states
   const updateChildModalState = useCallback((modalName: string, isOpen: boolean) => {
     setChildModalStates(prev => ({
@@ -379,6 +382,7 @@ export default function App() {
                           onScanFromMain={handleOpenScanModalFromMain}
                           onShowAddManually={handleOpenAddManuallyModalFromMain}
                           isAnyModalOpen={isAnyModalOpen}
+                          isCustomEffectsModalOpen={isCustomEffectsModalOpen}
                           updateChildModalState={updateChildModalState}
                         />
                       )}

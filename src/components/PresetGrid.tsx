@@ -227,6 +227,7 @@ const parseGradientString = (gradientString: string): { colors: string[], locati
 
 interface PresetCardProps {
   preset: any;
+  animationDelay?: number;
   isActive: boolean;
   onClick: (id: string | number) => void;
   showIcon?: boolean;
@@ -237,12 +238,13 @@ interface PresetCardProps {
   wiggleAnim?: Animated.Value;
 }
 
-function PresetCard({ 
-  preset, 
-  isActive, 
-  onClick, 
-  showIcon = false, 
-  isDark = false, 
+const PresetCard = React.memo(function PresetCard({
+  preset,
+  animationDelay = 0,
+  isActive,
+  onClick,
+  showIcon = false,
+  isDark = false,
   isDeleteMode = false,
   isSelected = false,
   onToggleSelection,
@@ -253,37 +255,46 @@ function PresetCard({
   // Simplified animation values - only native driver animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
   
-  // Entrance animation
-  useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      tension: 100,
-      friction: 8,
-      delay: (preset as any)._animationDelay || Math.random() * 200, // Staggered animation
-      useNativeDriver: true,
-    }).start();
-  }, []);
-  
-  // Use LinearGradient colors for device presets if available
-  const shouldUseGradient = preset.isWledPreset && (preset.linearGradientColors || preset.gradient);
-  const gradientColors = preset.linearGradientColors || 
-    (preset.gradient ? parseGradientString(preset.gradient).colors : null);
-  
-  // Ensure gradient colors are valid before using LinearGradient
-  const hasValidGradient = gradientColors && 
-    Array.isArray(gradientColors) && 
-    gradientColors.length >= 2 && 
-    gradientColors.every(color => typeof color === 'string' && color.length > 0);
+  // Track if animation has been started to prevent re-animating
+  const hasAnimated = useRef(false);
 
-  const handleCardPress = () => {
+  // Entrance animation - only run once
+  useEffect(() => {
+    if (!hasAnimated.current) {
+      hasAnimated.current = true;
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        delay: animationDelay || Math.random() * 200, // Staggered animation
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [scaleAnim, animationDelay]);
+  
+  // Memoize gradient calculations to prevent expensive re-computations
+  const { shouldUseGradient, gradientColors, hasValidGradient } = useMemo(() => {
+    const shouldUse = preset.isWledPreset && (preset.linearGradientColors || preset.gradient);
+    const colors = preset.linearGradientColors ||
+      (preset.gradient ? parseGradientString(preset.gradient).colors : null);
+
+    const hasValid = colors &&
+      Array.isArray(colors) &&
+      colors.length >= 2 &&
+      colors.every(color => typeof color === 'string' && color.length > 0);
+
+    return { shouldUseGradient: shouldUse, gradientColors: colors, hasValidGradient: hasValid };
+  }, [preset.isWledPreset, preset.linearGradientColors, preset.gradient]);
+
+  const handleCardPress = useCallback(() => {
     if (isDeleteMode && onToggleSelection) {
       onToggleSelection(preset.id);
     } else if (!isDeleteMode) {
       onClick(preset.id);
     }
-  };
+  }, [preset.id, onClick, isDeleteMode, onToggleSelection]);
 
-  const animatedTransformStyle = {
+  const animatedTransformStyle = useMemo(() => ({
     transform: [
       { scale: scaleAnim },
       ...(isDeleteMode && wiggleAnim ? [{
@@ -293,12 +304,19 @@ function PresetCard({
         })
       }] : [])
     ],
-  };
+  }), [scaleAnim, isDeleteMode, wiggleAnim]);
 
-  const cardItemStyle = {
+  const cardItemStyle = useMemo(() => ({
     width: '22%',
     margin: '1.5%',
-  };
+  }), []);
+
+  const cardViewStyle = useMemo(() => [
+    styles.presetCard,
+    shouldUseGradient && hasValidGradient ? { padding: 0 } : { backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1' },
+    isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6', borderRadius: 8 },
+    isSelected && { borderWidth: 3, borderColor: '#ef4444', borderRadius: 8 }
+  ], [shouldUseGradient, hasValidGradient, preset.gradient, isActive, isDeleteMode, isSelected]);
 
 
   // Use unified structure for all preset cards (with gradient support)
@@ -308,12 +326,7 @@ function PresetCard({
         onPress={handleCardPress}
         style={styles.touchableArea}
       >
-        <View style={[
-          styles.presetCard, 
-          shouldUseGradient && hasValidGradient ? { padding: 0 } : { backgroundColor: preset.gradient ? extractPrimaryColor(preset.gradient) : '#6366f1' },
-          isActive && !isDeleteMode && { borderWidth: 2, borderColor: '#3b82f6', borderRadius: 8 }, 
-          isSelected && { borderWidth: 3, borderColor: '#ef4444', borderRadius: 8 }
-        ]}>
+        <View style={cardViewStyle}>
           {shouldUseGradient && hasValidGradient && (
             <LinearGradient
               colors={gradientColors}
@@ -354,7 +367,129 @@ function PresetCard({
       </TouchableOpacity>
     </Animated.View>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.preset.id === nextProps.preset.id &&
+         prevProps.preset.name === nextProps.preset.name &&
+         prevProps.preset.presetId === nextProps.preset.presetId &&
+         prevProps.preset.effectName === nextProps.preset.effectName &&
+         prevProps.animationDelay === nextProps.animationDelay &&
+         prevProps.isActive === nextProps.isActive &&
+         prevProps.isDeleteMode === nextProps.isDeleteMode &&
+         prevProps.isSelected === nextProps.isSelected &&
+         prevProps.showIcon === nextProps.showIcon &&
+         prevProps.isDark === nextProps.isDark;
+});
+
+// Memoized wrapper for PresetCard to prevent unnecessary re-renders
+const MemoizedPresetCard = React.memo(function MemoizedPresetCard({
+  preset,
+  index,
+  activePreset,
+  onPresetSelect,
+  isDark,
+  isDeleteMode,
+  isSelected,
+  onToggleSelection,
+  wiggleAnim,
+  showIcon = false,
+}: {
+  preset: any;
+  index: number;
+  activePreset: string | number | null;
+  onPresetSelect: (id: string | number) => void;
+  isDark: boolean;
+  isDeleteMode: boolean;
+  isSelected: boolean;
+  onToggleSelection: (id: string | number) => void;
+  wiggleAnim?: Animated.Value;
+  showIcon?: boolean;
+}) {
+  const isActive = useMemo(() =>
+    activePreset?.toString() === preset.id.toString(),
+    [activePreset, preset.id]
+  );
+
+  const handleClick = useCallback(() => {
+    onPresetSelect(preset.id);
+  }, [onPresetSelect, preset.id]);
+
+  return (
+    <PresetCard
+      preset={preset}
+      animationDelay={index * 50}
+      isActive={isActive}
+      onClick={handleClick}
+      showIcon={showIcon}
+      isDark={isDark}
+      isDeleteMode={isDeleteMode}
+      isSelected={isSelected}
+      onToggleSelection={onToggleSelection}
+      wiggleAnim={wiggleAnim}
+    />
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.preset.id === nextProps.preset.id &&
+         prevProps.preset.name === nextProps.preset.name &&
+         prevProps.preset.presetId === nextProps.preset.presetId &&
+         prevProps.preset.effectName === nextProps.preset.effectName &&
+         prevProps.index === nextProps.index &&
+         prevProps.activePreset === nextProps.activePreset &&
+         prevProps.isDark === nextProps.isDark &&
+         prevProps.isDeleteMode === nextProps.isDeleteMode &&
+         prevProps.isSelected === nextProps.isSelected &&
+         prevProps.showIcon === nextProps.showIcon;
+});
+
+// Seasonal preset wrapper
+const MemoizedSeasonalPresetCard = React.memo(function MemoizedSeasonalPresetCard({
+  preset,
+  index,
+  activePreset,
+  onPresetSelect,
+  isDark,
+}: {
+  preset: any;
+  index: number;
+  activePreset: string | number | null;
+  onPresetSelect: (id: string | number) => void;
+  isDark: boolean;
+}) {
+  const presetObj = useMemo(() => ({
+    id: preset.presetId,
+    name: preset.name,
+    icon: preset.icon,
+    gradient: getSeasonalGradient(preset.name),
+  }), [preset.presetId, preset.name, preset.icon]);
+
+  const isActive = useMemo(() =>
+    activePreset?.toString() === preset.presetId.toString(),
+    [activePreset, preset.presetId]
+  );
+
+  const handleClick = useCallback(() => {
+    onPresetSelect(preset.presetId);
+  }, [onPresetSelect, preset.presetId]);
+
+  return (
+    <PresetCard
+      preset={presetObj}
+      animationDelay={index * 50}
+      isActive={isActive}
+      onClick={handleClick}
+      showIcon={true}
+      isDark={isDark}
+      isDeleteMode={false}
+      isSelected={false}
+    />
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.preset.presetId === nextProps.preset.presetId &&
+         prevProps.preset.name === nextProps.preset.name &&
+         prevProps.preset.icon === nextProps.preset.icon &&
+         prevProps.index === nextProps.index &&
+         prevProps.activePreset === nextProps.activePreset &&
+         prevProps.isDark === nextProps.isDark;
+});
 
 interface PresetGridProps {
   activePreset: string | number | null;
@@ -500,9 +635,19 @@ export default function PresetGrid({
     };
   }, [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4, wiggleAnim, fadeAnim, scaleAnim]);
 
+  // Memoize customEffects to prevent unnecessary re-renders when parent recreates array
+  const memoizedCustomEffects = useMemo(() => {
+    // Create a stable reference if the actual content hasn't changed
+    return customEffects;
+  }, [
+    customEffects.length,
+    // Create a stable hash of the essential properties
+    customEffects.map(effect => `${effect.id}:${effect.name}:${effect.presetId}:${effect.effectName}`).join('|')
+  ]);
+
   // Device presets are now passed via customEffects prop from parent
-  const devicePresets = customEffects; // Use customEffects directly
-  const loadingPresets = customEffects.length === 0 && activeDevice?.isConnected;
+  const devicePresets = memoizedCustomEffects; // Use memoized customEffects
+  const loadingPresets = memoizedCustomEffects.length === 0 && activeDevice?.isConnected;
 
   // Theme colors
   const backgroundColor = isDark ? '#111827' : '#f9fafb';
@@ -597,7 +742,7 @@ export default function PresetGrid({
   }, [activeDevice?.wledInfo?.bri, resetSliderToDeviceValue, currentBrightnessDisplay]);
 
 
-  const activePresetData = [...seasonalPresets, ...customEffects].find(
+  const activePresetData = [...seasonalPresets, ...memoizedCustomEffects].find(
     (p) => p.presetId?.toString() === activePreset?.toString()
   );
 
@@ -900,7 +1045,7 @@ export default function PresetGrid({
 
         try {
           if (item.type === 'effect') {
-            const effect = customEffects.find(e => e.id === item.id);
+            const effect = memoizedCustomEffects.find(e => e.id === item.id);
             if (effect?.presetId && activeDevice?.ip) {
               console.log(`🗑️ Deleting effect "${item.name}" (preset ID: ${effect.presetId})`);
               const result = await deleteWledPreset(
@@ -1022,7 +1167,7 @@ export default function PresetGrid({
       setDeletionProgress({ current: 0, total: 0, currentItem: '' });
       exitDeleteMode();
     }
-  }, [customEffects, savedPlaylists, activeDevice, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode]);
+  }, [memoizedCustomEffects, savedPlaylists, activeDevice, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode]);
 
   const handleDeleteSelected = useCallback(() => {
     if (selectedForDelete.size === 0) return;
@@ -1041,7 +1186,7 @@ export default function PresetGrid({
     });
 
     // Collect selected custom effects AFTER playlists
-    customEffects.forEach(effect => {
+    memoizedCustomEffects.forEach(effect => {
       if (selectedForDelete.has(effect.id)) {
         selectedItems.push({
           id: effect.id,
@@ -1070,7 +1215,7 @@ export default function PresetGrid({
         },
       ]
     );
-  }, [selectedForDelete, customEffects, savedPlaylists, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode, activeDevice, processDeletionQueue]);
+  }, [selectedForDelete, memoizedCustomEffects, savedPlaylists, onRemoveCustomEffect, onPlaylistRemove, exitDeleteMode, activeDevice, processDeletionQueue]);
 
   // Start wiggle animation when entering delete mode
   useEffect(() => {
@@ -1483,21 +1628,13 @@ export default function PresetGrid({
             <View style={styles.sectionContent}>
               <View style={styles.presetGrid}>
                 {seasonalPresets.map((preset, index) => (
-                  <PresetCard
+                  <MemoizedSeasonalPresetCard
                     key={`seasonal-${preset.id}-${index}`}
-                    preset={{
-                      id: preset.presetId,
-                      name: preset.name,
-                      icon: preset.icon,
-                      gradient: getSeasonalGradient(preset.name),
-                      _animationDelay: index * 50
-                    }}
-                    isActive={activePreset?.toString() === preset.presetId.toString()}
-                    onClick={() => onPresetSelect(preset.presetId)}
-                    showIcon={true}
+                    preset={preset}
+                    index={index}
+                    activePreset={activePreset}
+                    onPresetSelect={onPresetSelect}
                     isDark={isDark}
-                    isDeleteMode={false}
-                    isSelected={false}
                   />
                 ))}
               </View>
@@ -1514,7 +1651,7 @@ export default function PresetGrid({
             <View style={styles.headerLeft}>
               <Ionicons name="color-palette" size={20} color={textColor} />
               <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Custom Effects ({customEffects.length})
+                Custom Effects ({memoizedCustomEffects.length})
               </Text>
             </View>
             <Ionicons
@@ -1582,20 +1719,21 @@ export default function PresetGrid({
                 </View>
               ) : (
                 <View>
-                  {customEffects.length > 0 ? (
+                  {memoizedCustomEffects.length > 0 ? (
                     <View style={styles.presetGrid}>
-                      {customEffects.map((preset, index) => (
-                        <PresetCard
+                      {memoizedCustomEffects.map((preset, index) => (
+                        <MemoizedPresetCard
                           key={`device-${preset.id}-${index}`}
-                          preset={{...preset, _animationDelay: index * 50}}
-                          isActive={activePreset?.toString() === preset.id.toString()}
-                          onClick={onPresetSelect}
-                          showIcon={false}
+                          preset={preset}
+                          index={index}
+                          activePreset={activePreset}
+                          onPresetSelect={onPresetSelect}
                           isDark={isDark}
                           isDeleteMode={isDeleteMode}
                           isSelected={selectedForDelete.has(preset.id)}
                           onToggleSelection={toggleCardSelection}
                           wiggleAnim={wiggleAnim}
+                          showIcon={false}
                         />
                       ))}
                     </View>
@@ -1658,7 +1796,7 @@ export default function PresetGrid({
                   ))}
                 </View>
               ) : (
-                customEffects.length === 0 && (
+                memoizedCustomEffects.length === 0 && (
                   <View style={styles.infoCard}>
                     <Ionicons name="play-outline" size={24} color={subtextColor} style={styles.infoIcon} />
                     <Text style={[styles.infoText, { color: subtextColor }]}>
@@ -1965,7 +2103,7 @@ export default function PresetGrid({
               </Text>
             </TouchableOpacity>
             
-            {customEffects.length > 0 && (
+            {memoizedCustomEffects.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
                   setShowCreateNewOptions(false);

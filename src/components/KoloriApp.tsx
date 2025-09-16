@@ -57,6 +57,7 @@ interface KoloriAppProps {
   onScanFromMain: () => void;
   onShowAddManually: () => void;
   isAnyModalOpen: boolean;
+  isCustomEffectsModalOpen: boolean;
   updateChildModalState: (modalName: string, isOpen: boolean) => void;
 }
 
@@ -85,6 +86,7 @@ function KoloriApp({
   onScanFromMain,
   onShowAddManually,
   isAnyModalOpen,
+  isCustomEffectsModalOpen,
   updateChildModalState,
 }: KoloriAppProps) {
   
@@ -234,10 +236,11 @@ function KoloriApp({
   }, []);
 
   // Device monitoring setup - pause when modals are open for better performance
+  // Exception: CustomEffectsModal needs device monitoring for connectivity status
   useEffect(() => {
-    if (devices.length === 0 || isAnyModalOpen) {
+    if (devices.length === 0 || (isAnyModalOpen && !isCustomEffectsModalOpen)) {
       deviceMonitor.stop();
-      logger.log(isAnyModalOpen ? '⏸️ Device monitoring paused - modal is open' : '⏸️ Device monitoring stopped - no devices');
+      logger.log((isAnyModalOpen && !isCustomEffectsModalOpen) ? '⏸️ Device monitoring paused - modal is open (not CustomEffectsModal)' : '⏸️ Device monitoring stopped - no devices');
       return;
     }
 
@@ -245,9 +248,9 @@ function KoloriApp({
 
     // Set up status callback
     const handleStatusUpdate = (statuses: DeviceStatus[]) => {
-      // Skip updates if modal opened while monitoring was running
-      if (isAnyModalOpen) {
-        logger.log('⏸️ Skipping device status update - modal is open');
+      // Skip updates if modal opened while monitoring was running (except CustomEffectsModal)
+      if (isAnyModalOpen && !isCustomEffectsModalOpen) {
+        logger.log('⏸️ Skipping device status update - modal is open (not CustomEffectsModal)');
         return;
       }
 
@@ -270,7 +273,7 @@ function KoloriApp({
       deviceMonitor.removeStatusCallback(handleStatusUpdate);
       deviceMonitor.stop();
     };
-  }, [devices, onDeviceUpdate, isAnyModalOpen]);
+  }, [devices, onDeviceUpdate, isAnyModalOpen, isCustomEffectsModalOpen]);
 
   // Cleanup on unmount to prevent memory leaks
   useEffect(() => {
@@ -326,9 +329,10 @@ function KoloriApp({
       isAnyModalOpen: isAnyModalOpen
     });
 
-    // If any modal is open, pause WebSocket operations
-    if (isAnyModalOpen) {
-      logger.log('⏸️ WebSocket operations paused - modal is open');
+    // If any modal is open except CustomEffectsModal, pause WebSocket operations
+    // CustomEffectsModal needs WebSocket for LED live view functionality
+    if (isAnyModalOpen && !isCustomEffectsModalOpen) {
+      logger.log('⏸️ WebSocket operations paused - modal is open (not CustomEffectsModal)');
       if (currentWebSocketDeviceId !== null) {
         // Disable live view but keep connection for when modal closes
         sendWebSocketCommand({ lv: false });
@@ -639,7 +643,7 @@ function KoloriApp({
       setCurrentWebSocketDeviceId(null);
       disconnectWebSocket();
     };
-  }, [activeDevice?.id, activeDevice?.isConnected, isAnyModalOpen]); // Reconnect on device change, connection status change, or modal state change
+  }, [activeDevice?.id, activeDevice?.isConnected, isAnyModalOpen, isCustomEffectsModalOpen]); // Reconnect on device change, connection status change, or modal state change
 
   // Handle live view toggle for existing connection
   useEffect(() => {
