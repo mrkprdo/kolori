@@ -98,7 +98,12 @@ const FloatingModal: React.FC<FloatingModalProps> = ({
   }, [onClose]);
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={handleClose}
+    >
       <View style={styles.container}>
         <SafeAreaView style={{ flex: 1 }}>
           <KeyboardAvoidingView
