@@ -14,6 +14,7 @@ import { Picker } from '@react-native-picker/picker';
 import { CustomEffect, SavedPlaylist, Device } from '../types';
 import { createWledPlaylist } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
+import CustomDropdown from './CustomDropdown';
 
 interface PlaylistItem {
   id: string;
@@ -539,40 +540,27 @@ export default function PlaylistCreationModal({
                 }}>
                   {/* Dropdown */}
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <View style={{
-                      backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                      borderRadius: 6,
-                      borderWidth: 1,
-                      borderColor: isDark ? '#6b7280' : '#d1d5db',
-                    }}>
-                      <Picker
-                        selectedValue={item.presetId}
-                        onValueChange={(value) => {
-                          if (value !== null) {
-                            updatePlaylistItem(item.id, value as number);
-                          }
-                        }}
-                        style={{
-                          color: isDark ? '#ffffff' : '#111827',
-                          backgroundColor: 'transparent',
-                        }}
-                        dropdownIconColor={isDark ? '#9ca3af' : '#6b7280'}
-                      >
-                        <Picker.Item 
-                          label="Select preset..." 
-                          value={null}
-                          color={isDark ? '#9ca3af' : '#6b7280'}
-                        />
-                        {customEffects.map((effect) => (
-                          <Picker.Item
-                            key={effect.id}
-                            label={effect.name}
-                            value={effect.presetId || effect.id}
-                            color={isDark ? '#ffffff' : '#111827'}
-                          />
-                        ))}
-                      </Picker>
-                    </View>
+                    <CustomDropdown
+                      data={customEffects.map(effect => ({
+                        id: effect.id,
+                        label: effect.name,
+                        value: effect.presetId || effect.id,
+                      }))}
+                      selectedValue={item.presetId}
+                      onValueChange={(value) => {
+                        if (value !== null) {
+                          updatePlaylistItem(item.id, value as number);
+                        }
+                      }}
+                      placeholder="Select preset..."
+                      isDark={isDark}
+                      searchable={true}
+                      containerStyle={{
+                        minHeight: 44,
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                      }}
+                    />
                   </View>
 
                   {/* Remove button (only show for items beyond the first) */}

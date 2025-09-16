@@ -4,15 +4,13 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Switch,
   StyleSheet,
-  TextInput,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import AboutModal from './AboutModal';
 import FloatingModal from './FloatingModal';
 import SeasonalPresetsModal from './SeasonalPresetsModal';
+import CustomDropdown from './CustomDropdown';
 import { Device as WledDevice, Theme, ScheduleMode, Settings } from '../types';
 
 interface SettingsModalProps {
@@ -177,7 +175,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     gap: 6,
-    minWidth: 100,
+    minWidth: 120,
     justifyContent: 'center',
   },
   ledSizeButtonText: {
@@ -255,17 +253,30 @@ export default function SettingsModal({
 
       <Text style={styles.sectionTitle}>Appearance</Text>
       <View style={styles.settingsGroup}>
-        <View style={[styles.dropdownOptionButton, { backgroundColor: isDark ? '#111827' : '#f9fafb' }]}>
-          <Picker
-            selectedValue={theme}
-            onValueChange={(itemValue) => onThemeChange(itemValue as Theme)}
-            style={{ flex: 1, color: isDark ? '#FFF' : '#000' }}
-            dropdownIconColor={isDark ? '#FFF' : '#000'}
-          >
-            <Picker.Item label="System" value="system" />
-            <Picker.Item label="Light" value="light" />
-            <Picker.Item label="Dark" value="dark" />
-          </Picker>
+        <View style={styles.optionButton}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.optionText}>Theme</Text>
+            <Text style={styles.optionSubText}>Choose your preferred theme</Text>
+          </View>
+          <View style={{ width: 120 }}>
+            <CustomDropdown
+              data={[
+                { id: 'system', label: 'System', value: 'system' },
+                { id: 'light', label: 'Light', value: 'light' },
+                { id: 'dark', label: 'Dark', value: 'dark' },
+              ]}
+              selectedValue={theme}
+              onValueChange={(value) => onThemeChange(value as Theme)}
+              placeholder="Theme"
+              isDark={isDark}
+              searchable={false}
+              containerStyle={{
+                minHeight: 36,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+              }}
+            />
+          </View>
         </View>
       </View>
 
