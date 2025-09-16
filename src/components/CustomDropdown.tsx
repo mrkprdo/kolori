@@ -27,7 +27,6 @@ interface CustomDropdownProps {
   isDark?: boolean;
   disabled?: boolean;
   searchable?: boolean;
-  maxHeight?: number;
   containerStyle?: any;
   dropdownStyle?: any;
 }
@@ -91,7 +90,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
   isDark = false,
   disabled = false,
   searchable = true,
-  maxHeight = 300,
   containerStyle,
   dropdownStyle
 }) => {
@@ -103,6 +101,26 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
   
   const screenHeight = Dimensions.get('window').height;
   const isLargeList = data.length > 20;
+
+  // Memoize modal height calculation to prevent infinite re-renders
+  const modalHeight = useMemo(() => {
+    const itemHeight = Platform.OS === 'ios' ? 44 : 48;
+    const headerHeight = 60; // Header section height
+    const searchHeight = searchable && isLargeList ? 60 : 0; // Search section height
+    const padding = 32; // Modal padding
+    const maxItems = 8; // Maximum items to show before scrolling
+
+    const visibleItems = Math.min(data.length, maxItems);
+    const contentHeight = (visibleItems * itemHeight) + headerHeight + searchHeight + padding;
+
+    // For small lists (3 or fewer items), use content height
+    if (data.length <= 3) {
+      return Math.min(contentHeight, screenHeight * 0.4);
+    }
+
+    // For larger lists, use the original 60% of screen height
+    return screenHeight * 0.6;
+  }, [data.length, searchable, isLargeList, screenHeight]);
   
   // Memoize filtered data calculation for better performance
   const memoizedFilteredData = useMemo(() => {
@@ -279,7 +297,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
               {
                 backgroundColor: isDark ? '#1f2937' : '#ffffff',
                 borderColor: isDark ? '#374151' : '#e5e7eb',
-                height: screenHeight * 0.6, // Force a specific height
+                height: modalHeight,
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               },
@@ -350,7 +368,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
                   onPress={selectItem}
                 />
               )}
-              style={[styles.itemsContainer, { flex: 1 }]}
+              style={{ flex: 1 }}
               showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
               removeClippedSubviews={true}
@@ -495,9 +513,6 @@ const styles = StyleSheet.create({
         textAlignVertical: 'center',
       },
     }),
-  },
-  itemsContainer: {
-    // Remove maxHeight constraint - let it fill available space
   },
   dropdownItem: {
     flexDirection: 'row',

@@ -115,6 +115,7 @@ function KoloriApp({
   const devicesRef = useRef(devices);
   const settingsRef = useRef(settings);
   const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
+  const lastPresetLoadDeviceId = useRef<string | null>(null);
   
   // Memoized helper function to generate hash for comparing data changes
   const generateHash = useCallback((data: any[]): string => {
@@ -345,6 +346,8 @@ function KoloriApp({
     
     // Reset one-way brightness sync on device switch
     hasLocalBrightnessModification.current = false;
+    // Reset preset loading tracking on device switch
+    lastPresetLoadDeviceId.current = null;
     console.log('🔄 One-way brightness sync reset on device switch - will allow WebSocket brightness updates');
     logger.log('🔄 KoloriApp: Managing global WebSocket for active device:', activeDevice?.name, 'clearing old data');
 
@@ -716,24 +719,33 @@ function KoloriApp({
   // Fetch WLED presets and playlists from device (based on old implementation)
   const loadDevicePresets = async () => {
     const currentActiveDevice = activeDeviceRef.current || activeDevice;
-    
+
+    // Prevent duplicate calls for the same device
+    if (currentActiveDevice?.id && lastPresetLoadDeviceId.current === currentActiveDevice.id) {
+      logger.log('🔄 Skipping duplicate preset load for device:', currentActiveDevice.name);
+      return;
+    }
+
     logger.log('🔍 loadDevicePresets called with device:', {
       deviceName: currentActiveDevice?.name,
       isConnected: currentActiveDevice?.isConnected,
       deviceAddress: getDeviceAddress(currentActiveDevice),
       protocol: currentActiveDevice?.protocol
     });
-    
+
     if (!currentActiveDevice?.isConnected) {
       logger.warn('❌ Device offline - cannot fetch presets:', currentActiveDevice?.name);
       return;
     }
-    
+
     const deviceAddress = getDeviceAddress(currentActiveDevice);
     if (!deviceAddress) {
       logger.warn('❌ No device address available for preset fetching');
       return;
     }
+
+    // Mark this device as having presets loaded
+    lastPresetLoadDeviceId.current = currentActiveDevice.id;
     
     try {
       logger.log('📡 Fetching presets from device:', currentActiveDevice.name, 'at', deviceAddress);

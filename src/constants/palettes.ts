@@ -9,6 +9,11 @@ export interface WledPalettesData {
   [paletteName: string]: PaletteColor[];
 }
 
+export interface WledPaletteDef {
+  id: number;
+  name: string;
+}
+
 // Updated WLED palette data based on official WLED source (palettes.h)
 export const WLED_PALETTES_DATA: WledPalettesData = {
   "Default": [{position: 0, red: 255, green: 170, blue: 0}],
@@ -632,3 +637,79 @@ export const WLED_PALETTES_DATA: WledPalettesData = {
     {position: 255, red: 255, green: 0, blue: 0}
   ]
 };
+
+// WLED Palette definitions with IDs (based on https://kno.wled.ge/features/palettes/)
+export const WLED_PALETTES_DEF: WledPaletteDef[] = [
+  { id: 0, name: "Default" },
+  { id: 1, name: "Random Cycle" },
+  { id: 2, name: "Color 1" },
+  { id: 3, name: "Colors 1&2" },
+  { id: 4, name: "Color Gradient" },
+  { id: 5, name: "Colors Only" },
+  { id: 6, name: "Party" },
+  { id: 7, name: "Cloud" },
+  { id: 8, name: "Lava" },
+  { id: 9, name: "Ocean" },
+  { id: 10, name: "Forest" },
+  { id: 11, name: "Rainbow" },
+  { id: 12, name: "Rainbow Bands" },
+  { id: 13, name: "Sunset" },
+  { id: 14, name: "Rivendell" },
+  { id: 15, name: "Breeze" },
+  { id: 16, name: "Red & Blue" },
+  { id: 17, name: "Yellowout" },
+  { id: 18, name: "Analogous" },
+  { id: 19, name: "Splash" },
+  { id: 20, name: "Pastel" },
+  { id: 21, name: "Sunset 2" },
+  { id: 22, name: "Beach" },
+  { id: 23, name: "Vintage" },
+  { id: 24, name: "Departure" },
+  { id: 25, name: "Landscape" },
+  { id: 26, name: "Beech" },
+  { id: 27, name: "Sherbet" },
+  { id: 28, name: "Hult" },
+  { id: 29, name: "Hult 64" },
+  { id: 30, name: "Drywet" },
+  { id: 31, name: "Jul" },
+  { id: 32, name: "Grintage" },
+  { id: 33, name: "Rewhi" },
+  { id: 34, name: "Tertiary" },
+  { id: 35, name: "Fire" },
+  { id: 36, name: "Icefire" },
+  { id: 37, name: "Cyane" },
+  { id: 38, name: "Light Pink" },
+  { id: 39, name: "Autumn" },
+  { id: 40, name: "Magenta" },
+  { id: 41, name: "Magred" },
+  { id: 42, name: "Yelmag" },
+  { id: 43, name: "Yelblu" },
+  { id: 44, name: "Orange & Teal" },
+  { id: 45, name: "Tiamat" },
+  { id: 46, name: "April Night" },
+  { id: 47, name: "Orangery" },
+  { id: 48, name: "C9" },
+  { id: 49, name: "Sakura" },
+  { id: 50, name: "Aurora" },
+  { id: 51, name: "Atlantica" },
+  { id: 52, name: "C9 2" },
+  { id: 53, name: "C9 New" },
+  { id: 54, name: "Temperature" },
+  { id: 55, name: "Aurora 2" },
+  { id: 56, name: "Retro Clown" },
+  { id: 57, name: "Candy" },
+  { id: 58, name: "Toxy Reaf" },
+  { id: 59, name: "Fairy Reaf" },
+  { id: 60, name: "Semi Blue" },
+  { id: 61, name: "Pink Candy" },
+  { id: 62, name: "Red Reaf" },
+  { id: 63, name: "Aqua Flash" },
+  { id: 64, name: "Yelblu Hot" },
+  { id: 65, name: "Lite Light" },
+  { id: 66, name: "Red Flash" },
+  { id: 67, name: "Blink Red" },
+  { id: 68, name: "Red Shift" },
+  { id: 69, name: "Red Tide" },
+  { id: 70, name: "Candy2" },
+  { id: 71, name: "Traffic Light" }
+];
