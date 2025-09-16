@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
   ScrollView,
   RefreshControl,
   Dimensions,
   StyleSheet,
   Animated,
-  Alert
+  Alert,
+  Modal,
+  BackHandler,
+  ToastAndroid,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -590,6 +594,10 @@ export default function PresetGrid({
   const [isCooldownActive, setIsCooldownActive] = useState(false);
   const [cooldownProgress, setCooldownProgress] = useState(0);
   const cooldownAnimRef = useRef<Animated.Value>(new Animated.Value(0)).current;
+
+  // Back handler for "press twice to exit"
+  const backPressedOnce = useRef(false);
+  const backHandlerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Reset slider to device value - force re-render with new defaultValue
   const resetSliderToDeviceValue = useCallback((deviceBrightness: number, reason: string) => {
@@ -689,6 +697,55 @@ export default function PresetGrid({
   useEffect(() => {
     storage.saveToStorage(STORAGE_KEYS.PLAYLISTS_COLLAPSED, isPlaylistsCollapsed);
   }, [isPlaylistsCollapsed]);
+
+  // Handle Android back button - press twice to exit
+  useEffect(() => {
+    const handleBackPress = () => {
+      // If any modal is open, don't handle back press (let modal handle it)
+      if (showCustomEffectsModal || showPlaylistCreationModal || showCreateNewOptions || showDeviceManagementModal || showDeviceDropdown) {
+        return false;
+      }
+
+      // If in delete mode, exit delete mode instead of showing exit prompt
+      if (isDeleteMode) {
+        exitDeleteMode();
+        return true;
+      }
+
+      if (Platform.OS === 'android') {
+        if (backPressedOnce.current) {
+          // Second press - exit app
+          BackHandler.exitApp();
+          return true;
+        } else {
+          // First press - show toast and set flag
+          backPressedOnce.current = true;
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+
+          // Reset flag after 2 seconds
+          if (backHandlerTimeoutRef.current) {
+            clearTimeout(backHandlerTimeoutRef.current);
+          }
+          backHandlerTimeoutRef.current = setTimeout(() => {
+            backPressedOnce.current = false;
+          }, 2000);
+
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+
+    return () => {
+      backHandler.remove();
+      if (backHandlerTimeoutRef.current) {
+        clearTimeout(backHandlerTimeoutRef.current);
+      }
+    };
+  }, [showCustomEffectsModal, showPlaylistCreationModal, showCreateNewOptions, showDeviceManagementModal, showDeviceDropdown, isDeleteMode, exitDeleteMode]);
 
   // Track previous device ID for immediate updates on device switch
   const prevDeviceId = useRef(activeDevice?.id);
@@ -2081,7 +2138,12 @@ export default function PresetGrid({
       )}
 
       {/* Create New Options Modal */}
-      {showCreateNewOptions && (
+      <Modal
+        visible={showCreateNewOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreateNewOptions(false)}
+      >
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setShowCreateNewOptions(false)}
@@ -2089,7 +2151,7 @@ export default function PresetGrid({
         >
           <View style={[styles.fabOptionsContainer, { backgroundColor: cardBackground }]}>
             <Text style={[styles.fabTitle, { color: textColor }]}>Create New</Text>
-            
+
             <TouchableOpacity
               onPress={() => {
                 setShowCreateNewOptions(false);
@@ -2102,7 +2164,7 @@ export default function PresetGrid({
                 Custom Effect
               </Text>
             </TouchableOpacity>
-            
+
             {memoizedCustomEffects.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
@@ -2119,7 +2181,7 @@ export default function PresetGrid({
             )}
           </View>
         </TouchableOpacity>
-      )}
+      </Modal>
 
       {/* Custom Effects Modal */}
       <CustomEffectsModal
