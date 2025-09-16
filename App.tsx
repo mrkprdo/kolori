@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import './global.css';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -49,6 +49,21 @@ export default function App() {
   const [addModalOpenedFrom, setAddModalOpenedFrom] = useState<'main' | 'settings'>('main');
   const [showSettings, setShowSettings] = useState(false);
   const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
+
+  // Track modal states from child components
+  const [childModalStates, setChildModalStates] = useState<Record<string, boolean>>({});
+
+  // Track if any modal is currently open to optimize performance
+  const isAnyModalOpen = showScanNetworkModal || showSettings || showAddManuallyModal ||
+                         Object.values(childModalStates).some(isOpen => isOpen);
+
+  // Callback for child components to report their modal states
+  const updateChildModalState = useCallback((modalName: string, isOpen: boolean) => {
+    setChildModalStates(prev => ({
+      ...prev,
+      [modalName]: isOpen
+    }));
+  }, []);
   
   // Helper function to determine if theme should be dark
   const getIsDark = (theme: string | undefined) => {
@@ -59,46 +74,47 @@ export default function App() {
     return theme === 'dark';
   };
   
-  // Debug modal state changes
-  const debugSetShowScanNetworkModal = (show: boolean) => {
-    console.log('🔍 Modal state changing from', showScanNetworkModal, 'to', show);
-    console.trace('Modal state change trace:');
-    setShowScanNetworkModal(show);
-  };
+  // Optimized modal state handler
+  const handleSetShowScanNetworkModal = React.useCallback((show: boolean) => {
+    if (showScanNetworkModal !== show) {
+      console.log('🔍 Modal state changing from', showScanNetworkModal, 'to', show);
+      setShowScanNetworkModal(show);
+    }
+  }, [showScanNetworkModal]);
 
-  // Smart scan modal handler
-  const handleCloseScanModal = () => {
+  // Smart scan modal handler - memoized to prevent re-renders
+  const handleCloseScanModal = useCallback(() => {
     setShowScanNetworkModal(false);
     // If opened from settings, reopen settings
     if (scanModalOpenedFrom === 'settings') {
       setShowSettings(true);
     }
-  };
+  }, [scanModalOpenedFrom]);
 
-  const handleOpenScanModalFromSettings = () => {
+  const handleOpenScanModalFromSettings = useCallback(() => {
     setShowSettings(false);
     setScanModalOpenedFrom('settings');
     setShowScanNetworkModal(true);
-  };
+  }, []);
 
-  const handleOpenScanModalFromMain = () => {
+  const handleOpenScanModalFromMain = useCallback(() => {
     setScanModalOpenedFrom('main');
     setShowScanNetworkModal(true);
-  };
+  }, []);
 
-  const handleOpenAddManuallyModalFromMain = () => {
+  const handleOpenAddManuallyModalFromMain = useCallback(() => {
     console.log('handleOpenAddManuallyModalFromMain called');
     setAddModalOpenedFrom('main');
     setShowAddManuallyModal(true);
-  };
+  }, []);
 
-  const handleCloseAddManuallyModal = () => {
+  const handleCloseAddManuallyModal = useCallback(() => {
     setShowAddManuallyModal(false);
     // If opened from settings, reopen settings
     if (addModalOpenedFrom === 'settings') {
       setShowSettings(true);
     }
-  };
+  }, [addModalOpenedFrom]);
   const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
   const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
   
@@ -338,7 +354,7 @@ export default function App() {
                           backgroundScanDevices={backgroundScanDevices}
                           existingDevices={devices}
                           showScanNetworkModal={showScanNetworkModal}
-                          setShowScanNetworkModal={debugSetShowScanNetworkModal}
+                          setShowScanNetworkModal={handleSetShowScanNetworkModal}
                           setIsDiscoveryInProgress={setIsDiscoveryInProgress}
                         />
                       )}
@@ -357,11 +373,13 @@ export default function App() {
                           onSettingsUpdate={handleUpdateSettings}
                           onSetActiveDeviceId={handleSetActiveDeviceId}
                           showScanNetworkModal={showScanNetworkModal}
-                          setShowScanNetworkModal={debugSetShowScanNetworkModal}
+                          setShowScanNetworkModal={handleSetShowScanNetworkModal}
                           setIsDiscoveryInProgress={setIsDiscoveryInProgress}
                           onShowSettings={() => setShowSettings(true)}
                           onScanFromMain={handleOpenScanModalFromMain}
                           onShowAddManually={handleOpenAddManuallyModalFromMain}
+                          isAnyModalOpen={isAnyModalOpen}
+                          updateChildModalState={updateChildModalState}
                         />
                       )}
                     </Stack.Screen>
@@ -404,6 +422,7 @@ export default function App() {
           settings={settings}
           onSettingsUpdate={handleUpdateSettings}
           activeDevice={activeDevice}
+          updateChildModalState={updateChildModalState}
         />
       )}
 

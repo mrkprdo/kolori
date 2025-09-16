@@ -360,8 +360,6 @@ interface PresetGridProps {
   activePreset: string | number | null;
   onPresetSelect: (presetId: string | number) => void;
   isDark: boolean;
-  currentPlaylist: any[];
-  onShowPlaylist: () => void;
   activeDevice: WledDevice | undefined;
   devices: WledDevice[];
   activeDeviceId?: number | null;
@@ -369,10 +367,8 @@ interface PresetGridProps {
   customEffects: CustomEffect[];
   onAddCustomEffect: (effect: CustomEffect) => void;
   onRemoveCustomEffect: (effectId: number) => void;
-  onCustomEffectUpdate: (effects: CustomEffect[]) => void;
   savedPlaylists: SavedPlaylist[];
   isLoadingPlaylists: boolean;
-  onPlaylistEdit: (playlist: SavedPlaylist) => void;
   onPlaylistRemove: (playlistId: number) => void;
   onPlaylistSelect: (playlistId: number) => void;
   setShowSettings: (show: boolean) => void;
@@ -382,20 +378,18 @@ interface PresetGridProps {
   liveLedData: LEDColor[];
   liveViewEnabled: boolean;
   onLiveViewToggle: (enabled: boolean) => void;
-  onLiveLedDataUpdate?: (ledData: LEDColor[]) => void;
   onRefreshPresets?: () => Promise<void>;
   onSavePlaylist?: (playlist: SavedPlaylist) => void;
   seasonalPresets: SeasonalPreset[];
   onBrightnessChange?: (brightness: number) => void;
   liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
+  updateChildModalState: (modalName: string, isOpen: boolean) => void;
 }
 
 export default function PresetGrid({
   activePreset,
   onPresetSelect,
   isDark,
-  currentPlaylist,
-  onShowPlaylist,
   activeDevice,
   devices = [],
   activeDeviceId,
@@ -403,10 +397,8 @@ export default function PresetGrid({
   customEffects = [],
   onAddCustomEffect,
   onRemoveCustomEffect,
-  onCustomEffectUpdate,
   savedPlaylists = [],
   isLoadingPlaylists,
-  onPlaylistEdit,
   onPlaylistRemove,
   onPlaylistSelect,
   setShowSettings,
@@ -416,12 +408,12 @@ export default function PresetGrid({
   liveLedData,
   liveViewEnabled,
   onLiveViewToggle,
-  onLiveLedDataUpdate,
   onRefreshPresets,
   onSavePlaylist,
   seasonalPresets,
   onBrightnessChange,
   liveViewLedSize = 'normal',
+  updateChildModalState,
 }: PresetGridProps) {
   
   
@@ -434,6 +426,19 @@ export default function PresetGrid({
   const [showCreateNewOptions, setShowCreateNewOptions] = useState(false);
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
   const [showDeviceManagementModal, setShowDeviceManagementModal] = useState(false);
+
+  // Report modal states to parent for performance optimization
+  React.useEffect(() => {
+    updateChildModalState('showCustomEffectsModal', showCustomEffectsModal);
+  }, [showCustomEffectsModal, updateChildModalState]);
+
+  React.useEffect(() => {
+    updateChildModalState('showPlaylistCreationModal', showPlaylistCreationModal);
+  }, [showPlaylistCreationModal, updateChildModalState]);
+
+  React.useEffect(() => {
+    updateChildModalState('showDeviceManagementModal', showDeviceManagementModal);
+  }, [showDeviceManagementModal, updateChildModalState]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isTogglingDevice, setIsTogglingDevice] = useState(false);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
@@ -591,12 +596,6 @@ export default function PresetGrid({
     resetSliderToDeviceValue(deviceBrightness, 'refresh');
   }, [activeDevice?.wledInfo?.bri, resetSliderToDeviceValue, currentBrightnessDisplay]);
 
-
-  // Device presets are now loaded by the parent KoloriApp component
-  // This component receives them via the customEffects prop
-
-  // Note: WebSocket connection is handled by the parent KoloriApp component
-  // Live LED data is passed down via props and updated through onLiveLedDataUpdate
 
   const activePresetData = [...seasonalPresets, ...customEffects].find(
     (p) => p.presetId?.toString() === activePreset?.toString()
@@ -797,11 +796,6 @@ export default function PresetGrid({
       console.log('🟢 FAB open complete');
     }
   }, [showFabOptions, fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]);
-
-  // Debug state changes
-  useEffect(() => {
-    console.log('⭐ showFabOptions state changed to:', showFabOptions);
-  }, [showFabOptions]);
 
   // Safety mechanism to reset stuck animation flag
   useEffect(() => {

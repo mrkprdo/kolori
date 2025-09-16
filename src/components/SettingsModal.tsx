@@ -25,6 +25,7 @@ interface SettingsModalProps {
   settings: Settings;
   onSettingsUpdate: (settings: Settings) => void;
   activeDevice?: WledDevice | null;
+  updateChildModalState: (modalName: string, isOpen: boolean) => void;
 }
 
 
@@ -196,10 +197,20 @@ export default function SettingsModal({
   settings,
   onSettingsUpdate,
   activeDevice,
+  updateChildModalState,
 }: SettingsModalProps) {
   const [showAbout, setShowAbout] = useState(false); // New state for About modal
   const [showSeasonalPresets, setShowSeasonalPresets] = useState(false); // New state for Seasonal Presets modal
   const styles = getStyles(isDark);
+
+  // Report modal states to parent for performance optimization
+  React.useEffect(() => {
+    updateChildModalState('showAbout', showAbout);
+  }, [showAbout, updateChildModalState]);
+
+  React.useEffect(() => {
+    updateChildModalState('showSeasonalPresets', showSeasonalPresets);
+  }, [showSeasonalPresets, updateChildModalState]);
 
 
 

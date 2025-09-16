@@ -56,6 +56,8 @@ interface KoloriAppProps {
   onShowSettings: () => void;
   onScanFromMain: () => void;
   onShowAddManually: () => void;
+  isAnyModalOpen: boolean;
+  updateChildModalState: (modalName: string, isOpen: boolean) => void;
 }
 
 /**
@@ -82,16 +84,12 @@ function KoloriApp({
   onShowSettings,
   onScanFromMain,
   onShowAddManually,
+  isAnyModalOpen,
+  updateChildModalState,
 }: KoloriAppProps) {
   
   const systemColorScheme = useColorScheme();
   const [currentPlaylist, setCurrentPlaylist] = useState<any[]>([]);
-  
-  // Debug logging for playlist state changes - memoized to prevent unnecessary logging
-  useEffect(() => {
-    logger.log('📋 Current playlist state changed:', 
-      `${currentPlaylist.length} items, device ${activeDeviceId} (${activeDevice?.name})`);
-  }, [currentPlaylist.length, activeDeviceId, activeDevice?.name]); // Only log on meaningful changes
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
@@ -108,6 +106,11 @@ function KoloriApp({
   }>({});
   
   const [showPlaylist, setShowPlaylist] = useState(false);
+
+  // Report playlist modal state to parent
+  useEffect(() => {
+    updateChildModalState('showPlaylist', showPlaylist);
+  }, [showPlaylist, updateChildModalState]);
   const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<DeviceStatus[]>([]);
   const [currentWebSocketDeviceId, setCurrentWebSocketDeviceId] = useState<number | null>(null);
@@ -230,17 +233,26 @@ function KoloriApp({
     loadLocalData();
   }, []);
 
-  // Device monitoring setup
+  // Device monitoring setup - pause when modals are open for better performance
   useEffect(() => {
-    if (devices.length === 0) {
+    if (devices.length === 0 || isAnyModalOpen) {
       deviceMonitor.stop();
+      logger.log(isAnyModalOpen ? '⏸️ Device monitoring paused - modal is open' : '⏸️ Device monitoring stopped - no devices');
       return;
     }
 
+    logger.log('▶️ Device monitoring started - no modals open');
+
     // Set up status callback
     const handleStatusUpdate = (statuses: DeviceStatus[]) => {
+      // Skip updates if modal opened while monitoring was running
+      if (isAnyModalOpen) {
+        logger.log('⏸️ Skipping device status update - modal is open');
+        return;
+      }
+
       setDeviceStatuses(statuses);
-      
+
       // Update device connection status
       statuses.forEach(status => {
         const device = devices.find(d => d.id === status.deviceId);
@@ -258,7 +270,7 @@ function KoloriApp({
       deviceMonitor.removeStatusCallback(handleStatusUpdate);
       deviceMonitor.stop();
     };
-  }, [devices, onDeviceUpdate]);
+  }, [devices, onDeviceUpdate, isAnyModalOpen]);
 
   // Cleanup on unmount to prevent memory leaks
   useEffect(() => {
@@ -302,15 +314,27 @@ function KoloriApp({
   }, []); // Empty dependency array - runs once on mount
 
   // Global WebSocket connection manager - maintains single connection to active device
+  // Pauses WebSocket operations when modals are open for better performance
   useEffect(() => {
     let isMounted = true;
-    
+
     logger.log('🔄 WebSocket useEffect triggered with:', {
       activeDeviceId: activeDevice?.id,
       activeDeviceName: activeDevice?.name,
       isConnected: activeDevice?.isConnected,
-      currentWebSocketDeviceId: currentWebSocketDeviceId
+      currentWebSocketDeviceId: currentWebSocketDeviceId,
+      isAnyModalOpen: isAnyModalOpen
     });
+
+    // If any modal is open, pause WebSocket operations
+    if (isAnyModalOpen) {
+      logger.log('⏸️ WebSocket operations paused - modal is open');
+      if (currentWebSocketDeviceId !== null) {
+        // Disable live view but keep connection for when modal closes
+        sendWebSocketCommand({ lv: false });
+      }
+      return;
+    }
 
     // FIRST: If we have an active connection, disable live view on previous device before switching
     if (currentWebSocketDeviceId !== null) {
@@ -615,7 +639,7 @@ function KoloriApp({
       setCurrentWebSocketDeviceId(null);
       disconnectWebSocket();
     };
-  }, [activeDevice?.id, activeDevice?.isConnected]); // Reconnect on device change or connection status change
+  }, [activeDevice?.id, activeDevice?.isConnected, isAnyModalOpen]); // Reconnect on device change, connection status change, or modal state change
 
   // Handle live view toggle for existing connection
   useEffect(() => {
@@ -719,6 +743,12 @@ function KoloriApp({
   // Fetch WLED presets and playlists from device (based on old implementation)
   const loadDevicePresets = async () => {
     const currentActiveDevice = activeDeviceRef.current || activeDevice;
+
+    // Skip loading presets when modals are open for better performance
+    if (isAnyModalOpen) {
+      logger.log('⏸️ Skipping preset load - modal is open');
+      return;
+    }
 
     // Prevent duplicate calls for the same device
     if (currentActiveDevice?.id && lastPresetLoadDeviceId.current === currentActiveDevice.id) {
@@ -1070,8 +1100,6 @@ function KoloriApp({
           activePreset={activePreset}
           onPresetSelect={handlePresetSelect}
           isDark={isDark}
-          currentPlaylist={currentPlaylist}
-          onShowPlaylist={() => setShowPlaylist(true)}
           activeDevice={activeDevice}
           devices={devices}
           activeDeviceId={activeDeviceId}
@@ -1079,11 +1107,10 @@ function KoloriApp({
           customEffects={customEffects}
           onAddCustomEffect={(effect) => setCustomEffects(prev => [...prev, effect])}
           onRemoveCustomEffect={(id) => setCustomEffects(prev => prev.filter(e => e.id !== id))}
-          onCustomEffectUpdate={setCustomEffects}
           savedPlaylists={savedPlaylists}
           isLoadingPlaylists={isLoadingPlaylists}
-          onPlaylistEdit={(playlist) => {}}
           onPlaylistRemove={(id) => setSavedPlaylists(prev => prev.filter(p => p.id !== id))}
+          updateChildModalState={updateChildModalState}
           onPlaylistSelect={useCallback(async (id: number) => {
             const selectedPlaylist = savedPlaylists.find(p => p.id === id);
             if (selectedPlaylist) {
