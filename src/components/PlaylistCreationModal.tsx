@@ -8,9 +8,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { CustomEffect, SavedPlaylist, Device } from '../types';
 import { createWledPlaylist } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
@@ -236,25 +234,6 @@ export default function PlaylistCreationModal({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 3,
-  };
-
-  const footerButtonSecondaryStyle = {
-    flex: 1, 
-    flexDirection: 'row' as const, 
-    alignItems: 'center' as const, 
-    justifyContent: 'center' as const, 
-    paddingVertical: 14, 
-    paddingHorizontal: 20,
-    borderRadius: 12, 
-    backgroundColor: isDark ? '#374151' : '#ffffff', 
-    gap: 6,
-    borderWidth: 1,
-    borderColor: isDark ? '#4b5563' : '#d1d5db',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: isDark ? 0.25 : 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   };
 
   const footerButtonTextStyle = {
@@ -618,16 +597,6 @@ export default function PlaylistCreationModal({
         {/* Sticky Footer with Action Buttons */}
         <View style={stickyFooterStyle}>
           <View style={buttonContainerStyle}>
-            <TouchableOpacity
-              onPress={handleClose}
-              style={footerButtonSecondaryStyle}
-            >
-              <Ionicons name="close-outline" size={20} color={isDark ? '#FFF' : '#6B7280'} />
-              <Text style={[footerButtonTextStyle, { color: isDark ? '#FFF' : '#6B7280' }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            
             <TouchableOpacity
               onPress={() => setShowSaveModal(true)}
               disabled={playlistItems.filter(item => item.presetId !== null).length === 0}
