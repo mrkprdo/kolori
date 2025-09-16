@@ -27,7 +27,6 @@ interface CustomDropdownProps {
   isDark?: boolean;
   disabled?: boolean;
   searchable?: boolean;
-  maxHeight?: number;
   containerStyle?: any;
   dropdownStyle?: any;
 }
@@ -91,7 +90,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
   isDark = false,
   disabled = false,
   searchable = true,
-  maxHeight = 300,
   containerStyle,
   dropdownStyle
 }) => {
@@ -350,7 +348,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
                   onPress={selectItem}
                 />
               )}
-              style={[styles.itemsContainer, { flex: 1 }]}
+              style={{ flex: 1 }}
               showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
               removeClippedSubviews={true}
@@ -495,9 +493,6 @@ const styles = StyleSheet.create({
         textAlignVertical: 'center',
       },
     }),
-  },
-  itemsContainer: {
-    // Remove maxHeight constraint - let it fill available space
   },
   dropdownItem: {
     flexDirection: 'row',

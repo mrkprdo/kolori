@@ -3,68 +3,83 @@ import { WLED_PALETTES_DATA, PaletteColor } from "../constants/palettes";
 import { ApiResponse, DeviceValidationResult } from "../types";
 
 // Generate gradient for playlists based on name and content
-const generatePlaylistGradient = (playlistName: string, itemCount: number): { colors: string[], gradient: string } => {
+const generatePlaylistGradient = (
+  playlistName: string,
+  itemCount: number
+): { colors: string[]; gradient: string } => {
   const name = playlistName.toLowerCase();
-  
+
   // Name-based gradients
-  if (name.includes('fire') || name.includes('flame')) {
+  if (name.includes("fire") || name.includes("flame")) {
     return {
-      colors: ['#ff4500', '#ff6500', '#ffb347'],
-      gradient: 'linear-gradient(135deg, #ff4500, #ff6500, #ffb347)'
+      colors: ["#ff4500", "#ff6500", "#ffb347"],
+      gradient: "linear-gradient(135deg, #ff4500, #ff6500, #ffb347)",
     };
   }
-  if (name.includes('rainbow') || name.includes('colorful')) {
+  if (name.includes("rainbow") || name.includes("colorful")) {
     return {
-      colors: ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0077ff', '#4b0082'],
-      gradient: 'linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #4b0082)'
+      colors: [
+        "#ff0000",
+        "#ff7700",
+        "#ffff00",
+        "#00ff00",
+        "#0077ff",
+        "#4b0082",
+      ],
+      gradient:
+        "linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #4b0082)",
     };
   }
-  if (name.includes('ocean') || name.includes('blue') || name.includes('water')) {
+  if (
+    name.includes("ocean") ||
+    name.includes("blue") ||
+    name.includes("water")
+  ) {
     return {
-      colors: ['#006994', '#47b5d6', '#87ceeb'],
-      gradient: 'linear-gradient(135deg, #006994, #47b5d6, #87ceeb)'
+      colors: ["#006994", "#47b5d6", "#87ceeb"],
+      gradient: "linear-gradient(135deg, #006994, #47b5d6, #87ceeb)",
     };
   }
-  if (name.includes('sunset') || name.includes('orange')) {
+  if (name.includes("sunset") || name.includes("orange")) {
     return {
-      colors: ['#ff4500', '#ff6347', '#ffa500'],
-      gradient: 'linear-gradient(135deg, #ff4500, #ff6347, #ffa500)'
+      colors: ["#ff4500", "#ff6347", "#ffa500"],
+      gradient: "linear-gradient(135deg, #ff4500, #ff6347, #ffa500)",
     };
   }
-  if (name.includes('forest') || name.includes('green')) {
+  if (name.includes("forest") || name.includes("green")) {
     return {
-      colors: ['#228b22', '#32cd32', '#90ee90'],
-      gradient: 'linear-gradient(135deg, #228b22, #32cd32, #90ee90)'
+      colors: ["#228b22", "#32cd32", "#90ee90"],
+      gradient: "linear-gradient(135deg, #228b22, #32cd32, #90ee90)",
     };
   }
-  if (name.includes('party') || name.includes('dance')) {
+  if (name.includes("party") || name.includes("dance")) {
     return {
-      colors: ['#ff1493', '#00ffff', '#9400d3', '#ff4500'],
-      gradient: 'linear-gradient(135deg, #ff1493, #00ffff, #9400d3, #ff4500)'
+      colors: ["#ff1493", "#00ffff", "#9400d3", "#ff4500"],
+      gradient: "linear-gradient(135deg, #ff1493, #00ffff, #9400d3, #ff4500)",
     };
   }
-  if (name.includes('chill') || name.includes('relax')) {
+  if (name.includes("chill") || name.includes("relax")) {
     return {
-      colors: ['#6a5acd', '#87ceeb', '#dda0dd'],
-      gradient: 'linear-gradient(135deg, #6a5acd, #87ceeb, #dda0dd)'
+      colors: ["#6a5acd", "#87ceeb", "#dda0dd"],
+      gradient: "linear-gradient(135deg, #6a5acd, #87ceeb, #dda0dd)",
     };
   }
-  
+
   // Fallback: Generate gradient based on playlist name hash and item count
-  const hash = name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+  const hash = name.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
   const hue1 = hash % 360;
-  const hue2 = (hash + (itemCount * 30)) % 360;
-  const hue3 = (hash + (itemCount * 60)) % 360;
-  
+  const hue2 = (hash + itemCount * 30) % 360;
+  const hue3 = (hash + itemCount * 60) % 360;
+
   const colors = [
     `hsl(${hue1}, 70%, 50%)`,
     `hsl(${hue2}, 70%, 60%)`,
-    `hsl(${hue3}, 70%, 55%)`
+    `hsl(${hue3}, 70%, 55%)`,
   ];
-  
+
   return {
     colors,
-    gradient: `linear-gradient(135deg, ${colors.join(', ')})`
+    gradient: `linear-gradient(135deg, ${colors.join(", ")})`,
   };
 };
 
@@ -534,7 +549,7 @@ export const fetchWledPresets = async (
         if ((presetData as any).playlist && (presetData as any).playlist.ps) {
           // logger.log(
           //   `🎵 Found playlist in preset ${presetId}:`,
-          //   (presetData as any).n,ok 
+          //   (presetData as any).n,ok
           //   "with",
           //   (presetData as any).playlist.ps.length,
           //   "items"
@@ -551,10 +566,13 @@ export const fetchWledPresets = async (
               playlistItemId: `${psId}_${index}`,
             })
           );
-          
+
           // Generate gradient for the playlist based on name and content
-          const playlistGradientData = generatePlaylistGradient(playlistName, playlistItems.length);
-          
+          const playlistGradientData = generatePlaylistGradient(
+            playlistName,
+            playlistItems.length
+          );
+
           const playlist = {
             id: `playlist_${presetId}`,
             presetId: parseInt(presetId),
@@ -699,82 +717,6 @@ export const generatePresetGradient = (paletteId: number): string => {
   return `linear-gradient(135deg, ${colorStops})`;
 };
 
-// WLED palette ID to name mapping (from WLED documentation)
-const WLED_PALETTE_ID_MAP: { [id: number]: string } = {
-  0: "Default",
-  1: "Random Cycle",
-  2: "Color 1",
-  3: "Colors 1&2",
-  4: "Color Gradient",
-  5: "Colors Only",
-  6: "Party",
-  7: "Cloud",
-  8: "Lava",
-  9: "Ocean",
-  10: "Forest",
-  11: "Rainbow",
-  12: "Rainbow Bands",
-  13: "Sunset",
-  14: "Rivendell",
-  15: "Breeze",
-  16: "Red & Blue",
-  17: "Yellowout",
-  18: "Analogous",
-  19: "Splash",
-  20: "Pastel",
-  21: "Sunset 2",
-  22: "Beech",
-  23: "Vintage",
-  24: "Departure",
-  25: "Landscape",
-  26: "Beach",
-  27: "Sherbet",
-  28: "Hult",
-  29: "Hult 64",
-  30: "Drywet",
-  31: "Jul",
-  32: "Grintage",
-  33: "Rewhi",
-  34: "Tertiary",
-  35: "Fire",
-  36: "Icefire",
-  37: "Cyane",
-  38: "Light Pink",
-  39: "Autumn",
-  40: "Magenta",
-  41: "Magred",
-  42: "Yelmag",
-  43: "Yelblu",
-  44: "Orange & Teal",
-  45: "Tiamat",
-  46: "April Night",
-  47: "Orangery",
-  48: "C9",
-  49: "Sakura",
-  50: "Aurora",
-  51: "Atlantica",
-  52: "C9 2",
-  53: "C9 New",
-  54: "Temperature",
-  55: "Aurora 2",
-  56: "Retro Clown",
-  57: "Candy",
-  58: "Toxy Reaf",
-  59: "Fairy Reaf",
-  60: "Semi Blue",
-  61: "Pink Candy",
-  62: "Red Reaf",
-  63: "Aqua Flash",
-  64: "Yelblu Hot",
-  65: "Lite Light",
-  66: "Red Flash",
-  67: "Blink Red",
-  68: "Red Shift",
-  69: "Red Tide",
-  70: "Candy2",
-  71: "Traffic Light",
-};
-
 // Function to create/save a WLED preset
 export const createWledPreset = async (
   deviceAddress: string,
@@ -794,7 +736,7 @@ export const createWledPreset = async (
 
   // Trim and limit preset name length (WLED has limits)
   const sanitizedName = presetName.trim().substring(0, 32);
-  console.log('📝 Using preset name:', sanitizedName);
+  console.log("📝 Using preset name:", sanitizedName);
 
   // Generate a preset ID if not provided
   const targetPresetId = presetId || 50 + Math.floor(Math.random() * 200);
@@ -840,7 +782,10 @@ export const createWledPreset = async (
       sb: true, // Include segment brightness
     };
 
-    console.log('💾 Saving WLED preset with payload:', JSON.stringify(savePayload, null, 2));
+    console.log(
+      "💾 Saving WLED preset with payload:",
+      JSON.stringify(savePayload, null, 2)
+    );
 
     const saveResponse = await fetch(saveUrl, {
       method: "POST",
@@ -855,9 +800,9 @@ export const createWledPreset = async (
       // Try to get the response text to see what WLED returned
       try {
         const responseText = await saveResponse.text();
-        console.log('✅ WLED preset save response:', responseText);
+        console.log("✅ WLED preset save response:", responseText);
       } catch (parseError) {
-        console.log('✅ WLED preset saved successfully (no response body)');
+        console.log("✅ WLED preset saved successfully (no response body)");
       }
 
       return {
@@ -871,7 +816,7 @@ export const createWledPreset = async (
         const errorText = await saveResponse.text();
         if (errorText) {
           errorMessage += ` - ${errorText}`;
-          console.error('❌ WLED preset save error response:', errorText);
+          console.error("❌ WLED preset save error response:", errorText);
         }
       } catch (parseError) {
         // Ignore parse errors for error responses
@@ -1031,7 +976,7 @@ export const deleteWledPreset = async (
 
     const url = buildWledUrl(deviceAddress, protocol, "/json/state");
     logger.log("🗑️ Request URL:", url);
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -1050,11 +995,16 @@ export const deleteWledPreset = async (
       // Try to parse response to get more details
       try {
         const responseData = await response.json();
-        logger.log("✅ WLED API: Preset deleted successfully, response:", responseData);
+        logger.log(
+          "✅ WLED API: Preset deleted successfully, response:",
+          responseData
+        );
       } catch (parseError) {
-        logger.log("✅ WLED API: Preset deleted successfully (no JSON response)");
+        logger.log(
+          "✅ WLED API: Preset deleted successfully (no JSON response)"
+        );
       }
-      
+
       return {
         success: true,
         message: "Preset deleted successfully",
@@ -1069,7 +1019,7 @@ export const deleteWledPreset = async (
       } catch (parseError) {
         // Ignore parse errors for error responses
       }
-      
+
       logger.error("❌ WLED API: Preset deletion failed:", errorMessage);
       return {
         success: false,
@@ -1109,7 +1059,12 @@ export const deleteWledPlaylistViaWebSocket = async (
   }
 
   // In WLED, playlists are stored as presets, so we use the same deletion method
-  logger.log("🗑️ WLED API: Deleting playlist/preset", presetId, "from", deviceAddress);
+  logger.log(
+    "🗑️ WLED API: Deleting playlist/preset",
+    presetId,
+    "from",
+    deviceAddress
+  );
   return await deleteWledPreset(deviceAddress, presetId, protocol);
 };
 

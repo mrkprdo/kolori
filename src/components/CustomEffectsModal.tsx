@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,346 @@ import { createWledPreset } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
 import LEDVisualization from './LEDVisualization';
 import CustomDropdown from './CustomDropdown';
-import { WLEDEffectData, getEffectByName } from '../data/wledEffects';
+import { WLED_EFFECTS } from '../data/wledEffects';
+import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, WledPaletteDef, PaletteColor } from '../constants/palettes';
+import { LinearGradient } from 'expo-linear-gradient';
 
-interface Palette {
-  id: number;
-  name: string;
-}
+// Use the palette definition from constants
+type Palette = WledPaletteDef;
+
+// Helper function to convert palette colors to LinearGradient colors
+const getPaletteGradientColors = (paletteName: string): [string, string, ...string[]] => {
+  const paletteData = WLED_PALETTES_DATA[paletteName];
+
+  if (!paletteData || paletteData.length === 0) {
+    return ['#888888', '#555555']; // Default gradient
+  }
+
+  // Convert palette color data to RGB strings
+  const colors = paletteData.map((color: PaletteColor) =>
+    `rgb(${color.red}, ${color.green}, ${color.blue})`
+  );
+
+  // Ensure at least 2 colors for LinearGradient
+  if (colors.length === 0) {
+    return ['#888888', '#555555'];
+  } else if (colors.length === 1) {
+    return [colors[0], colors[0]];
+  }
+
+  return colors as [string, string, ...string[]];
+};
+
+// Custom Palette Dropdown Item Component
+const PaletteDropdownItem = React.memo<{
+  item: { id: number; label: string; value: any };
+  isSelected: boolean;
+  isDark: boolean;
+  onPress: (item: any) => void;
+}>(({ item, isSelected, isDark, onPress }) => {
+  const handlePress = React.useCallback(() => {
+    onPress(item);
+  }, [item, onPress]);
+
+  const gradientColors = React.useMemo(() =>
+    getPaletteGradientColors(item.label),
+    [item.label]
+  );
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderBottomWidth: 0.5,
+        borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+        backgroundColor: isSelected
+          ? (isDark ? '#374151' : '#f3f4f6')
+          : 'transparent',
+        minHeight: 56, // Taller to accommodate gradient
+      }}
+      activeOpacity={0.8}
+    >
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{
+          width: 40,
+          height: 24,
+          borderRadius: 4,
+          marginRight: 12,
+          borderWidth: 1,
+          borderColor: isDark ? '#4b5563' : '#d1d5db',
+        }}
+      />
+
+      {/* Palette Name */}
+      <Text
+        style={{
+          fontSize: 16,
+          flex: 1,
+          color: isDark ? '#ffffff' : '#111827',
+          fontWeight: isSelected ? '600' : '400',
+        }}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Text>
+
+      {/* Selection Indicator */}
+      {isSelected && (
+        <Ionicons
+          name="checkmark"
+          size={20}
+          color="#3b82f6"
+        />
+      )}
+    </TouchableOpacity>
+  );
+});
+
+// Custom Palette Dropdown Component
+const PaletteDropdown = React.memo<{
+  data: { id: number; label: string; value: any }[];
+  selectedValue: any;
+  onValueChange: (value: any) => void;
+  placeholder?: string;
+  isDark?: boolean;
+  disabled?: boolean;
+}>(({ data, selectedValue, onValueChange, placeholder = 'Select a palette...', isDark = false, disabled = false }) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+  const [searchText, setSearchText] = React.useState('');
+
+  const filteredData = React.useMemo(() => {
+    if (searchText.trim() === '') {
+      return data;
+    } else {
+      const searchLower = searchText.toLowerCase();
+      return data.filter(item =>
+        item.label.toLowerCase().includes(searchLower)
+      );
+    }
+  }, [searchText, data]);
+
+  const openDropdown = React.useCallback(() => {
+    if (disabled) return;
+    setIsVisible(true);
+    setSearchText('');
+  }, [disabled]);
+
+  const closeDropdown = React.useCallback(() => {
+    setIsVisible(false);
+    setSearchText('');
+  }, []);
+
+  const selectItem = React.useCallback((item: any) => {
+    onValueChange(item.value);
+    closeDropdown();
+  }, [onValueChange, closeDropdown]);
+
+  const getSelectedLabel = React.useCallback(() => {
+    const selectedItem = data.find(item => item.value === selectedValue);
+    return selectedItem?.label || placeholder;
+  }, [data, selectedValue, placeholder]);
+
+  const isSelected = selectedValue !== null && selectedValue !== undefined;
+
+  const selectedGradientColors = React.useMemo((): [string, string, ...string[]] => {
+    if (!isSelected) return ['#888888', '#555555'];
+    const selectedItem = data.find(item => item.value === selectedValue);
+    return selectedItem ? getPaletteGradientColors(selectedItem.label) : ['#888888', '#555555'];
+  }, [isSelected, selectedValue, data]);
+
+  return (
+    <>
+      <TouchableOpacity
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderRadius: 8,
+          borderWidth: 1,
+          backgroundColor: isDark ? '#374151' : '#f9fafb',
+          borderColor: isDark ? '#4b5563' : '#d1d5db',
+          minHeight: 50,
+          opacity: disabled ? 0.6 : 1,
+        }}
+        onPress={openDropdown}
+        disabled={disabled}
+        activeOpacity={0.8}
+      >
+        {/* Selected Palette Gradient Preview */}
+        {isSelected && (
+          <LinearGradient
+            colors={selectedGradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              width: 32,
+              height: 20,
+              borderRadius: 4,
+              marginRight: 12,
+              borderWidth: 1,
+              borderColor: isDark ? '#4b5563' : '#d1d5db',
+            }}
+          />
+        )}
+
+        <Text
+          style={{
+            fontSize: 16,
+            flex: 1,
+            marginRight: 8,
+            color: isSelected
+              ? (isDark ? '#ffffff' : '#111827')
+              : (isDark ? '#9ca3af' : '#6b7280'),
+          }}
+          numberOfLines={1}
+        >
+          {getSelectedLabel()}
+        </Text>
+
+        <Ionicons
+          name="chevron-down"
+          size={20}
+          color={isDark ? '#9ca3af' : '#6b7280'}
+        />
+      </TouchableOpacity>
+
+      <Modal
+        visible={isVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDropdown}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+          }}
+          activeOpacity={1}
+          onPress={closeDropdown}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              height: '60%',
+              backgroundColor: isDark ? '#1f2937' : '#ffffff',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: isDark ? '#374151' : '#e5e7eb',
+            }}
+          >
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+              borderBottomWidth: 0.5,
+              borderBottomColor: isDark ? '#374151' : '#e5e7eb',
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: isDark ? '#ffffff' : '#111827',
+              }}>
+                Select Palette
+              </Text>
+              <TouchableOpacity
+                onPress={closeDropdown}
+                style={{ padding: 4 }}
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={isDark ? '#9ca3af' : '#6b7280'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+              paddingVertical: 14,
+              borderBottomWidth: 0.5,
+              borderBottomColor: isDark ? '#374151' : '#e5e7eb',
+            }}>
+              <Ionicons
+                name="search"
+                size={20}
+                color={isDark ? '#9ca3af' : '#6b7280'}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={{
+                  flex: 1,
+                  fontSize: 16,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 6,
+                  backgroundColor: isDark ? '#374151' : '#f9fafb',
+                  color: isDark ? '#ffffff' : '#111827',
+                }}
+                placeholder="Search palettes..."
+                placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+            </View>
+
+            {/* Palettes List */}
+            <ScrollView style={{ flex: 1 }}>
+              {filteredData.map((item) => (
+                <PaletteDropdownItem
+                  key={item.id}
+                  item={item}
+                  isSelected={item.value === selectedValue}
+                  isDark={isDark}
+                  onPress={selectItem}
+                />
+              ))}
+              {filteredData.length === 0 && (
+                <View style={{
+                  alignItems: 'center',
+                  paddingVertical: 32,
+                }}>
+                  <Ionicons
+                    name="search-outline"
+                    size={32}
+                    color={isDark ? '#6b7280' : '#9ca3af'}
+                  />
+                  <Text style={{
+                    fontSize: 16,
+                    marginTop: 8,
+                    color: isDark ? '#9ca3af' : '#6b7280',
+                  }}>
+                    No palettes found
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+});
 
 interface CustomEffectsModalProps {
   visible: boolean;
@@ -90,7 +424,7 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
           }}>
             Save Custom Preset
           </Text>
-          
+
           <Text style={{
             fontSize: 14,
             color: isDark ? '#9ca3af' : '#6b7280',
@@ -98,7 +432,7 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
           }}>
             Preset Name
           </Text>
-          
+
           <TextInput
             value={presetName}
             onChangeText={setPresetName}
@@ -118,7 +452,7 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
             }}
             autoFocus
           />
-          
+
           <Text style={{
             fontSize: 12,
             color: isDark ? '#9ca3af' : '#6b7280',
@@ -127,7 +461,7 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
           }}>
             {presetName.length}/50
           </Text>
-          
+
           <View style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -151,7 +485,7 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
                 Cancel
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               onPress={handleSave}
               disabled={!presetName.trim() || isLoading}
@@ -182,16 +516,6 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   );
 };
 
-// Simple cache for device data
-const deviceCache = new Map<string, {
-  effects: WLEDEffectData[];
-  palettes: Palette[];
-  dimensions: '1D' | '2D' | null;
-  timestamp: number;
-}>();
-
-const CACHE_DURATION = 30000; // 30 seconds cache
-
 export default function CustomEffectsModal({
   visible,
   isDark = false,
@@ -202,16 +526,41 @@ export default function CustomEffectsModal({
   onLiveViewToggle,
   onRefreshPresets,
 }: CustomEffectsModalProps) {
-  const [effects, setEffects] = useState<WLEDEffectData[]>([]);
-  const [palettes, setPalettes] = useState<Palette[]>([]);
+  // Use static data instead of device queries
   const [selectedEffect, setSelectedEffect] = useState<number | null>(null);
   const [selectedPalette, setSelectedPalette] = useState<number | null>(null);
-  const [isLoadingEffects, setIsLoadingEffects] = useState(false);
-  const [isLoadingPalettes, setIsLoadingPalettes] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const loadingRef = useRef<string | null>(null);
-  const lastLoadedDeviceRef = useRef<string | null>(null);
+  const selectedEffectRef = useRef<number | null>(null);
+
+  // Memoized static data - no need to query device
+  const effects = useMemo(() => {
+    // Filter effects that have valid data and support both 1D and 2D
+    return WLED_EFFECTS.filter(effect =>
+      effect &&
+      effect.name !== `Unknown Effect ${effect.id}` &&
+      (effect.supports1D || effect.supports2D)
+    ).sort((a, b) => {
+      // Keep "Solid" first, then alphabetical
+      if (a.name === 'Solid') return -1;
+      if (b.name === 'Solid') return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, []);
+
+  const palettes = useMemo(() => {
+    // Use the static palette definitions
+    return WLED_PALETTES_DEF;
+  }, []);
+
+  // Memoize palette dropdown data to prevent infinite re-renders
+  const memoizedPaletteData = useMemo(() => {
+    return palettes.map(palette => ({
+      id: palette.id,
+      label: palette.name,
+      value: palette.id,
+    }));
+  }, [palettes]);
 
   const sectionStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
@@ -236,8 +585,8 @@ export default function CustomEffectsModal({
   };
 
   const stickyFooterStyle = {
-    borderTopWidth: 1, 
-    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
+    borderTopWidth: 1,
+    borderTopColor: isDark ? '#374151' : '#e5e7eb',
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
@@ -255,13 +604,13 @@ export default function CustomEffectsModal({
   };
 
   const footerButtonPrimaryStyle = {
-    flex: 1, 
-    flexDirection: 'row' as const, 
-    alignItems: 'center' as const, 
-    justifyContent: 'center' as const, 
-    paddingVertical: 14, 
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12, 
+    borderRadius: 12,
     gap: 6,
     shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 2 },
@@ -276,218 +625,10 @@ export default function CustomEffectsModal({
     color: 'white',
   };
 
-  // Function to detect if WLED device is configured for 1D or 2D
-  const detectWledDimensions = async (deviceIp: string): Promise<'1D' | '2D' | null> => {
-    try {
-      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
-      }
-      
-      const responseText = await response.text();
-      console.log('WLED settings response:', responseText);
-      
-      // Parse the JavaScript response to find d.Sf.SOMP.value
-      // Look for the pattern d.Sf.SOMP.value=0 (1D) or d.Sf.SOMP.value=1 (2D)
-      const sompMatch = responseText.match(/d\.Sf\.SOMP\.value\s*=\s*(\d+)/);
-      
-      if (sompMatch) {
-        const sompValue = parseInt(sompMatch[1]);
-        const dimensions = sompValue === 0 ? '1D' : '2D';
-        console.log(`WLED device configured for: ${dimensions} (SOMP value: ${sompValue})`);
-        return dimensions;
-      } else {
-        console.warn('Could not parse SOMP value from settings response');
-        return null;
-      }
-    } catch (error) {
-      console.error('Failed to detect WLED dimensions:', error);
-      return null;
-    }
-  };
-
-  const fetchEffects = useCallback(async () => {
-    if (selectedDevices.length === 0) {
-      console.log('No devices selected for effects fetch');
-      return;
-    }
-
-    const device = selectedDevices[0];
-    const cacheKey = `${device.ip}-effects`;
-    const cached = deviceCache.get(cacheKey);
-    
-    // Return cached data if still valid
-    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-      console.log('Using cached effects data');
-      setEffects(cached.effects);
-      return;
-    }
-
-    setIsLoadingEffects(true);
-    try {
-      console.log('Loading effects from device and lookup table:', device.ip);
-      
-      // Load device dimensions and effects list in parallel for better performance
-      const [deviceDimensions, effectsResponse] = await Promise.all([
-        detectWledDimensions(device.ip),
-        fetch(`http://${device.ip}/json/eff`)
-      ]);
-      
-      console.log('Device dimensions detected:', deviceDimensions);
-      
-      if (!effectsResponse.ok) {
-        throw new Error(`HTTP ${effectsResponse.status}: ${effectsResponse.statusText || 'Unknown error'}`);
-      }
-      
-      const deviceEffectsData: string[] = await effectsResponse.json();
-      console.log('Successfully loaded effects list from device:', deviceEffectsData.length, 'effects');
-      
-      // Process effects in batches to avoid blocking the main thread
-      const effectsList: WLEDEffectData[] = [];
-      
-      for (const effectName of deviceEffectsData) {
-        const lookupEffect = getEffectByName(effectName);
-
-        if (lookupEffect) {
-          // Filter based on device dimensions configuration
-          let shouldInclude = true;
-          
-          if (deviceDimensions === '1D' && !lookupEffect.supports1D) {
-            shouldInclude = false;
-          } else if (deviceDimensions === '2D' && !lookupEffect.supports2D) {
-            shouldInclude = false;
-          }
-          
-          if (shouldInclude) {
-            effectsList.push(lookupEffect);
-          }
-        }
-      }
-      
-      // Sort effects alphabetically, but keep "Solid" first
-      const sortedEffectsList = effectsList.sort((a, b) => {
-        if (a.name === 'Solid') return -1;
-        if (b.name === 'Solid') return 1;
-        return a.name.localeCompare(b.name);
-      });
-      
-      console.log(`Processed effects list: ${sortedEffectsList.length} effects from device (filtered for ${deviceDimensions})`);
-      
-      // Cache the results
-      const existingCache = deviceCache.get(cacheKey) || { 
-        effects: [], 
-        palettes: [], 
-        dimensions: null, 
-        timestamp: 0 
-      };
-      deviceCache.set(cacheKey, {
-        ...existingCache,
-        effects: sortedEffectsList,
-        dimensions: deviceDimensions,
-        timestamp: Date.now()
-      });
-      
-      setEffects(sortedEffectsList);
-      
-    } catch (error) {
-      console.error('Failed to load effects from device:', error);
-      setEffects([]);
-    } finally {
-      setIsLoadingEffects(false);
-    }
-  }, [selectedDevices]);
-
-  const fetchPalettes = useCallback(async () => {
-    if (selectedDevices.length === 0) {
-      console.log('No devices selected for palettes fetch');
-      return;
-    }
-
-    const device = selectedDevices[0];
-    const cacheKey = `${device.ip}-palettes`;
-    const cached = deviceCache.get(cacheKey);
-    
-    // Return cached data if still valid
-    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-      console.log('Using cached palettes data');
-      setPalettes(cached.palettes);
-      return;
-    }
-
-    setIsLoadingPalettes(true);
-    try {
-      console.log('Fetching palettes from device:', device.ip);
-      const response = await fetch(`http://${device.ip}/json/pal`);
-      
-      if (!response.ok) {
-        const errorMsg = response.statusText || 'Unknown error';
-        if (response.status === 503) {
-          throw new Error(`Device temporarily unavailable (${response.status}). The WLED device may be busy or restarting.`);
-        } else if (response.status === 404) {
-          throw new Error(`Palettes endpoint not found (${response.status}). This device may not support the json/pal API.`);
-        } else {
-          throw new Error(`HTTP ${response.status}: ${errorMsg}`);
-        }
-      }
-      
-      const palettesData = await response.json();
-      
-      // Transform the palettes data into the format we need
-      const palettesList: Palette[] = palettesData.map((palette: string, index: number) => ({
-        id: index,
-        name: palette,
-      }));
-      
-      console.log('Processed palettes list:', palettesList.length, 'palettes');
-      
-      // Cache the results
-      const existingCache = deviceCache.get(cacheKey) || { 
-        effects: [], 
-        palettes: [], 
-        dimensions: null, 
-        timestamp: 0 
-      };
-      deviceCache.set(cacheKey, {
-        ...existingCache,
-        palettes: palettesList,
-        timestamp: Date.now()
-      });
-      
-      setPalettes(palettesList);
-      
-    } catch (error) {
-      console.error('Failed to fetch palettes:', error);
-      
-      let errorMessage = 'Could not load palettes from the device.';
-      if (error instanceof Error) {
-        if (error.message.includes('503')) {
-          errorMessage += ' The device appears to be temporarily unavailable. Please wait a moment and try again.';
-        } else if (error.message.includes('timeout')) {
-          errorMessage += ' The request timed out. Please check your network connection.';
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
-          errorMessage += ' Please check that the device is online and accessible.';
-        } else {
-          errorMessage += `\n\nError: ${error.message}`;
-        }
-      }
-      
-      Alert.alert('Failed to Load Palettes', errorMessage);
-    } finally {
-      setIsLoadingPalettes(false);
-    }
-  }, [selectedDevices]);
-
-  // Memoize the current device IP to prevent infinite re-renders
-  const currentDeviceIp = useMemo(() => {
-    if (selectedDevices.length === 0) return null;
-    const firstDevice = selectedDevices[0];
-    return firstDevice?.ip || null;
-  }, [selectedDevices.length, selectedDevices[0]?.ip]);
-
   // Clear form when modal opens
-  useEffect(() => {
+  React.useEffect(() => {
     if (visible) {
+      selectedEffectRef.current = null;
       setSelectedEffect(null);
       setSelectedPalette(null);
       setShowSaveModal(false);
@@ -495,95 +636,7 @@ export default function CustomEffectsModal({
     }
   }, [visible]);
 
-  useEffect(() => {
-    if (!visible || !currentDeviceIp) {
-      return;
-    }
-    
-    // Only load if the device has actually changed
-    if (lastLoadedDeviceRef.current === currentDeviceIp) {
-      return;
-    }
-    
-    // Prevent multiple simultaneous loads for the same device
-    if (loadingRef.current === currentDeviceIp) {
-      return;
-    }
-    
-    // Check if we already have cached data for this device
-    const cacheKey = `${currentDeviceIp}-effects`;
-    const cached = deviceCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-      // We have valid cached data, use it directly
-      console.log('Using cached data for device:', currentDeviceIp);
-      setEffects(cached.effects);
-      setPalettes(cached.palettes);
-      lastLoadedDeviceRef.current = currentDeviceIp;
-      return;
-    }
-    
-    loadingRef.current = currentDeviceIp;
-    
-    // Load effects and palettes in parallel for better performance
-    Promise.all([fetchEffects(), fetchPalettes()]).finally(() => {
-      loadingRef.current = null;
-      lastLoadedDeviceRef.current = currentDeviceIp;
-    }).catch(error => {
-      console.error('Error loading effects or palettes:', error);
-    });
-  }, [visible, currentDeviceIp]);
-
-  const handleEffectChange = (effectId: number | null) => {
-    setSelectedEffect(effectId);
-    
-    if (effectId !== null) {
-      const selectedEffectData = effects.find(e => e.id === effectId);
-      if (selectedEffectData) {
-        if (selectedEffectData.supportsPalette) {
-          // Effect supports palettes - set default palette if palettes are loaded
-          if (palettes.length > 0 && selectedPalette === null) {
-            // Find "Default" palette or use first palette as default
-            const defaultPalette = palettes.find(p => p.name.toLowerCase().includes('default')) || palettes[0];
-            setSelectedPalette(defaultPalette.id);
-            console.log(`Auto-selected default palette: "${defaultPalette.name}" (ID: ${defaultPalette.id})`);
-            
-            // Auto-apply the effect with the default palette
-            applyEffect(effectId, defaultPalette.id);
-            return;
-          } else if (palettes.length > 0 && selectedPalette !== null) {
-            // Keep current palette selection
-            applyEffect(effectId, selectedPalette);
-            return;
-          }
-          // If palettes aren't loaded yet, fetchPalettes will be triggered by the useEffect
-        } else {
-          // Effect doesn't support palettes - reset palette selection and auto-apply
-          setSelectedPalette(null);
-          applyEffect(effectId, null);
-          return;
-        }
-      }
-    }
-    
-    // Auto-apply the effect (for effects that support palettes but none selected yet)
-    if (effectId !== null) {
-      applyEffect(effectId, selectedPalette);
-    }
-  };
-
-  const getSelectedEffect = () => {
-    return effects.find(e => e.id === selectedEffect);
-  };
-
-  const handlePaletteChange = (paletteId: number | null) => {
-    setSelectedPalette(paletteId);
-    // Auto-apply the effect with new palette
-    if (selectedEffect !== null) {
-      applyEffect(selectedEffect, paletteId);
-    }
-  };
-
-  const applyEffect = async (effectId: number, paletteId: number | null) => {
+  const applyEffect = useCallback(async (effectId: number, paletteId: number | null) => {
     if (selectedDevices.length === 0) {
       console.log('No device selected for effect application');
       return;
@@ -597,7 +650,7 @@ export default function CustomEffectsModal({
 
     try {
       const currentEffect = effects.find(e => e.id === effectId);
-      
+
       // Build the request body - only include palette if the effect supports it
       const requestBody: any = {
         seg: {
@@ -608,6 +661,8 @@ export default function CustomEffectsModal({
       if (currentEffect?.supportsPalette && paletteId !== null) {
         requestBody.seg.pal = paletteId;
       }
+
+      console.log(`🎨 Applying effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
 
       const response = await fetch(`http://${device.ip}/json/state`, {
         method: 'POST',
@@ -620,13 +675,62 @@ export default function CustomEffectsModal({
       if (!response.ok) {
         console.error(`Failed to apply effect: HTTP ${response.status}`);
       } else {
-        console.log(`Applied effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
+        console.log(`✅ Applied effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
       }
     } catch (error) {
       console.error('Error applying effect:', error);
     }
+  }, [selectedDevices, effects]);
+
+  const handleEffectChange = useCallback((effectId: number | null) => {
+    selectedEffectRef.current = effectId;
+    setSelectedEffect(effectId);
+
+    if (effectId !== null) {
+      const selectedEffectData = effects.find(e => e.id === effectId);
+      if (selectedEffectData) {
+        if (selectedEffectData.supportsPalette) {
+          // Effect supports palettes - set default palette if palettes are loaded
+          if (palettes.length > 0 && selectedPalette === null) {
+            // Find "Default" palette or use first palette as default
+            const defaultPalette = palettes.find(p => p.name.toLowerCase().includes('default')) || palettes[0];
+            setSelectedPalette(defaultPalette.id);
+            console.log(`Auto-selected default palette: "${defaultPalette.name}" (ID: ${defaultPalette.id})`);
+
+            // Auto-apply the effect with the default palette
+            applyEffect(effectId, defaultPalette.id);
+            return;
+          } else if (palettes.length > 0 && selectedPalette !== null) {
+            // Keep current palette selection
+            applyEffect(effectId, selectedPalette);
+            return;
+          }
+        } else {
+          // Effect doesn't support palettes - reset palette selection and auto-apply
+          setSelectedPalette(null);
+          applyEffect(effectId, null);
+          return;
+        }
+      }
+    }
+
+    // Auto-apply the effect (for effects that support palettes but none selected yet)
+    if (effectId !== null) {
+      applyEffect(effectId, selectedPalette);
+    }
+  }, [effects, palettes, selectedPalette, applyEffect]);
+
+  const getSelectedEffect = () => {
+    return effects.find(e => e.id === selectedEffect);
   };
 
+  const handlePaletteChange = useCallback((paletteId: number | null) => {
+    setSelectedPalette(paletteId);
+    // Auto-apply the effect with new palette
+    if (selectedEffectRef.current !== null) {
+      applyEffect(selectedEffectRef.current, paletteId);
+    }
+  }, [applyEffect]);
 
   const handleSavePreset = async (presetName: string) => {
     const currentEffect = getSelectedEffect();
@@ -708,6 +812,7 @@ export default function CustomEffectsModal({
           text: 'OK',
           onPress: () => {
             // Reset form and close modal
+            selectedEffectRef.current = null;
             setSelectedEffect(null);
             setSelectedPalette(null);
             onClose();
@@ -738,15 +843,11 @@ export default function CustomEffectsModal({
 
   const handleClose = () => {
     // Clear all form data and reset state
-    setEffects([]);
-    setPalettes([]);
+    selectedEffectRef.current = null;
     setSelectedEffect(null);
     setSelectedPalette(null);
     setShowSaveModal(false);
     setIsSaving(false);
-    // Reset loading refs so fresh data can be loaded on next open
-    lastLoadedDeviceRef.current = null;
-    loadingRef.current = null;
     onClose();
   };
 
@@ -763,10 +864,10 @@ export default function CustomEffectsModal({
         <ScrollView style={{ flex: 1 }} contentContainerStyle={contentContainerStyle}>
           {selectedDevices.length === 0 && (
             <View style={[sectionStyle, { alignItems: 'center', padding: 24 }]}>
-              <Ionicons 
-                name="warning-outline" 
-                size={48} 
-                color={isDark ? '#fbbf24' : '#f59e0b'} 
+              <Ionicons
+                name="warning-outline"
+                size={48}
+                color={isDark ? '#fbbf24' : '#f59e0b'}
               />
               <Text style={{
                 fontSize: 16,
@@ -783,7 +884,7 @@ export default function CustomEffectsModal({
                 marginTop: 4,
                 textAlign: 'center',
               }}>
-                Please select a WLED device to load effects and palettes.
+                Please select a WLED device to apply effects.
               </Text>
             </View>
           )}
@@ -811,8 +912,8 @@ export default function CustomEffectsModal({
                       width: 44,
                       height: 24,
                       borderRadius: 12,
-                      backgroundColor: liveViewEnabled 
-                        ? '#3b82f6' 
+                      backgroundColor: liveViewEnabled
+                        ? '#3b82f6'
                         : isDark ? '#4b5563' : '#d1d5db',
                       justifyContent: 'center',
                       paddingHorizontal: 2,
@@ -827,7 +928,7 @@ export default function CustomEffectsModal({
                     }} />
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={{
                   backgroundColor: isDark ? '#374151' : '#f9fafb',
                   borderRadius: 8,
@@ -835,7 +936,7 @@ export default function CustomEffectsModal({
                   minHeight: 60,
                 }}>
                   {liveViewEnabled && liveLedData.length > 0 ? (
-                    <LEDVisualization 
+                    <LEDVisualization
                       ledData={liveLedData}
                       subtextColor={isDark ? '#9ca3af' : '#6b7280'}
                       liveViewLedSize="normal"
@@ -872,64 +973,19 @@ export default function CustomEffectsModal({
                 }}>
                   Effect
                 </Text>
-                
-                {isLoadingEffects ? (
-                  <View style={{ alignItems: 'center', padding: 20 }}>
-                    <ActivityIndicator size="large" color="#3b82f6" />
-                    <Text style={{
-                      marginTop: 8,
-                      color: isDark ? '#9ca3af' : '#6b7280',
-                    }}>
-                      Loading effects...
-                    </Text>
-                  </View>
-                ) : effects.length === 0 ? (
-                  <View style={{ alignItems: 'center', padding: 20 }}>
-                    <Ionicons 
-                      name="refresh-outline" 
-                      size={32} 
-                      color={isDark ? '#9ca3af' : '#6b7280'} 
-                    />
-                    <Text style={{
-                      marginTop: 8,
-                      marginBottom: 12,
-                      color: isDark ? '#9ca3af' : '#6b7280',
-                      textAlign: 'center',
-                    }}>
-                      Failed to load effects. Please try again.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={fetchEffects}
-                      style={{
-                        backgroundColor: '#3b82f6',
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 6,
-                      }}
-                    >
-                      <Text style={{
-                        color: 'white',
-                        fontWeight: '600',
-                        fontSize: 14,
-                      }}>
-                        Retry
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <CustomDropdown
-                    data={effects.map(effect => ({
-                      id: effect.id,
-                      label: effect.displayName,
-                      value: effect.id,
-                    }))}
-                    selectedValue={selectedEffect}
-                    onValueChange={handleEffectChange}
-                    placeholder="Select an effect..."
-                    isDark={isDark}
-                    searchable={true}
-                  />
-                )}
+
+                <CustomDropdown
+                  data={effects.map(effect => ({
+                    id: effect.id,
+                    label: effect.displayName,
+                    value: effect.id,
+                  }))}
+                  selectedValue={selectedEffect}
+                  onValueChange={handleEffectChange}
+                  placeholder="Select an effect..."
+                  isDark={isDark}
+                  searchable={true}
+                />
               </View>
 
               {/* Palettes Dropdown - Only show if effect is selected and supports palettes */}
@@ -937,9 +993,9 @@ export default function CustomEffectsModal({
                 const currentEffect = getSelectedEffect();
                 // Hide palette dropdown by default - only show when effect is selected and supports palettes
                 const showPalettes = selectedEffect !== null && currentEffect && currentEffect.supportsPalette;
-                
+
                 if (!showPalettes) return null;
-                
+
                 return (
                   <View style={sectionStyle}>
                     <Text style={{
@@ -950,31 +1006,14 @@ export default function CustomEffectsModal({
                     }}>
                       Palette
                     </Text>
-                    
-                    {isLoadingPalettes ? (
-                      <View style={{ alignItems: 'center', padding: 20 }}>
-                        <ActivityIndicator size="large" color="#3b82f6" />
-                        <Text style={{
-                          marginTop: 8,
-                          color: isDark ? '#9ca3af' : '#6b7280',
-                        }}>
-                          Loading palettes...
-                        </Text>
-                      </View>
-                    ) : (
-                      <CustomDropdown
-                        data={palettes.map(palette => ({
-                          id: palette.id,
-                          label: palette.name,
-                          value: palette.id,
-                        }))}
-                        selectedValue={selectedPalette}
-                        onValueChange={handlePaletteChange}
-                        placeholder="Select a palette..."
-                        isDark={isDark}
-                        searchable={true}
-                      />
-                    )}
+
+                    <PaletteDropdown
+                      data={memoizedPaletteData}
+                      selectedValue={selectedPalette}
+                      onValueChange={handlePaletteChange}
+                      placeholder="Select a palette..."
+                      isDark={isDark}
+                    />
                   </View>
                 );
               })()}
@@ -982,7 +1021,7 @@ export default function CustomEffectsModal({
             </>
           )}
         </ScrollView>
-        
+
         {/* Sticky Footer with Save Button */}
         {selectedDevices.length > 0 && (
           <View style={stickyFooterStyle}>
@@ -992,7 +1031,7 @@ export default function CustomEffectsModal({
                 const isEffectSelected = selectedEffect !== null;
                 const isPaletteRequired = currentEffect?.supportsPalette && selectedPalette === null;
                 const canSave = isEffectSelected && !isPaletteRequired;
-                
+
                 return (
                   <TouchableOpacity
                     onPress={() => setShowSaveModal(true)}
