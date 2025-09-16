@@ -21,7 +21,7 @@ import SettingsModal from './src/components/SettingsModal';
 import AddDeviceManuallyModal from './src/components/AddDeviceManuallyModal';
 
 // Utils
-import { storage, STORAGE_KEYS, loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId, loadDeviceSeasonalPresets, saveDeviceSeasonalPresets, hasDeviceSeasonalPresets } from './src/utils/storage';
+import { loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId, loadDeviceSeasonalPresets, saveDeviceSeasonalPresets, hasDeviceSeasonalPresets } from './src/utils/storage';
 import { hasValidAgreement, saveAgreementSignature } from './src/utils/userAgreement';
 
 // Types
