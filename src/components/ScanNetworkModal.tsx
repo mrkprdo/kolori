@@ -369,18 +369,30 @@ export default function ScanNetworkModal({
 
   const preLoadBackgroundDevices = async () => {
     const preLoadedDevices: DeviceWithStatus[] = [];
-    
+
     for (const device of backgroundScanDevices) {
+      console.log('🔍 Pre-validating background device:', device.name);
+
+      // Validate device to filter out non-WLED devices
+      const validation = await wledMdnsDiscovery.validateWledDevice(device);
+
+      if (!validation.isValid) {
+        console.log('❌ Background device failed validation, skipping:', device.name, validation.error);
+        continue; // Skip non-WLED devices
+      }
+
+      console.log('✅ Background device validated successfully:', device.name);
+
       const enhancedName = await enhanceDeviceName(device);
       const isAlreadyAdded = isDeviceAlreadyAdded(device);
-      
+
       preLoadedDevices.push({
         ...device,
         status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
         enhancedName,
       });
     }
-    
+
     setDiscoveredDevices(preLoadedDevices);
   };
 
@@ -401,39 +413,51 @@ export default function ScanNetworkModal({
     
     wledMdnsDiscovery.setListeners({
       onDeviceFound: async (device: MdnsWledDevice) => {
+        console.log('🔍 Device found, validating:', device.name);
+
+        // Validate device immediately to filter out non-WLED devices
+        const validation = await wledMdnsDiscovery.validateWledDevice(device);
+
+        if (!validation.isValid) {
+          console.log('❌ Device failed validation, skipping:', device.name, validation.error);
+          return; // Don't add non-WLED devices to the UI
+        }
+
+        console.log('✅ Device validated successfully:', device.name);
+
         const enhancedName = await enhanceDeviceName(device);
         const isAlreadyAdded = isDeviceAlreadyAdded(device);
-        
+
         const deviceWithStatus: DeviceWithStatus = {
           ...device,
           status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
           enhancedName,
         };
-        
+
         setDiscoveredDevices(prev => {
           // Check if device already exists by name or IP addresses
           const exists = prev.some(d => {
             // Match by name
             if (d.name === device.name) return true;
-            
+
             // Match by any IP address
             const existingIPs = d.addresses || [];
             const newIPs = device.addresses || [];
             return existingIPs.some(ip => newIPs.includes(ip));
           });
-          
+
           if (exists) {
             // Update existing device status if it's more current
             return prev.map(d => {
-              if (d.name === device.name || 
-                  (d.addresses && device.addresses && 
+              if (d.name === device.name ||
+                  (d.addresses && device.addresses &&
                    d.addresses.some(ip => device.addresses?.includes(ip)))) {
                 return { ...d, status: deviceWithStatus.status };
               }
               return d;
             });
           }
-          
+
           return [...prev, deviceWithStatus];
         });
       },
@@ -462,53 +486,40 @@ export default function ScanNetworkModal({
       addresses: device.addresses,
       port: device.port,
     });
-    
+
     if (setConnectingStatus) {
       updateDeviceStatus(device.name, 'connecting');
     }
-    
+
     try {
-      const validation = await wledMdnsDiscovery.validateWledDevice(device as any);
-      console.log('🔍 Validation result:', validation);
-      
-      if (validation.isValid) {
-        const primaryIP = device.addresses?.[0] || device.host;
-        console.log('✅ Device validated, using IP:', primaryIP);
-        
-        const newDevice: Device = {
-          id: ipToDeviceId(primaryIP),
-          name: device.enhancedName || device.name,
-          ip: primaryIP,
-          protocol: 'http',
-          isConnected: true,
-          isPlaying: false,
-          autoBrightness: false,
-          maxBrightness: 255,
-        };
-        
-        updateDeviceStatus(device.name, 'connected');
-        
-        setTimeout(() => {
-          onDeviceAdded(newDevice);
-          updateDeviceStatus(device.name, 'alreadyAdded');
-        }, 1000);
-      } else {
-        console.error('❌ Validation failed:', validation.error);
-        updateDeviceStatus(device.name, 'failed');
-        
-        const primaryIP = device.addresses?.[0] || device.host;
-        Alert.alert(
-          'Validation Failed', 
-          `Device: ${device.name}\nIP: ${primaryIP}\n\nError: ${validation.error || 'Could not connect to device'}\n\nTip: Check if the device is a WLED device and accessible on the network.`
-        );
-      }
+      // Device is already validated at discovery time, so we can proceed directly
+      const primaryIP = device.addresses?.[0] || device.host;
+      console.log('✅ Using validated device IP:', primaryIP);
+
+      const newDevice: Device = {
+        id: ipToDeviceId(primaryIP),
+        name: device.enhancedName || device.name,
+        ip: primaryIP,
+        protocol: 'http',
+        isConnected: true,
+        isPlaying: false,
+        autoBrightness: false,
+        maxBrightness: 255,
+      };
+
+      updateDeviceStatus(device.name, 'connected');
+
+      setTimeout(() => {
+        onDeviceAdded(newDevice);
+        updateDeviceStatus(device.name, 'alreadyAdded');
+      }, 1000);
     } catch (error) {
       console.error('❌ Connection error:', error);
       updateDeviceStatus(device.name, 'failed');
-      
+
       const primaryIP = device.addresses?.[0] || device.host;
       Alert.alert(
-        'Connection Error', 
+        'Connection Error',
         `Device: ${device.name}\nIP: ${primaryIP}\n\nError: ${error}\n\nThis might be a network or permissions issue.`
       );
     }
