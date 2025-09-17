@@ -1576,44 +1576,6 @@ export default function PresetGrid({
                   />
                 )}
 
-                {/* Brightness Slider */}
-                {liveViewEnabled && activeDevice?.isConnected && (
-                  <View style={styles.sliderContainer}>
-                    <Ionicons name="sunny-outline" size={20} color={subtextColor} />
-                    <Slider
-                      key={`brightness-slider-${sliderKey}`}
-                      ref={sliderRef}
-                      style={styles.slider}
-                      minimumValue={0}
-                      maximumValue={255}
-                      step={1}
-                      defaultValue={currentBrightnessDisplay}
-                      onSlidingStart={() => {
-                        setIsSliding(true);
-                        hasUserTouchedSlider.current = true;
-                        console.log('🎯 User touched slider - now uncontrolled');
-                      }}
-                      onValueChange={(value) => {
-                        // Only update display value - slider manages its own value internally
-                        const roundedValue = Math.round(value);
-                        setCurrentBrightnessDisplay(roundedValue);
-                      }}
-                      onSlidingComplete={(value) => {
-                        const finalValue = Math.round(value);
-                        console.log('🎯 Slider final value:', finalValue);
-                        
-                        // Send to WLED device
-                        onBrightnessChange?.(finalValue);
-                        setIsSliding(false);
-                      }}
-                      minimumTrackTintColor="#3b82f6"
-                      maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
-                      thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
-                    />
-                    <Text style={{color: subtextColor, fontSize: 12, width: 30, textAlign: 'right'}}>{currentBrightnessDisplay}</Text>
-                  </View>
-                )}
-                
                 {!liveViewEnabled && (
                   <View style={styles.disabledContainer}>
                     {!activeDevice?.isConnected ? (
@@ -1664,6 +1626,44 @@ export default function PresetGrid({
                   </View>
                 )}
               </Animated.View>
+
+              {/* Brightness Slider - Always visible when device is connected */}
+                {activeDevice?.isConnected && (
+                  <View style={styles.sliderContainer}>
+                    <Ionicons name="sunny-outline" size={20} color={subtextColor} />
+                    <Slider
+                      key={`brightness-slider-${sliderKey}`}
+                      ref={sliderRef}
+                      style={styles.slider}
+                      minimumValue={0}
+                      maximumValue={255}
+                      step={1}
+                      value={currentBrightnessDisplay}
+                      onSlidingStart={() => {
+                        setIsSliding(true);
+                        hasUserTouchedSlider.current = true;
+                        console.log('🎯 User touched slider - now uncontrolled');
+                      }}
+                      onValueChange={(value) => {
+                        // Only update display value - slider manages its own value internally
+                        const roundedValue = Math.round(value);
+                        setCurrentBrightnessDisplay(roundedValue);
+                      }}
+                      onSlidingComplete={(value) => {
+                        const finalValue = Math.round(value);
+                        console.log('🎯 Slider final value:', finalValue);
+
+                        // Send to WLED device
+                        onBrightnessChange?.(finalValue);
+                        setIsSliding(false);
+                      }}
+                      minimumTrackTintColor="#3b82f6"
+                      maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
+                      thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
+                    />
+                    <Text style={{color: subtextColor, fontSize: 12, width: 30, textAlign: 'right'}}>{currentBrightnessDisplay}</Text>
+                  </View>
+                )}
             </View>
           </View>
         </View>
