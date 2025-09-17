@@ -31,6 +31,7 @@ type DeviceStatus = 'discovered' | 'connecting' | 'connected' | 'failed' | 'alre
 interface DeviceWithStatus extends MdnsWledDevice {
   status: DeviceStatus;
   enhancedName?: string;
+  wledDeviceName?: string; // The actual WLED device name from /win endpoint
 }
 
 interface DeviceCardProps {
@@ -74,9 +75,13 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, styles, onConnect }) =>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <View style={[styles.statusDot, { backgroundColor: getStatusColor(device.status) }]} />
-            <Text style={styles.deviceName}>{device.enhancedName || device.name}</Text>
+            <Text style={styles.deviceName}>
+              {device.wledDeviceName || device.enhancedName || device.name}
+            </Text>
           </View>
-          <Text style={styles.deviceIP}>{device.addresses?.[0] || device.host}</Text>
+          <Text style={styles.deviceIP}>
+            {device.name} · {device.addresses?.[0] || device.host}
+          </Text>
         </View>
         <TouchableOpacity
           onPress={onConnect}
@@ -383,29 +388,33 @@ export default function ScanNetworkModal({
 
       console.log('✅ Background device validated successfully:', device.name);
 
-      const enhancedName = await enhanceDeviceName(device);
+      const nameInfo = await enhanceDeviceName(device);
       const isAlreadyAdded = isDeviceAlreadyAdded(device);
 
       preLoadedDevices.push({
         ...device,
         status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
-        enhancedName,
+        enhancedName: nameInfo.enhancedName,
+        wledDeviceName: nameInfo.wledDeviceName,
       });
     }
 
     setDiscoveredDevices(preLoadedDevices);
   };
 
-  const enhanceDeviceName = async (device: MdnsWledDevice): Promise<string> => {
+  const enhanceDeviceName = async (device: MdnsWledDevice): Promise<{ enhancedName: string; wledDeviceName?: string }> => {
     try {
       const nameResult = await wledMdnsDiscovery.getWledDeviceName(device);
       if (nameResult.success && nameResult.deviceName) {
-        return `${nameResult.deviceName}-${device.name}`;
+        return {
+          enhancedName: `${nameResult.deviceName}-${device.name}`,
+          wledDeviceName: nameResult.deviceName
+        };
       }
     } catch (error) {
       console.log('Failed to get enhanced name for device:', device.name, error);
     }
-    return device.name;
+    return { enhancedName: device.name };
   };
 
   const scanForDevices = async () => {
@@ -425,13 +434,14 @@ export default function ScanNetworkModal({
 
         console.log('✅ Device validated successfully:', device.name);
 
-        const enhancedName = await enhanceDeviceName(device);
+        const nameInfo = await enhanceDeviceName(device);
         const isAlreadyAdded = isDeviceAlreadyAdded(device);
 
         const deviceWithStatus: DeviceWithStatus = {
           ...device,
           status: isAlreadyAdded ? 'alreadyAdded' : 'discovered',
-          enhancedName,
+          enhancedName: nameInfo.enhancedName,
+          wledDeviceName: nameInfo.wledDeviceName,
         };
 
         setDiscoveredDevices(prev => {
@@ -498,8 +508,9 @@ export default function ScanNetworkModal({
 
       const newDevice: Device = {
         id: ipToDeviceId(primaryIP),
-        name: device.enhancedName || device.name,
+        name: device.wledDeviceName || device.enhancedName || device.name,
         ip: primaryIP,
+        mdns: device.name, // Store the original mDNS name
         protocol: 'http',
         isConnected: true,
         isPlaying: false,

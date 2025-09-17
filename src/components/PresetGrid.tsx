@@ -1992,9 +1992,14 @@ export default function PresetGrid({
                       { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }
                     ]}
                   />
-                  <Text style={[styles.deviceOptionText, { color: textColor }]}>
-                    {device.name}
-                  </Text>
+                  <View style={styles.deviceInfo}>
+                    <Text style={[styles.deviceOptionText, { color: textColor }]}>
+                      {device.name}
+                    </Text>
+                    <Text style={[styles.deviceOptionSubtext, { color: subtextColor }]}>
+                      {device.mdns || 'Unknown'} · {device.ip}
+                    </Text>
+                  </View>
                   {device.id === activeDeviceId && (
                     <Ionicons name="checkmark" size={20} color="#3b82f6" />
                   )}
@@ -2593,8 +2598,8 @@ const styles = StyleSheet.create({
   dropdownModal: {
     borderRadius: 12,
     padding: 16,
-    minWidth: 250,
-    maxWidth: 300,
+    minWidth: 320,
+    maxWidth: 400,
     maxHeight: 400, // Limit modal height to prevent overflow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -2618,10 +2623,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderBottomWidth: 1,
   },
+  deviceInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
   deviceOptionText: {
     fontSize: 16,
-    marginLeft: 8,
-    flex: 1,
+    fontWeight: '600',
+  },
+  deviceOptionSubtext: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '500',
   },
   fabContainer: {
     position: 'absolute',
