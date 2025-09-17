@@ -2010,6 +2010,15 @@ export default function PresetGrid({
         </TouchableOpacity>
       )}
 
+      {/* FAB Overlay - Close when touching outside */}
+      {!isDeleteMode && showFabOptions && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={toggleFabOptions}
+          style={[styles.fabOverlay, { backgroundColor: 'transparent' }]}
+        />
+      )}
+
       {/* Floating Action Buttons - Hidden in delete mode */}
       {!isDeleteMode && (
         <View style={styles.fabContainer}>
@@ -2642,7 +2651,7 @@ const styles = StyleSheet.create({
     bottom: 24,
     right: 24,
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 1002,
   },
   floatingButton: {
     width: 56,
