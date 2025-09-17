@@ -1960,35 +1960,41 @@ export default function PresetGrid({
         >
           <View style={[styles.dropdownModal, { backgroundColor: cardBackground }]}>
             <Text style={[styles.dropdownTitle, { color: textColor }]}>Select Device</Text>
-            {devices.map((device, index) => (
-              <TouchableOpacity
-                key={`device-option-${device.id}-${index}`}
-                onPress={() => {
-                  if (onSetActiveDeviceId) {
-                    onSetActiveDeviceId(device.id);
-                  }
-                  setShowDeviceDropdown(false);
-                }}
-                style={[
-                  styles.deviceOption,
-                  index < devices.length - 1 ? { borderBottomWidth: 1, borderBottomColor: borderColor } : { borderBottomWidth: 0 },
-                  device.id === activeDeviceId && { backgroundColor: isDark ? '#374151' : '#f3f4f6' }
-                ]}
-              >
-                <View 
+            <ScrollView
+              style={styles.deviceScrollContainer}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              {devices.map((device, index) => (
+                <TouchableOpacity
+                  key={`device-option-${device.id}-${index}`}
+                  onPress={() => {
+                    if (onSetActiveDeviceId) {
+                      onSetActiveDeviceId(device.id);
+                    }
+                    setShowDeviceDropdown(false);
+                  }}
                   style={[
-                    styles.statusDot, 
-                    { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }
-                  ]} 
-                />
-                <Text style={[styles.deviceOptionText, { color: textColor }]}>
-                  {device.name}
-                </Text>
-                {device.id === activeDeviceId && (
-                  <Ionicons name="checkmark" size={20} color="#3b82f6" />
-                )}
-              </TouchableOpacity>
-            ))}
+                    styles.deviceOption,
+                    index < devices.length - 1 ? { borderBottomWidth: 1, borderBottomColor: borderColor } : { borderBottomWidth: 0 },
+                    device.id === activeDeviceId && { backgroundColor: isDark ? '#374151' : '#f3f4f6' }
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.statusDot,
+                      { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }
+                    ]}
+                  />
+                  <Text style={[styles.deviceOptionText, { color: textColor }]}>
+                    {device.name}
+                  </Text>
+                  {device.id === activeDeviceId && (
+                    <Ionicons name="checkmark" size={20} color="#3b82f6" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       )}
@@ -2583,11 +2589,15 @@ const styles = StyleSheet.create({
     padding: 16,
     minWidth: 250,
     maxWidth: 300,
+    maxHeight: 400, // Limit modal height to prevent overflow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 12,
+  },
+  deviceScrollContainer: {
+    maxHeight: 300, // Allow for title + padding while limiting device list height
   },
   dropdownTitle: {
     fontSize: 18,
