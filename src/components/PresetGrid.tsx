@@ -523,6 +523,7 @@ interface PresetGridProps {
   onBrightnessChange?: (brightness: number) => void;
   liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
   updateChildModalState: (modalName: string, isOpen: boolean) => void;
+  onDeviceUpdate?: (id: number, updates: Partial<WledDevice>) => void;
 }
 
 export default function PresetGrid({
@@ -553,6 +554,7 @@ export default function PresetGrid({
   onBrightnessChange,
   liveViewLedSize = 'normal',
   updateChildModalState,
+  onDeviceUpdate,
 }: PresetGridProps) {
   
   
@@ -1437,10 +1439,12 @@ export default function PresetGrid({
         // Apply the effect immediately
         onPresetSelect(result.presetId);
 
-        // Refresh presets to ensure sync
-        if (onRefreshPresets) {
-          await onRefreshPresets();
+        // Directly update device active preset to ensure UI shows it as active
+        if (onDeviceUpdate && activeDevice?.id) {
+          onDeviceUpdate(activeDevice.id, { activePreset: result.presetId });
         }
+
+        // Note: Not calling onRefreshPresets() here to avoid overwriting our custom gradient
 
         console.log(`🎲 Random effect created: "${presetName}" with effect "${randomEffect.name}"${randomPalette ? ` and palette "${randomPalette.name}"` : ''}.`);
       } else {

@@ -16,12 +16,8 @@ import FloatingModal from './FloatingModal';
 import LEDVisualization from './LEDVisualization';
 import CustomDropdown from './CustomDropdown';
 import { WLED_EFFECTS } from '../data/wledEffects';
-import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, WledPaletteDef, PaletteColor } from '../constants/palettes';
+import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, PaletteColor } from '../constants/palettes';
 import { LinearGradient } from 'expo-linear-gradient';
-
-// Use the palette definition from constants
-type Palette = WledPaletteDef;
-
 // Helper function to convert palette colors to LinearGradient colors
 const getPaletteGradientColors = (paletteName: string): [string, string, ...string[]] => {
   const paletteData = WLED_PALETTES_DATA[paletteName];

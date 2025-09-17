@@ -1141,6 +1141,7 @@ function KoloriApp({
           })()}
           onBrightnessChange={handleBrightnessChange}
           liveViewLedSize={settings.liveViewLedSize}
+          onDeviceUpdate={onDeviceUpdate}
         />
         <PlaylistModal
           isVisible={showPlaylist}
