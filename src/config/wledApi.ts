@@ -1132,6 +1132,68 @@ export const setWledBrightness = async (
   }
 };
 
+// Function to get WLED brightness from /win endpoint (XML response)
+export const getWledBrightnessFromWin = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse & { brightness?: number }> => {
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/win");
+    logger.log(`💡 Getting WLED brightness from /win endpoint: ${deviceAddress}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const xmlText = await response.text();
+
+      // Parse brightness from XML response - look for <ac>#</ac> pattern
+      const brightnessMatch = xmlText.match(/<ac>(\d+)<\/ac>/);
+
+      if (brightnessMatch) {
+        const brightness = parseInt(brightnessMatch[1], 10);
+        logger.log(`✅ WLED brightness retrieved from /win: ${brightness}`);
+
+        return {
+          success: true,
+          message: `Brightness retrieved: ${brightness}`,
+          brightness: brightness,
+          data: { brightness }
+        };
+      } else {
+        logger.warn("⚠️ Could not find brightness value in /win response");
+        return {
+          success: false,
+          message: "Brightness value not found in XML response"
+        };
+      }
+    } else {
+      const errorText = await response.text();
+      logger.error(`❌ Failed to get WLED brightness from /win: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        message: `Failed to get brightness: ${response.status}`
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to get WLED brightness from /win:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
 // Function to get current WLED device state (including brightness)
 export const getWledState = async (
   deviceAddress: string,
