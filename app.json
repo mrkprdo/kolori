@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kolori",
     "slug": "Kolori",
-    "version": "0.2.4",
+    "version": "0.2.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -33,8 +33,8 @@
       "package": "dev.mrkprdo.kolori",
       "usesCleartextTraffic": true,
       "networkSecurityConfig": "@xml/network_security_config",
-      "versionCode": 10,
-      "versionName": "0.2.4"
+      "versionCode": 11,
+      "versionName": "0.2.5"
     },
     "web": {
       "favicon": "./assets/kolori.png"
