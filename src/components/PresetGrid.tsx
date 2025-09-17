@@ -701,8 +701,14 @@ export default function PresetGrid({
   // Handle Android back button - press twice to exit
   useEffect(() => {
     const handleBackPress = () => {
-      // If any modal is open, don't handle back press (let modal handle it)
-      if (showCustomEffectsModal || showPlaylistCreationModal || showCreateNewOptions || showDeviceManagementModal || showDeviceDropdown) {
+      // Handle device dropdown specifically (it's not a real Modal)
+      if (showDeviceDropdown) {
+        setShowDeviceDropdown(false);
+        return true;
+      }
+
+      // If any other modal is open, don't handle back press (let modal handle it)
+      if (showCustomEffectsModal || showPlaylistCreationModal || showCreateNewOptions || showDeviceManagementModal) {
         return false;
       }
 
