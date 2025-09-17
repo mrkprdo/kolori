@@ -160,7 +160,7 @@ export default function LEDVisualization({
           color: subtextColor, 
           fontSize: 12, 
           marginTop: 8,
-          textAlign: 'left'
+          textAlign: 'center'
         }}>
           {ledCount} LED{ledCount !== 1 ? 's' : ''} live
         </Text>
