@@ -1992,9 +1992,14 @@ export default function PresetGrid({
                       { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }
                     ]}
                   />
-                  <Text style={[styles.deviceOptionText, { color: textColor }]}>
-                    {device.name}
-                  </Text>
+                  <View style={styles.deviceInfo}>
+                    <Text style={[styles.deviceOptionText, { color: textColor }]}>
+                      {device.name}
+                    </Text>
+                    <Text style={[styles.deviceOptionSubtext, { color: subtextColor }]}>
+                      {device.mdns || 'Unknown'} · {device.ip}
+                    </Text>
+                  </View>
                   {device.id === activeDeviceId && (
                     <Ionicons name="checkmark" size={20} color="#3b82f6" />
                   )}
@@ -2003,6 +2008,15 @@ export default function PresetGrid({
             </ScrollView>
           </View>
         </TouchableOpacity>
+      )}
+
+      {/* FAB Overlay - Close when touching outside */}
+      {!isDeleteMode && showFabOptions && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={toggleFabOptions}
+          style={[styles.fabOverlay, { backgroundColor: 'transparent' }]}
+        />
       )}
 
       {/* Floating Action Buttons - Hidden in delete mode */}
@@ -2537,7 +2551,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 28,
-    paddingHorizontal: 20,
+    paddingLeft: 7,
+    paddingRight: 10,
     zIndex: 999,
     elevation: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -2593,8 +2608,8 @@ const styles = StyleSheet.create({
   dropdownModal: {
     borderRadius: 12,
     padding: 16,
-    minWidth: 250,
-    maxWidth: 300,
+    minWidth: 320,
+    maxWidth: 400,
     maxHeight: 400, // Limit modal height to prevent overflow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -2618,17 +2633,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderBottomWidth: 1,
   },
+  deviceInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
   deviceOptionText: {
     fontSize: 16,
-    marginLeft: 8,
-    flex: 1,
+    fontWeight: '600',
+  },
+  deviceOptionSubtext: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '500',
   },
   fabContainer: {
     position: 'absolute',
     bottom: 24,
     right: 24,
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 1002,
   },
   floatingButton: {
     width: 56,
