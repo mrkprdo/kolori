@@ -1194,6 +1194,117 @@ export const getWledBrightnessFromWin = async (
   }
 };
 
+// Function to detect WLED device dimensions (1D or 2D matrix)
+export const detectWledDimensions = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<'1D' | '2D' | null> => {
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=10");
+    logger.log(`🔍 Detecting WLED dimensions for ${deviceAddress}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+    }
+
+    const responseText = await response.text();
+    const sompMatch = responseText.match(/d\.Sf\.SOMP\.value\s*=\s*(\d+)/);
+
+    if (sompMatch) {
+      const sompValue = parseInt(sompMatch[1]);
+      const dimensions = sompValue === 0 ? '1D' : '2D';
+      logger.log(`✅ WLED dimensions detected: ${dimensions} (SOMP=${sompValue})`);
+      return dimensions;
+    }
+
+    logger.warn('⚠️ Could not find SOMP value in WLED settings');
+    return null;
+  } catch (error: any) {
+    logger.error("Failed to detect WLED dimensions:", error);
+    return null;
+  }
+};
+
+// Function to get WLED matrix dimensions (width × height) from device info
+export const getWledMatrixDimensions = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<{ is2D: boolean; width: number; height: number } | null> => {
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/json/info");
+    logger.log(`📐 Getting WLED matrix dimensions for ${deviceAddress}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+    }
+
+    const deviceInfo = await response.json();
+
+    // Check for 2D matrix info in WLED device info
+    if (deviceInfo.leds?.matrix?.w && deviceInfo.leds?.matrix?.h) {
+      const dimensions = {
+        is2D: true,
+        width: deviceInfo.leds.matrix.w,
+        height: deviceInfo.leds.matrix.h
+      };
+      logger.log(`✅ WLED matrix dimensions: ${dimensions.width}×${dimensions.height}`);
+      return dimensions;
+    }
+
+    // Check alternative matrix locations
+    if (deviceInfo.matrix?.w && deviceInfo.matrix?.h) {
+      const dimensions = {
+        is2D: true,
+        width: deviceInfo.matrix.w,
+        height: deviceInfo.matrix.h
+      };
+      logger.log(`✅ WLED matrix dimensions (alt): ${dimensions.width}×${dimensions.height}`);
+      return dimensions;
+    }
+
+    // Check segment-based 2D configuration
+    if (deviceInfo.leds?.seglc && Array.isArray(deviceInfo.leds.seglc)) {
+      for (const segment of deviceInfo.leds.seglc) {
+        if (segment.m && segment.m !== 0 && segment.w && segment.h) { // m = matrix mode
+          const dimensions = {
+            is2D: true,
+            width: segment.w,
+            height: segment.h
+          };
+          logger.log(`✅ WLED matrix dimensions (segment): ${dimensions.width}×${dimensions.height}`);
+          return dimensions;
+        }
+      }
+    }
+
+    logger.log('📏 No 2D matrix configuration found - device is 1D');
+    return { is2D: false, width: 0, height: 0 };
+  } catch (error: any) {
+    logger.error("Failed to get WLED matrix dimensions:", error);
+    return null;
+  }
+};
+
 // Function to get current WLED device state (including brightness)
 export const getWledState = async (
   deviceAddress: string,

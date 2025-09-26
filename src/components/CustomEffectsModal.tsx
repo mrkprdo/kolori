@@ -519,6 +519,19 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   );
 };
 
+/**
+ * Renders a modal UI for selecting, previewing, applying, and saving custom WLED effects and palettes for a connected device.
+ *
+ * @param visible - Whether the modal is visible
+ * @param isDark - Optional flag to render dark theme styles
+ * @param onClose - Callback invoked when the modal is closed
+ * @param selectedDevices - Array of connected devices; the first device is used for device-specific actions
+ * @param liveLedData - Optional live LED data used by the live visualization
+ * @param liveViewEnabled - Whether the live view visualization is enabled
+ * @param onLiveViewToggle - Optional callback invoked with the new live view enabled state
+ * @param onRefreshPresets - Optional callback to refresh presets after a successful save
+ * @returns A React element representing the Custom Effects modal
+ */
 export default function CustomEffectsModal({
   visible,
   isDark = false,
@@ -565,10 +578,10 @@ export default function CustomEffectsModal({
   // Detect device dimensions when modal opens and device is available
   useEffect(() => {
     if (visible && selectedDevices.length > 0 && selectedDevices[0].isConnected) {
-      detectWledDimensions(selectedDevices[0].ip)
+      const deviceIp = selectedDevices[0].ip;
+      detectWledDimensions(deviceIp)
         .then(dimensions => {
           setDeviceDimensions(dimensions);
-          console.log(`🔍 Device dimensions detected: ${dimensions || 'unknown'}`);
         })
         .catch(error => {
           console.error('Failed to detect device dimensions:', error);
@@ -577,7 +590,7 @@ export default function CustomEffectsModal({
     } else {
       setDeviceDimensions(null);
     }
-  }, [visible, selectedDevices, detectWledDimensions]);
+  }, [visible, selectedDevices.length > 0 ? selectedDevices[0]?.ip : null, selectedDevices.length > 0 ? selectedDevices[0]?.isConnected : false]);
 
   // Filter effects based on device capabilities
   const effects = useMemo(() => {
@@ -1005,6 +1018,7 @@ export default function CustomEffectsModal({
                       liveViewLedSize="normal"
                       containerWidth={300} // Modal content width
                       showLedCount={true}
+                      wledInfo={selectedDevices[0]?.wledInfo}
                     />
                   ) : liveViewEnabled ? (
                     <Text style={{

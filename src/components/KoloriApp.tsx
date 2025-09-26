@@ -62,12 +62,11 @@ interface KoloriAppProps {
 }
 
 /**
- * Main Kolori App Component - Optimized React Native component
- * Handles WLED device management, preset activation, and playlist functionality
- * 
- * @component
- * @param {KoloriAppProps} props - Component properties
- * @returns {JSX.Element} The main application interface
+ * Renders the Kolori application UI and manages WLED device lifecycle, presets, playlists, WebSocket connections, live view, caching, and related UI state.
+ *
+ * Manages device monitoring, per-device preset/playlist caching and synchronization, WebSocket connection lifecycle with automatic reconnection and HTTP fallbacks, preset and playlist activation, brightness control, and cleanup on unmount.
+ *
+ * @returns The root React element for the Kolori application
  */
 function KoloriApp({
   navigation,
@@ -446,6 +445,7 @@ function KoloriApp({
             
             // Only update if live view is enabled and this is from the active device
             if (isMounted && currentLiveViewEnabled) {
+
               setLiveLedData(message.data);
             } else {
               // Clear any existing data if live view is disabled
@@ -461,17 +461,36 @@ function KoloriApp({
                 deviceName: message.info.name,
                 ledCount: message.info.leds?.count,
                 ledMatrix: message.info.leds?.matrix,
-                rgbw: message.info.leds?.rgbw,
                 version: message.info.ver,
-                currentActiveDeviceId: currentActiveDevice.id,
-                currentActiveDeviceName: currentActiveDevice.name
+                currentActiveDeviceId: currentActiveDevice.id
               });
-              
+
               // Merge WebSocket info with existing wledInfo to preserve LED count and other details
               const currentWledInfo = currentActiveDevice.wledInfo || {};
-              const mergedInfo = { ...currentWledInfo, ...message.info };
-              
-              
+
+              // Try multiple sources for matrix data - prioritize fresh WebSocket data
+              let matrixData = null;
+              if (message.ledMatrix) {
+                matrixData = message.ledMatrix;
+              } else if (message.info.leds?.matrix) {
+                matrixData = message.info.leds.matrix;
+              }
+
+              const mergedInfo = {
+                ...currentWledInfo,
+                ...message.info,
+                // Add fresh matrix data if found
+                ...(matrixData && { ledMatrix: matrixData }),
+                // Also update the leds.matrix path to ensure fresh data overrides stale data
+                ...(matrixData && {
+                  leds: {
+                    ...currentWledInfo.leds,
+                    ...message.info.leds,
+                    matrix: matrixData
+                  }
+                })
+              };
+
               onDeviceUpdate(currentActiveDevice.id, { wledInfo: mergedInfo });
               logger.log('✅ Device info merged and updated for device ID:', currentActiveDevice.id);
             }
