@@ -519,6 +519,19 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
   );
 };
 
+/**
+ * Renders a modal UI for selecting, previewing, applying, and saving custom WLED effects and palettes for a connected device.
+ *
+ * @param visible - Whether the modal is visible
+ * @param isDark - Optional flag to render dark theme styles
+ * @param onClose - Callback invoked when the modal is closed
+ * @param selectedDevices - Array of connected devices; the first device is used for device-specific actions
+ * @param liveLedData - Optional live LED data used by the live visualization
+ * @param liveViewEnabled - Whether the live view visualization is enabled
+ * @param onLiveViewToggle - Optional callback invoked with the new live view enabled state
+ * @param onRefreshPresets - Optional callback to refresh presets after a successful save
+ * @returns A React element representing the Custom Effects modal
+ */
 export default function CustomEffectsModal({
   visible,
   isDark = false,
