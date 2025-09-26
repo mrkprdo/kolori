@@ -526,6 +526,39 @@ interface PresetGridProps {
   onDeviceUpdate?: (id: number, updates: Partial<WledDevice>) => void;
 }
 
+/**
+ * Render the presets interface including live view, seasonal presets, custom effects, playlists, and device controls.
+ *
+ * @param activePreset - ID of the currently active preset
+ * @param onPresetSelect - Callback invoked with a preset ID when a preset is selected
+ * @param isDark - Whether the UI should render in dark mode
+ * @param activeDevice - The currently selected device and its WLED info
+ * @param devices - List of available devices
+ * @param activeDeviceId - ID of the active device
+ * @param onSetActiveDeviceId - Callback to change the active device by ID
+ * @param customEffects - Array of custom effect presets (device presets)
+ * @param onAddCustomEffect - Callback to add a custom effect to local state
+ * @param onRemoveCustomEffect - Callback to remove a custom effect from local state
+ * @param savedPlaylists - Array of saved playlists
+ * @param isLoadingPlaylists - Whether playlists are currently loading
+ * @param onPlaylistRemove - Callback invoked to remove a playlist
+ * @param onPlaylistSelect - Callback invoked with a playlist ID when a playlist is selected
+ * @param setShowSettings - Callback to open the settings UI
+ * @param onDeviceRemove - Callback to remove a device
+ * @param onAddDevice - Callback to add a device
+ * @param onScanForDevices - Callback to trigger device scanning
+ * @param liveLedData - Latest LED data used for live visualization
+ * @param liveViewEnabled - Whether live LED visualization is enabled
+ * @param onLiveViewToggle - Callback invoked when the live view toggle is changed
+ * @param onRefreshPresets - Callback to refresh presets and device state
+ * @param onSavePlaylist - Callback invoked to save a new playlist
+ * @param seasonalPresets - Array of seasonal preset definitions
+ * @param onBrightnessChange - Callback invoked when device brightness is changed (value 0–255)
+ * @param liveViewLedSize - Visual size mode for live LEDs ('small' | 'normal' | 'large')
+ * @param updateChildModalState - Function used to report child modal visibility to parent for performance
+ * @param onDeviceUpdate - Callback to update device metadata (e.g., activePreset) by device ID
+ * @returns The rendered PresetGrid component tree
+ */
 export default function PresetGrid({
   activePreset,
   onPresetSelect,

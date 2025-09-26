@@ -77,6 +77,23 @@ const detect2DMatrix = (wledInfo: any) => {
   return { is2D: false, width: 0, height: 0, serpentine: false, transpose: false, vertical: false };
 };
 
+/**
+ * Render a live LED visualization for either a 1D LED strip or a 2D WLED matrix.
+ *
+ * The component adapts layout and LED sizing based on LED count, optional `wledInfo` matrix metadata,
+ * and the `liveViewLedSize` preference. When `wledInfo` indicates a 2D matrix, the component enforces
+ * a matrix-aware layout and mapping (including serpentine/transpose/vertical wiring) and ignores the size
+ * preference. Uses memoization and caching to minimize re-renders and layout recalculation.
+ *
+ * @param ledData - Array of LED color objects to display. For 1D strips the first LED is treated as a status LED and is omitted from the rendered strip.
+ * @param subtextColor - Color used for the LED count subtext.
+ * @param liveViewLedSize - Preferred size hint for 1D displays; ignored for detected 2D matrices.
+ * @param containerWidth - Optional override for available rendering width; defaults to device width minus padding.
+ * @param showLedCount - Whether to display the LED count text beneath the visualization.
+ * @param wledInfo - Optional WLED device metadata used to detect matrix dimensions and mapping flags (width, height, serpentine, transpose, vertical).
+ *
+ * @returns The React element containing the LED grid/strip and optional LED count text.
+ */
 function LEDVisualization({
   ledData,
   subtextColor,
