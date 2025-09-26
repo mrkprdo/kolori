@@ -1530,11 +1530,12 @@ export default function PresetGrid({
                   </View>
                 )}
                 {liveViewEnabled && activeDevice?.isConnected && liveLedData.length > 0 && (
-                  <LEDVisualization 
-                    ledData={liveLedData} 
+                  <LEDVisualization
+                    ledData={liveLedData}
                     subtextColor={subtextColor}
                     liveViewLedSize={liveViewLedSize}
                     showLedCount={true}
+                    wledInfo={activeDevice?.wledInfo}
                   />
                 )}
 

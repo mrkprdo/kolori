@@ -565,10 +565,10 @@ export default function CustomEffectsModal({
   // Detect device dimensions when modal opens and device is available
   useEffect(() => {
     if (visible && selectedDevices.length > 0 && selectedDevices[0].isConnected) {
-      detectWledDimensions(selectedDevices[0].ip)
+      const deviceIp = selectedDevices[0].ip;
+      detectWledDimensions(deviceIp)
         .then(dimensions => {
           setDeviceDimensions(dimensions);
-          console.log(`🔍 Device dimensions detected: ${dimensions || 'unknown'}`);
         })
         .catch(error => {
           console.error('Failed to detect device dimensions:', error);
@@ -577,7 +577,7 @@ export default function CustomEffectsModal({
     } else {
       setDeviceDimensions(null);
     }
-  }, [visible, selectedDevices, detectWledDimensions]);
+  }, [visible, selectedDevices.length > 0 ? selectedDevices[0]?.ip : null, selectedDevices.length > 0 ? selectedDevices[0]?.isConnected : false]);
 
   // Filter effects based on device capabilities
   const effects = useMemo(() => {
@@ -1005,6 +1005,7 @@ export default function CustomEffectsModal({
                       liveViewLedSize="normal"
                       containerWidth={300} // Modal content width
                       showLedCount={true}
+                      wledInfo={selectedDevices[0]?.wledInfo}
                     />
                   ) : liveViewEnabled ? (
                     <Text style={{
