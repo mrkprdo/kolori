@@ -18,7 +18,6 @@ import {
   BackHandler,
   ToastAndroid,
   Platform,
-  TextInput,
   KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -44,12 +43,10 @@ import {
   fetchWledTimerSettings,
   convertWledBitmaskToDays,
   formatTimeString,
-  resetWledTimerSettings,
-  saveWledRobustSchedule,
-  fetchWledCurrentPreset,
   generatePresetGradient,
 } from "../config/wledApi";
 import CustomEffectsModal from "./CustomEffectsModal";
+import SchedulerModal from "./SchedulerModal";
 import PlaylistCreationModal from "./PlaylistCreationModal";
 import DeviceManagementModal from "./DeviceManagementModal";
 import LEDVisualization from "./LEDVisualization";
@@ -686,6 +683,7 @@ export default function PresetGrid({
   const [showCustomEffectsModal, setShowCustomEffectsModal] = useState(false);
   const [showPlaylistCreationModal, setShowPlaylistCreationModal] =
     useState(false);
+  const [showSchedulerModal, setShowSchedulerModal] = useState(false);
   const [showFabOptions, setShowFabOptions] = useState(false);
   const [showCreateNewOptions, setShowCreateNewOptions] = useState(false);
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
@@ -950,206 +948,6 @@ export default function PresetGrid({
       logger.error("❌ Exception while disabling scheduler:", error);
     }
   }, [activeDevice]);
-
-  // Function to load existing timer settings from WLED device
-  const loadTimerSettings = useCallback(async () => {
-    if (!activeDevice?.ip || !activeDevice?.isConnected) {
-      logger.log(`⚠️ Cannot load timer settings: device not connected`, {
-        ip: activeDevice?.ip,
-        connected: activeDevice?.isConnected,
-      });
-      return;
-    }
-
-    logger.log(`🔄 Loading timer settings from device ${activeDevice.ip}...`);
-
-    try {
-      const result = await fetchWledTimerSettings(
-        activeDevice.ip,
-        activeDevice.protocol || "http"
-      );
-
-      if (result.success && result.timerSettings) {
-        const timers = result.timerSettings.timers;
-        logger.log(
-          `🔄 Fetched timer settings from device:`,
-          timers.map(
-            (t) =>
-              `Timer ${timers.indexOf(t)}: enabled=${t.enabled}, preset=${
-                t.preset
-              }, weekdays=${t.weekdays}, time=${t.hour}:${t.minute}`
-          )
-        );
-
-        // Look for the first timer with a valid preset (regardless of enabled state)
-        // We want to show the configuration even if it's disabled
-        const configuredTimer = timers.find((timer) => timer.preset > 0);
-
-        // Check if there are actually enabled timers
-        const hasEnabledTimers = timers.some(
-          (timer) => timer.preset > 0 && timer.enabled
-        );
-
-        logger.log(
-          `🔍 Looking for configured timer with preset>0. Found:`,
-          configuredTimer
-            ? `Timer with preset ${configuredTimer.preset}, weekdays ${configuredTimer.weekdays}, enabled=${configuredTimer.enabled}`
-            : "No configured timer found"
-        );
-
-        if (configuredTimer) {
-          logger.log(`✅ Found configured timer, updating UI state...`);
-          setSchedulerEnabled(hasEnabledTimers);
-          setSchedulerExpanded(true);
-
-          const convertedDays = convertWledBitmaskToDays(
-            configuredTimer.weekdays
-          );
-          logger.log(
-            `📅 Converting WLED weekdays ${configuredTimer.weekdays} to UI days:`,
-            Array.from(convertedDays)
-          );
-
-          setSelectedDays(convertedDays);
-          const formattedTime = formatTimeString(
-            configuredTimer.hour,
-            configuredTimer.minute
-          );
-          setTurnOnTime(formattedTime);
-          setTargetPresetId(configuredTimer.preset);
-
-          logger.log(
-            `📝 UI state updated: enabled=${hasEnabledTimers}, time=${formattedTime}, preset=${
-              configuredTimer.preset
-            }, days=${Array.from(convertedDays)}`
-          );
-          // Save the state
-          saveSchedulerState(hasEnabledTimers, true);
-
-          // Look for corresponding turn-off timer (preset 62 or 0)
-          const offTimer = timers.find(
-            (timer) =>
-              (timer.preset === 62 || timer.preset === 0) &&
-              timer.weekdays === configuredTimer.weekdays
-          );
-
-          if (offTimer) {
-            setTurnOffTime(formatTimeString(offTimer.hour, offTimer.minute));
-            // Set configured schedule with actual loaded values (only if timers are enabled)
-            if (hasEnabledTimers) {
-              setConfiguredSchedule({
-                onTime: formattedTime,
-                offTime: formatTimeString(offTimer.hour, offTimer.minute),
-                presetId: configuredTimer.preset,
-              });
-            }
-            logger.log(
-              `⏰ Loaded timer settings: ON at ${formatTimeString(
-                configuredTimer.hour,
-                configuredTimer.minute
-              )}, OFF at ${formatTimeString(
-                offTimer.hour,
-                offTimer.minute
-              )}, preset ${configuredTimer.preset}`
-            );
-          } else {
-            // Set configured schedule with just ON timer (only if timers are enabled)
-            if (hasEnabledTimers) {
-              setConfiguredSchedule({
-                onTime: formattedTime,
-                offTime: "07:00", // Default off time
-                presetId: configuredTimer.preset,
-              });
-            }
-            logger.log(
-              `⏰ Loaded timer settings: ON at ${formatTimeString(
-                configuredTimer.hour,
-                configuredTimer.minute
-              )}, preset ${configuredTimer.preset} (no OFF timer found)`
-            );
-          }
-        } else {
-          logger.log(
-            `ℹ️ No active timer schedules found on device ${activeDevice.ip}`
-          );
-        }
-      } else if (result.success) {
-        logger.log(`⚠️ Fetch succeeded but no timer settings returned`);
-      } else {
-        logger.log(`❌ Failed to fetch timer settings: ${result.message}`);
-      }
-    } catch (error) {
-      logger.error("❌ Exception while loading timer settings:", error);
-    }
-  }, [activeDevice]);
-
-  // Load stored scheduler state and timer settings when device changes
-  useEffect(() => {
-    if (activeDevice?.isConnected && activeDevice?.ip) {
-      logger.log(
-        `🔌 Device connected/changed: ${activeDevice.ip}, loading timer settings...`
-      );
-      // Add a small delay to ensure device is fully ready
-      setTimeout(() => {
-        loadTimerSettings();
-        loadSchedulerState();
-      }, 1000);
-    } else {
-      logger.log(`📱 Device not connected or no IP available`);
-    }
-  }, [
-    activeDevice?.isConnected,
-    activeDevice?.ip,
-    loadTimerSettings,
-    loadSchedulerState,
-  ]);
-
-  // Function to load stored scheduler state for the current device
-  const loadSchedulerState = useCallback(async () => {
-    if (!activeDevice?.ip) return;
-
-    try {
-      const stateKey = `scheduler_state_${activeDevice.ip}`;
-      const savedState = await storage.loadFromStorage(stateKey, null);
-
-      if (savedState) {
-        setSchedulerEnabled(savedState.enabled || false);
-        if (savedState.expanded !== undefined) {
-          setSchedulerExpanded(savedState.expanded);
-        }
-        logger.log(
-          `📱 Loaded scheduler state for ${activeDevice.ip}: enabled=${savedState.enabled}, expanded=${savedState.expanded}`
-        );
-      }
-    } catch (error) {
-      logger.error("Failed to load scheduler state:", error);
-    }
-  }, [activeDevice?.ip]);
-
-  // Function to save scheduler state for the current device
-  const saveSchedulerState = useCallback(
-    async (enabled: boolean, expanded?: boolean) => {
-      if (!activeDevice?.ip) return;
-
-      try {
-        const stateKey = `scheduler_state_${activeDevice.ip}`;
-        const state = {
-          enabled,
-          expanded: expanded !== undefined ? expanded : schedulerExpanded,
-          lastUpdated: Date.now(),
-        };
-
-        await storage.saveToStorage(stateKey, state);
-        logger.log(
-          `💾 Saved scheduler state for ${activeDevice.ip}: enabled=${enabled}, expanded=${state.expanded}`
-        );
-      } catch (error) {
-        logger.error("Failed to save scheduler state:", error);
-      }
-    },
-    [activeDevice?.ip, schedulerExpanded]
-  );
-
   // Back handler for "press twice to exit"
   const backPressedOnce = useRef(false);
   const backHandlerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1162,6 +960,7 @@ export default function PresetGrid({
   const fabScaleAnim2 = useRef(new Animated.Value(0)).current;
   const fabScaleAnim3 = useRef(new Animated.Value(0)).current;
   const fabScaleAnim4 = useRef(new Animated.Value(0)).current;
+  const fabScaleAnim5 = useRef(new Animated.Value(0)).current;
   const wiggleAnim = useRef(new Animated.Value(0)).current;
 
   // Cleanup animations on unmount to prevent memory leaks and race conditions
@@ -1173,6 +972,7 @@ export default function PresetGrid({
       fabScaleAnim2.stopAnimation();
       fabScaleAnim3.stopAnimation();
       fabScaleAnim4.stopAnimation();
+      fabScaleAnim5.stopAnimation();
       wiggleAnim.stopAnimation();
       fadeAnim.stopAnimation();
       scaleAnim.stopAnimation();
@@ -1185,6 +985,7 @@ export default function PresetGrid({
     fabScaleAnim2,
     fabScaleAnim3,
     fabScaleAnim4,
+    fabScaleAnim5,
     wiggleAnim,
     fadeAnim,
     scaleAnim,
@@ -1428,8 +1229,6 @@ export default function PresetGrid({
       await onRefreshPresets();
       // Also fetch current brightness from device after refresh
       await fetchDeviceBrightness();
-      // Load timer settings to sync with any changes made from other devices
-      await loadTimerSettings();
     } catch (error) {
       logger.error("Failed to refresh presets:", error);
     } finally {
@@ -1439,7 +1238,6 @@ export default function PresetGrid({
     onRefreshPresets,
     isRefreshing,
     fetchDeviceBrightness,
-    loadTimerSettings,
   ]);
 
   // Animation coordination (non-blocking)
@@ -1457,6 +1255,7 @@ export default function PresetGrid({
     fabScaleAnim2.setValue(0);
     fabScaleAnim3.setValue(0);
     fabScaleAnim4.setValue(0);
+    fabScaleAnim5.setValue(0);
 
     console.log("Animation values reset to 0, starting animations...");
 
@@ -1467,6 +1266,11 @@ export default function PresetGrid({
         useNativeDriver: true,
       }),
       Animated.stagger(60, [
+        Animated.timing(fabScaleAnim5, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
         Animated.timing(fabScaleAnim4, {
           toValue: 1,
           duration: 200,
@@ -1498,6 +1302,7 @@ export default function PresetGrid({
     fabScaleAnim2,
     fabScaleAnim3,
     fabScaleAnim4,
+    fabScaleAnim5,
   ]);
 
   const animateFabClose = useCallback(() => {
@@ -1533,6 +1338,11 @@ export default function PresetGrid({
           duration: 150,
           useNativeDriver: true,
         }),
+        Animated.timing(fabScaleAnim5, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
       ]),
     ]).start(() => {
       // fabAnimationInProgress.current = false;
@@ -1545,6 +1355,7 @@ export default function PresetGrid({
     fabScaleAnim2,
     fabScaleAnim3,
     fabScaleAnim4,
+    fabScaleAnim5,
   ]);
 
   const toggleFabOptions = useCallback(() => {
@@ -1564,6 +1375,7 @@ export default function PresetGrid({
       fabScaleAnim2.setValue(0);
       fabScaleAnim3.setValue(0);
       fabScaleAnim4.setValue(0);
+      fabScaleAnim5.setValue(0);
       console.log("🔴 FAB close complete");
     } else {
       console.log("🟢 Opening FAB - setting state to true");
@@ -1575,6 +1387,7 @@ export default function PresetGrid({
       fabScaleAnim2.setValue(1);
       fabScaleAnim3.setValue(1);
       fabScaleAnim4.setValue(1);
+      fabScaleAnim5.setValue(1);
       console.log("🟢 FAB open complete");
     }
   }, [
@@ -1584,6 +1397,7 @@ export default function PresetGrid({
     fabScaleAnim2,
     fabScaleAnim3,
     fabScaleAnim4,
+    fabScaleAnim5,
   ]);
 
   // Safety mechanism to reset stuck animation flag
@@ -1609,10 +1423,11 @@ export default function PresetGrid({
       fabScaleAnim2.setValue(0);
       fabScaleAnim3.setValue(0);
       fabScaleAnim4.setValue(0);
+      fabScaleAnim5.setValue(0);
       // Open modal immediately
       modalOpenFunction();
     },
-    [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4]
+    [fabRotateAnim, fabScaleAnim1, fabScaleAnim2, fabScaleAnim3, fabScaleAnim4, fabScaleAnim5]
   );
 
   const startWiggleAnimation = useCallback(() => {
@@ -2674,491 +2489,6 @@ export default function PresetGrid({
           )}
         </View>
 
-        {/* Scheduler Section */}
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: cardBackground, borderColor },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => {
-              const newExpanded = !schedulerExpanded;
-              setSchedulerExpanded(newExpanded);
-              saveSchedulerState(schedulerEnabled, newExpanded);
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={styles.headerLeft}>
-              <Ionicons name="time-outline" size={20} color={textColor} />
-              <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Scheduler
-              </Text>
-            </View>
-            <View style={styles.headerRight}>
-              <Ionicons
-                name={schedulerExpanded ? "chevron-up" : "chevron-down"}
-                size={20}
-                color={textColor}
-              />
-            </View>
-          </TouchableOpacity>
-
-          {schedulerExpanded && (
-            <View style={styles.sectionContent}>
-              {/* Timer Status Info */}
-              <View
-                style={[
-                  styles.innerCard,
-                  {
-                    backgroundColor: isDark ? "#374151" : "#f9fafb",
-                    borderColor: isDark ? "#4b5563" : "#e5e7eb",
-                    marginBottom: 16,
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.timerStatusText,
-                    {
-                      color: schedulerEnabled
-                        ? isDark
-                          ? "#10b981"
-                          : "#059669"
-                        : isDark
-                        ? "#9ca3af"
-                        : "#6b7280",
-                    },
-                  ]}
-                >
-                  {schedulerEnabled && configuredSchedule
-                    ? `WLED timers configured: ON ${configuredSchedule.onTime}, OFF ${configuredSchedule.offTime}, Preset ${configuredSchedule.presetId}`
-                    : "WLED timers (0 & 1) is not set for Kolori"}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.innerCard,
-                  {
-                    backgroundColor: isDark ? "#374151" : "#f9fafb",
-                    borderColor: isDark ? "#4b5563" : "#e5e7eb",
-                  },
-                ]}
-              >
-                {/* Days of Week */}
-                <Text
-                  style={[
-                    styles.sectionSubtitle,
-                    { color: textColor, marginBottom: 12 },
-                  ]}
-                >
-                  Days
-                </Text>
-                <View style={styles.daysContainer}>
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day, index) => (
-                      <TouchableOpacity
-                        key={day}
-                        onPress={() => {
-                          const newSelectedDays = new Set(selectedDays);
-                          if (selectedDays.has(index)) {
-                            newSelectedDays.delete(index);
-                          } else {
-                            newSelectedDays.add(index);
-                          }
-                          setSelectedDays(newSelectedDays);
-                        }}
-                        style={[
-                          styles.dayButton,
-                          {
-                            backgroundColor: selectedDays.has(index)
-                              ? "#3b82f6"
-                              : isDark
-                              ? "#4b5563"
-                              : "#e5e7eb",
-                            borderColor: isDark ? "#6b7280" : "#d1d5db",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.dayButtonText,
-                            {
-                              color: selectedDays.has(index)
-                                ? "#ffffff"
-                                : isDark
-                                ? "#9ca3af"
-                                : "#6b7280",
-                            },
-                          ]}
-                        >
-                          {day}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  )}
-                </View>
-
-                {/* Preset Selection */}
-                <View style={styles.presetInputRow}>
-                  <Text style={[styles.presetInputLabel, { color: textColor }]}>
-                    Preset ID
-                  </Text>
-                  <View
-                    style={[
-                      styles.presetInputContainer,
-                      {
-                        backgroundColor: isDark ? "#4b5563" : "#ffffff",
-                        borderColor: isDark ? "#6b7280" : "#d1d5db",
-                      },
-                    ]}
-                  >
-                    <TextInput
-                      style={[styles.presetInput, { color: textColor }]}
-                      value={targetPresetId.toString()}
-                      onChangeText={(text) => {
-                        if (text === "") {
-                          // Allow empty for easier editing
-                          return;
-                        }
-                        const id = parseInt(text);
-                        if (!isNaN(id) && id >= 1 && id <= 250) {
-                          setTargetPresetId(id);
-                        }
-                      }}
-                      onBlur={() => {
-                        // Ensure valid value on blur
-                        if (targetPresetId < 1 || targetPresetId > 250) {
-                          setTargetPresetId(1);
-                        }
-                      }}
-                      placeholder="1-250"
-                      placeholderTextColor={isDark ? "#9ca3af" : "#6b7280"}
-                      keyboardType="numeric"
-                      maxLength={3}
-                      selectTextOnFocus={true}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.currentPresetButton,
-                      {
-                        backgroundColor: isDark ? "#374151" : "#f3f4f6",
-                        borderColor: isDark ? "#6b7280" : "#d1d5db",
-                      },
-                    ]}
-                    onPress={async () => {
-                      if (!activeDevice?.ip) return;
-                      try {
-                        const result = await fetchWledCurrentPreset(
-                          activeDevice.ip,
-                          activeDevice.protocol || "http"
-                        );
-                        if (result.success && result.presetId) {
-                          setTargetPresetId(result.presetId);
-                          logger.log(
-                            `📌 Set target preset to current active: ${result.presetId}`
-                          );
-                        } else {
-                          Alert.alert(
-                            "Info",
-                            result.message || "No active preset found"
-                          );
-                        }
-                      } catch (error: any) {
-                        Alert.alert("Error", "Failed to fetch current preset");
-                        logger.error(
-                          "❌ Failed to fetch current preset:",
-                          error
-                        );
-                      }
-                    }}
-                    disabled={!activeDevice?.ip || !activeDevice?.isConnected}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color:
-                          !activeDevice?.ip || !activeDevice?.isConnected
-                            ? isDark
-                              ? "#6b7280"
-                              : "#9ca3af"
-                            : isDark
-                            ? "#d1d5db"
-                            : "#374151",
-                      }}
-                    >
-                      Active Preset
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <Text
-                  style={[
-                    styles.presetSelectionSubtext,
-                    { color: isDark ? "#9ca3af" : "#6b7280", marginBottom: 20 },
-                  ]}
-                >
-                  Enter the preset/playlist ID (1-250) to schedule
-                </Text>
-
-                {/* Time Settings */}
-                <View style={styles.timeContainer}>
-                  <View style={styles.timeRowInline}>
-                    <View style={styles.timeInputGroup}>
-                      <Text style={[styles.timeLabel, { color: textColor }]}>
-                        Turn On
-                      </Text>
-                      <View
-                        style={[
-                          styles.timeInputContainer,
-                          {
-                            backgroundColor: isDark ? "#4b5563" : "#ffffff",
-                            borderColor: isDark ? "#6b7280" : "#d1d5db",
-                          },
-                        ]}
-                      >
-                        <TextInput
-                          style={[styles.timeInput, { color: textColor }]}
-                          value={turnOnTime}
-                          onChangeText={(text) => {
-                            handleTimeInput(text, setTurnOnTime, turnOnTime);
-                          }}
-                          placeholder="20:00"
-                          placeholderTextColor={isDark ? "#9ca3af" : "#6b7280"}
-                          maxLength={5}
-                          keyboardType="number-pad"
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.timeInputGroup}>
-                      <Text style={[styles.timeLabel, { color: textColor }]}>
-                        Turn Off
-                      </Text>
-                      <View
-                        style={[
-                          styles.timeInputContainer,
-                          {
-                            backgroundColor: isDark ? "#4b5563" : "#ffffff",
-                            borderColor: isDark ? "#6b7280" : "#d1d5db",
-                          },
-                        ]}
-                      >
-                        <TextInput
-                          style={[styles.timeInput, { color: textColor }]}
-                          value={turnOffTime}
-                          onChangeText={(text) => {
-                            handleTimeInput(text, setTurnOffTime, turnOffTime);
-                          }}
-                          placeholder="07:00"
-                          placeholderTextColor={isDark ? "#9ca3af" : "#6b7280"}
-                          maxLength={5}
-                          keyboardType="number-pad"
-                        />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Save and Reset Buttons */}
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (!activeDevice?.ip || !activeDevice?.isConnected) {
-                        Alert.alert("Error", "Device not connected");
-                        return;
-                      }
-
-                      Alert.alert(
-                        "Reset Timer Settings",
-                        "This will reset ALL 8 timer slots and time settings to WLED defaults:\n\n• All scheduled presets will be disabled\n• Turn ON/OFF times will be cleared\n• Weekday selections will be reset\n• Date ranges will be reset\n• Countdown and macro settings will be reset\n\nThis action cannot be undone. Continue?",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Reset",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                const result = await resetWledTimerSettings(
-                                  activeDevice.ip,
-                                  activeDevice.protocol || "http"
-                                );
-
-                                if (result.success) {
-                                  Alert.alert(
-                                    "Success",
-                                    "Timer settings reset to defaults!"
-                                  );
-                                  // Reset form data and timer status to reflect device state
-                                  setSchedulerEnabled(false);
-                                  setConfiguredSchedule(null);
-                                  setSelectedDays(
-                                    new Set([0, 1, 2, 3, 4, 5, 6])
-                                  );
-                                  setTurnOnTime("20:00");
-                                  setTurnOffTime("07:00");
-                                  setTargetPresetId(62);
-                                  // Keep scheduler UI expanded but update enabled state
-                                  saveSchedulerState(false, true);
-                                  logger.log(
-                                    `✅ Timer settings reset successfully`
-                                  );
-                                } else {
-                                  Alert.alert(
-                                    "Error",
-                                    result.message ||
-                                      "Failed to reset timer settings"
-                                  );
-                                  logger.error(
-                                    "❌ Failed to reset timer settings:",
-                                    result.message
-                                  );
-                                }
-                              } catch (error: any) {
-                                Alert.alert(
-                                  "Error",
-                                  "Failed to reset timer settings"
-                                );
-                                logger.error("❌ Reset error:", error);
-                              }
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                    style={[
-                      styles.resetButton,
-                      {
-                        backgroundColor: isDark ? "#dc2626" : "#ef4444",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.resetButtonText, { color: "#ffffff" }]}
-                    >
-                      Reset Schedule
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (selectedDays.size === 0) {
-                        Alert.alert("Error", "Please select at least one day");
-                        return;
-                      }
-
-                      if (!activeDevice?.ip || !activeDevice?.isConnected) {
-                        Alert.alert("Error", "Device not connected");
-                        return;
-                      }
-
-                      // Show warning dialog before saving
-                      Alert.alert(
-                        "Save Schedule",
-                        `This will overwrite Timer 0 and Timer 1 on your WLED device.\n\nTimer 0: Turn ON at ${turnOnTime}\nTimer 1: Turn OFF at ${turnOffTime}\nDays: ${Array.from(
-                          selectedDays
-                        )
-                          .map(
-                            (d) =>
-                              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-                                d
-                              ]
-                          )
-                          .join(", ")}\nPreset: ${targetPresetId}\n\nContinue?`,
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel",
-                          },
-                          {
-                            text: "Save",
-                            style: "destructive",
-                            onPress: async () => {
-                              setIsSchedulerSaving(true);
-                              try {
-                                logger.log(
-                                  `⏰ Saving robust schedule for preset ${targetPresetId}: ON at ${turnOnTime}, OFF at ${turnOffTime}`
-                                );
-
-                                const result = await saveWledRobustSchedule(
-                                  activeDevice.ip,
-                                  turnOnTime,
-                                  turnOffTime,
-                                  targetPresetId,
-                                  selectedDays,
-                                  activeDevice.protocol || "http"
-                                );
-
-                                if (result.success) {
-                                  Alert.alert(
-                                    "Success",
-                                    `Schedule saved! Preset ${targetPresetId} will turn on at ${turnOnTime} and off at ${turnOffTime} on selected days.`
-                                  );
-                                  // Update UI state to reflect that schedule is now configured
-                                  setSchedulerEnabled(true);
-                                  setConfiguredSchedule({
-                                    onTime: turnOnTime,
-                                    offTime: turnOffTime,
-                                    presetId: targetPresetId,
-                                  });
-                                  saveSchedulerState(true, true);
-                                  logger.log(
-                                    `✅ Schedule saved successfully for preset ${targetPresetId}`
-                                  );
-                                } else {
-                                  Alert.alert(
-                                    "Error",
-                                    result.message || "Failed to save schedule"
-                                  );
-                                  logger.error(
-                                    "❌ Failed to save schedule:",
-                                    result.message
-                                  );
-                                }
-                              } catch (error: any) {
-                                const errorMessage =
-                                  error.message ||
-                                  "Failed to save scheduler settings";
-                                Alert.alert("Error", errorMessage);
-                                logger.error("❌ Schedule save error:", error);
-                              } finally {
-                                setIsSchedulerSaving(false);
-                              }
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                    disabled={isSchedulerSaving || selectedDays.size === 0}
-                    style={[
-                      styles.saveButton,
-                      {
-                        backgroundColor:
-                          isSchedulerSaving || selectedDays.size === 0
-                            ? isDark
-                              ? "#4b5563"
-                              : "#d1d5db"
-                            : "#3b82f6",
-                        opacity:
-                          isSchedulerSaving || selectedDays.size === 0
-                            ? 0.6
-                            : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.saveButtonText, { color: "#ffffff" }]}>
-                      {isSchedulerSaving ? "Saving..." : "Save Schedule"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
       </ScrollView>
 
       {/* Floating Device Controls - Hidden in delete mode */}
@@ -3362,7 +2692,7 @@ export default function PresetGrid({
               styles.miniFab,
               {
                 transform: [{ scale: fabScaleAnim1 }],
-                bottom: 260,
+                bottom: 320,
               },
             ]}
             pointerEvents={showFabOptions ? "auto" : "none"}
@@ -3461,6 +2791,33 @@ export default function PresetGrid({
               ]}
             >
               <Ionicons name="settings" size={20} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Mini FAB 5 - Scheduler */}
+          <Animated.View
+            style={[
+              styles.miniFab,
+              {
+                transform: [{ scale: fabScaleAnim5 }],
+                bottom: 260,
+              },
+            ]}
+            pointerEvents={showFabOptions ? "auto" : "none"}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                closeFabAndOpenModal(() => setShowSchedulerModal(true));
+              }}
+              style={[
+                styles.miniFabButton,
+                {
+                  backgroundColor: "#8b5cf6",
+                  shadowColor: isDark ? "#000" : "#8b5cf6",
+                },
+              ]}
+            >
+              <Ionicons name="time-outline" size={20} color="white" />
             </TouchableOpacity>
           </Animated.View>
 
@@ -3602,6 +2959,18 @@ export default function PresetGrid({
         onDeviceRemove={onDeviceRemove}
         onAddDevice={onAddDevice}
         onScanForDevices={onScanForDevices}
+      />
+
+      {/* Scheduler Modal */}
+      <SchedulerModal
+        visible={showSchedulerModal}
+        onClose={() => setShowSchedulerModal(false)}
+        isDark={isDark}
+        activeDevice={activeDevice}
+        configuredSchedule={configuredSchedule}
+        setConfiguredSchedule={setConfiguredSchedule}
+        schedulerEnabled={schedulerEnabled}
+        setSchedulerEnabled={setSchedulerEnabled}
       />
 
       {/* Deletion Progress Modal */}

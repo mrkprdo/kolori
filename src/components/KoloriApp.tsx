@@ -1046,10 +1046,18 @@ function KoloriApp({
         // Always clear loading state
         setIsLoadingPlaylists(false);
       } else {
-        throw new Error(result.message);
+        // Only log non-timeout errors
+        if (result.message !== "Request timeout") {
+          logger.error("❌ Failed to fetch WLED presets:", result.message);
+        }
+        setIsLoadingPlaylists(false);
       }
     } catch (error: any) {
-      logger.error("❌ Failed to fetch WLED presets:", error.message);
+      // Only log non-timeout errors
+      if (error.message !== "Request timeout") {
+        logger.error("❌ Failed to fetch WLED presets:", error.message);
+      }
+      setIsLoadingPlaylists(false);
     }
   }, [activeDevice?.isConnected, activeDevice?.id, activeDevice?.name, activeDevice?.protocol, getDeviceAddress, generateHash, hasDataChanged]);
 

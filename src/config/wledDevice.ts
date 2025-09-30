@@ -267,6 +267,9 @@ export const getWledState = async (
     };
   }
 
-  logger.error(`❌ Failed to get WLED state`);
+  // Only log non-timeout errors
+  if (result.error !== "Request timeout") {
+    logger.error(`❌ Failed to get WLED state: ${result.error}`);
+  }
   return formatApiResponse(false, result.error || "Failed to get state");
 };
