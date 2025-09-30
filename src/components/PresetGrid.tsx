@@ -1083,13 +1083,6 @@ export default function PresetGrid({
     }
   }, [activeDevice]);
 
-  // Update target preset based on currently active preset
-  useEffect(() => {
-    if (activePreset && typeof activePreset === "number") {
-      setTargetPresetId(activePreset);
-    }
-  }, [activePreset]);
-
   // Load stored scheduler state and timer settings when device changes
   useEffect(() => {
     if (activeDevice?.isConnected && activeDevice?.ip) {

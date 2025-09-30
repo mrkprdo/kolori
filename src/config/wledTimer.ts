@@ -275,6 +275,11 @@ export const saveWledRobustSchedule = async (
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: formData.toString(),
         timeout: 10000,
+      },
+      async (response) => {
+        // /settings/time returns HTML, not JSON
+        const text = await response.text();
+        return text;
       }
     );
 
@@ -361,6 +366,11 @@ export const resetWledTimerSettings = async (
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: formData.toString(),
         timeout: 10000,
+      },
+      async (response) => {
+        // /settings/time returns HTML, not JSON
+        const text = await response.text();
+        return text;
       }
     );
 
