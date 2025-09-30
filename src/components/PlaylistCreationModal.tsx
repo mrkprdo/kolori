@@ -390,7 +390,6 @@ export default function PlaylistCreationModal({
         }),
         isActive: false,
         gradient: playlistGradientData.gradient,
-        linearGradientColors: playlistGradientData.colors,
       };
 
       console.log('✅ Calling onSavePlaylist with data:', playlistData);

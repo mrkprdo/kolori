@@ -3,7 +3,7 @@ export interface WledDevice {
   readonly name: string;
   readonly ip: string;
   readonly mdns?: string;
-  readonly protocol: 'http' | 'https';
+  readonly protocol: "http" | "https";
   readonly bestAddress?: string;
   readonly isConnected: boolean;
   readonly activePreset?: string | null;
@@ -24,7 +24,6 @@ export interface CustomEffect {
   readonly paletteName: string;
   readonly presetId?: number;
   readonly gradient: string;
-  readonly linearGradientColors?: readonly string[]; // For enhanced gradient display
   readonly isCustom: boolean;
   readonly isWledPreset?: boolean;
 }
@@ -46,7 +45,6 @@ export interface SavedPlaylist {
   readonly isWledPlaylist?: boolean;
   readonly isActive?: boolean;
   readonly gradient?: string;
-  readonly linearGradientColors?: readonly string[]; // For enhanced gradient display
 }
 
 export interface WledEffect {
@@ -84,8 +82,8 @@ export interface ApiResponse {
   data?: any;
 }
 
-export type ScheduleMode = 'all-day' | 'day' | 'night';
-export type Theme = 'light' | 'dark' | 'system';
+export type ScheduleMode = "all-day" | "day" | "night";
+export type Theme = "light" | "dark" | "system";
 
 export interface SeasonalPreset {
   readonly id: string;
@@ -107,6 +105,6 @@ export interface Settings {
   readonly maxDevices: number;
   readonly backgroundScanEnabled: boolean;
   readonly seasonalPresets?: SeasonalPreset[];
-  readonly liveViewLedSize?: 'compact' | 'normal' | 'large' | 'extra-large';
+  readonly liveViewLedSize?: "compact" | "normal" | "large" | "extra-large";
   readonly [key: string]: unknown;
 }

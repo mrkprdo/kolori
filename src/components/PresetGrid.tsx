@@ -47,6 +47,7 @@ import {
   resetWledTimerSettings,
   saveWledRobustSchedule,
   fetchWledCurrentPreset,
+  generatePresetGradient,
 } from "../config/wledApi";
 import CustomEffectsModal from "./CustomEffectsModal";
 import PlaylistCreationModal from "./PlaylistCreationModal";
@@ -97,13 +98,8 @@ const AnimatedPlaylistItem = React.memo(
     }, [playlist.id, onPress, isDeleteMode, onToggleSelection]);
 
     // Use LinearGradient colors for playlists if available
-    const shouldUseGradient =
-      playlist.linearGradientColors || playlist.gradient;
-    const gradientColors =
-      playlist.linearGradientColors ||
-      (playlist.gradient
-        ? parseGradientString(playlist.gradient).colors
-        : null);
+    const shouldUseGradient = playlist.gradient;
+    const gradientColors = playlist.gradient ? parseGradientString(playlist.gradient).colors : null;
 
     // Ensure gradient colors are valid before using LinearGradient
     const hasValidGradient =
@@ -348,14 +344,8 @@ const PresetCard = React.memo(
     // Memoize gradient calculations to prevent expensive re-computations
     const { shouldUseGradient, gradientColors, hasValidGradient } =
       useMemo(() => {
-        const shouldUse =
-          preset.isWledPreset &&
-          (preset.linearGradientColors || preset.gradient);
-        const colors =
-          preset.linearGradientColors ||
-          (preset.gradient
-            ? parseGradientString(preset.gradient).colors
-            : null);
+        const shouldUse = preset.isWledPreset && preset.gradient;
+        const colors = preset.gradient ? parseGradientString(preset.gradient).colors : null;
 
         const hasValid =
           colors &&
@@ -370,7 +360,7 @@ const PresetCard = React.memo(
           gradientColors: colors,
           hasValidGradient: hasValid,
         };
-      }, [preset.isWledPreset, preset.linearGradientColors, preset.gradient]);
+      }, [preset.isWledPreset, preset.gradient]);
 
     const handleCardPress = useCallback(() => {
       if (isDeleteMode && onToggleSelection) {
@@ -2126,57 +2116,7 @@ export default function PresetGrid({
           `🎲 Successfully created random custom effect with preset ID: ${result.presetId}`
         );
 
-        // Generate gradient colors based on effect and palette
-        const generateEffectGradient = (
-          effectName: string,
-          paletteName?: string
-        ): { colors: string[] } => {
-          const effect = effectName.toLowerCase();
-
-          // Effect-specific gradients
-          if (effect.includes("fire")) {
-            return { colors: ["#ff4500", "#ff6500", "#ffb347"] };
-          }
-          if (effect.includes("rainbow")) {
-            return {
-              colors: [
-                "#ff0000",
-                "#ff7700",
-                "#ffff00",
-                "#00ff00",
-                "#0077ff",
-                "#4b0082",
-              ],
-            };
-          }
-          if (
-            effect.includes("ocean") ||
-            effect.includes("water") ||
-            effect.includes("blue")
-          ) {
-            return { colors: ["#006994", "#47b5d6", "#87ceeb"] };
-          }
-          if (effect.includes("plasma")) {
-            return { colors: ["#ff1493", "#00ffff", "#9400d3"] };
-          }
-          if (effect.includes("solid")) {
-            return { colors: ["#6366f1", "#8b5cf6"] };
-          }
-
-          // Default gradient with variation
-          const hash = effect
-            .split("")
-            .reduce((a, b) => a + b.charCodeAt(0), 0);
-          const hue1 = hash % 360;
-          const hue2 = (hash + 120) % 360;
-
-          return {
-            colors: [`hsl(${hue1}, 70%, 50%)`, `hsl(${hue2}, 70%, 60%)`],
-          };
-        };
-
-        const gradientData = generateEffectGradient(
-          randomEffect.name,
+        const gradientData = generatePresetGradient(
           randomPalette?.name
         );
 
@@ -2190,7 +2130,6 @@ export default function PresetGrid({
           paletteId: randomPalette?.id || 0,
           paletteName: randomPalette?.name || "",
           isWledPreset: true,
-          linearGradientColors: gradientData.colors,
           gradient: `linear-gradient(135deg, ${gradientData.colors.join(
             ", "
           )})`,

@@ -1,4 +1,4 @@
-import { WLED_PALETTES_DATA, PaletteColor } from "../constants/palettes";
+import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, PaletteColor } from "../constants/palettes";
 
 /**
  * WLED Gradient Generation Utilities
@@ -65,11 +65,24 @@ export const generatePlaylistGradient = (
  * Helper function to generate gradient based on palette ID
  */
 export const generatePresetGradient = (paletteId: number): string => {
-  const paletteNames = Object.keys(WLED_PALETTES_DATA);
-  const paletteName = paletteNames[paletteId] || paletteNames[0];
+  // Find palette name from WLED_PALETTES_DEF using the palette ID
+  const paletteDef = WLED_PALETTES_DEF.find(p => p.id === paletteId);
 
+  if (!paletteDef) {
+    console.warn(`⚠️ Palette ID ${paletteId} not found in WLED_PALETTES_DEF, using default`);
+    return `linear-gradient(135deg, #888, #555)`;
+  }
+
+  const paletteName = paletteDef.name;
   const paletteData = WLED_PALETTES_DATA[paletteName];
-  if (!paletteData || paletteData.length === 0) {
+
+  if (!paletteData) {
+    console.warn(`⚠️ Palette "${paletteName}" (ID ${paletteId}) not found in WLED_PALETTES_DATA, using fallback`);
+    return `linear-gradient(135deg, #888, #555)`;
+  }
+
+  if (paletteData.length === 0) {
+    console.warn(`⚠️ Palette "${paletteName}" (ID ${paletteId}) has no color data, using fallback`);
     return `linear-gradient(135deg, #888, #555)`;
   }
 
@@ -89,11 +102,23 @@ export const generatePresetGradient = (paletteId: number): string => {
 export const generateLinearGradientColors = (
   paletteId: number
 ): readonly string[] => {
-  const paletteNames = Object.keys(WLED_PALETTES_DATA);
-  const paletteName = paletteNames[paletteId] || paletteNames[0];
+  // Find palette name from WLED_PALETTES_DEF using the palette ID
+  const paletteDef = WLED_PALETTES_DEF.find(p => p.id === paletteId);
 
+  if (!paletteDef) {
+    console.warn(`⚠️ Palette ID ${paletteId} not found in WLED_PALETTES_DEF, using default colors`);
+    return ["#888888", "#555555"] as const;
+  }
+
+  const paletteName = paletteDef.name;
   const paletteData = WLED_PALETTES_DATA[paletteName];
-  if (!paletteData || paletteData.length === 0) {
+
+  if (!paletteData) {
+    console.warn(`⚠️ Palette "${paletteName}" (ID ${paletteId}) not found in WLED_PALETTES_DATA, using fallback colors`);
+    return ["#888888", "#555555"] as const;
+  }
+
+  if (paletteData.length === 0) {
     return ["#888888", "#555555"] as const;
   }
 

@@ -39,7 +39,9 @@ export const activateWledEffect = async (
 
   return formatApiResponse(
     result.success,
-    result.success ? "Effect activated" : result.error || "Failed to activate effect"
+    result.success
+      ? "Effect activated"
+      : result.error || "Failed to activate effect"
   );
 };
 
@@ -142,7 +144,6 @@ export const fetchWledPresets = async (
           isWledPlaylist: true,
           method: "wled-device",
           gradient: playlistGradientData.gradient,
-          linearGradientColors: playlistGradientData.colors,
         };
         playlists.push(playlist);
       } else {
@@ -288,10 +289,7 @@ export const createWledPreset = async (
     };
   }
 
-  return formatApiResponse(
-    false,
-    saveResult.error || "Failed to save preset"
-  );
+  return formatApiResponse(false, saveResult.error || "Failed to save preset");
 };
 
 /**

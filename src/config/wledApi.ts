@@ -55,4 +55,7 @@ export {
 export type { WledTimer, WledTimerSettings } from "./wledTimer";
 
 // Gradient Generation
-export { generatePlaylistGradient } from "./wledGradients";
+export {
+  generatePresetGradient,
+  generatePlaylistGradient,
+} from "./wledGradients";
