@@ -56,8 +56,16 @@ export async function fetchWithTimeout<T = any>(
       };
     }
 
-    const data = await parseResponse(response);
-    return { success: true, data };
+    try {
+      const data = await parseResponse(response);
+      return { success: true, data };
+    } catch (parseError: any) {
+      // Parse error - likely the response wasn't in expected format
+      return {
+        success: false,
+        error: `Parse error: ${parseError.message}`,
+      };
+    }
   } catch (error: any) {
     clearTimeout(timeoutId);
     return {

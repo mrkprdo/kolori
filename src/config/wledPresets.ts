@@ -13,6 +13,37 @@ import {
  */
 
 /**
+ * Function to activate effect by ID (for custom effects)
+ */
+export const activateWledEffect = async (
+  deviceAddress: string,
+  effectId: number,
+  paletteId: number,
+  protocol = "http"
+): Promise<ApiResponse> => {
+  const url = buildWledUrl(
+    deviceAddress,
+    protocol,
+    `/win&FX=${effectId}&FP=${paletteId}`
+  );
+
+  // The /win endpoint returns HTML, not JSON
+  const result = await fetchWithTimeout(
+    url,
+    { method: "GET" },
+    async (response) => {
+      const text = await response.text();
+      return text;
+    }
+  );
+
+  return formatApiResponse(
+    result.success,
+    result.success ? "Effect activated" : result.error || "Failed to activate effect"
+  );
+};
+
+/**
  * Function to activate preset by ID
  */
 export const activateWledPresetById = async (
@@ -21,7 +52,18 @@ export const activateWledPresetById = async (
   protocol = "http"
 ): Promise<ApiResponse> => {
   const url = buildWledUrl(deviceAddress, protocol, `/win&PL=${presetId}`);
-  const result = await fetchWithTimeout(url, { method: "GET" });
+
+  // The /win endpoint returns HTML, not JSON
+  // We use a custom parser that won't try to parse as JSON
+  const result = await fetchWithTimeout(
+    url,
+    { method: "GET" },
+    async (response) => {
+      // Just read the text - we don't care about parsing it
+      const text = await response.text();
+      return text;
+    }
+  );
 
   return formatApiResponse(
     result.success,
@@ -226,6 +268,15 @@ export const createWledPreset = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(savePayload),
       timeout: 10000,
+    },
+    async (response) => {
+      // Try to parse as JSON, but don't fail if it's not JSON
+      try {
+        return await response.json();
+      } catch {
+        // Return empty object if not JSON - we still got a 200 OK
+        return {};
+      }
     }
   );
 
@@ -286,6 +337,9 @@ export const createWledPlaylist = async (
   };
 
   const url = buildWledUrl(deviceAddress, protocol, "/json/state");
+
+  // Note: WLED sometimes returns HTML or empty response on successful saves
+  // We'll treat a 200 OK as success even if parsing fails
   const result = await fetchWithTimeout(
     url,
     {
@@ -293,6 +347,15 @@ export const createWledPlaylist = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(playlistData),
       timeout: 10000,
+    },
+    async (response) => {
+      // Try to parse as JSON, but don't fail if it's not JSON
+      try {
+        return await response.json();
+      } catch {
+        // Return empty object if not JSON - we still got a 200 OK
+        return {};
+      }
     }
   );
 

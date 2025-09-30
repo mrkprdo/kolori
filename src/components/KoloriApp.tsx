@@ -17,7 +17,7 @@ import {
 
 // API & Config
 import {
-  activateWledPreset,
+  activateWledEffect,
   activateWledPresetById,
   getWledPresets,
   setWledBrightness,
@@ -881,12 +881,13 @@ function KoloriApp({
           activeDevice.protocol || "http"
         );
       } else {
-        // For custom effects, use the preset name/data
-        logger.log('🎯 Activating custom effect:', preset.name);
-        
-        result = await activateWledPreset(
+        // For custom effects, use the effectId and paletteId
+        logger.log('🎯 Activating custom effect:', preset.name, 'FX:', preset.effectId, 'Palette:', preset.paletteId);
+
+        result = await activateWledEffect(
           getDeviceAddress(activeDevice),
-          preset,
+          preset.effectId,
+          preset.paletteId,
           activeDevice.protocol || "http"
         );
       }

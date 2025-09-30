@@ -16,10 +16,7 @@
 // ============================================================================
 
 // Utility Functions
-export {
-  formatTimeString,
-  convertWledBitmaskToDays,
-} from "./wledUtils";
+export { formatTimeString, convertWledBitmaskToDays } from "./wledUtils";
 
 // Device Operations
 export {
@@ -35,6 +32,7 @@ export {
 
 // Preset & Playlist Operations
 export {
+  activateWledEffect,
   activateWledPresetById,
   fetchWledPresets,
   getWledPresets,
@@ -55,3 +53,6 @@ export {
 
 // Timer Types
 export type { WledTimer, WledTimerSettings } from "./wledTimer";
+
+// Gradient Generation
+export { generatePlaylistGradient } from "./wledGradients";

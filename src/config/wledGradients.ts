@@ -8,51 +8,43 @@ import { WLED_PALETTES_DATA, PaletteColor } from "../constants/palettes";
 /**
  * Generate gradient for playlists based on name and content
  */
+// Generate gradient for playlist based on name and content
 export const generatePlaylistGradient = (
-  playlistName: string,
+  name: string,
   itemCount: number
 ): { colors: string[]; gradient: string } => {
-  const name = playlistName.toLowerCase();
+  const playlistName = name.toLowerCase();
 
   // Name-based gradients
-  const gradients: Record<string, { colors: string[]; gradient: string }> = {
-    fire: {
+  if (playlistName.includes("fire") || playlistName.includes("flame")) {
+    return {
       colors: ["#ff4500", "#ff6500", "#ffb347"],
       gradient: "linear-gradient(135deg, #ff4500, #ff6500, #ffb347)",
-    },
-    rainbow: {
-      colors: ["#ff0000", "#ff7700", "#ffff00", "#00ff00", "#0077ff", "#4b0082"],
-      gradient: "linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #4b0082)",
-    },
-    ocean: {
-      colors: ["#006994", "#47b5d6", "#87ceeb"],
-      gradient: "linear-gradient(135deg, #006994, #47b5d6, #87ceeb)",
-    },
-    sunset: {
-      colors: ["#ff4500", "#ff6347", "#ffa500"],
-      gradient: "linear-gradient(135deg, #ff4500, #ff6347, #ffa500)",
-    },
-    forest: {
-      colors: ["#228b22", "#32cd32", "#90ee90"],
-      gradient: "linear-gradient(135deg, #228b22, #32cd32, #90ee90)",
-    },
-    party: {
+    };
+  }
+  if (playlistName.includes("rainbow") || playlistName.includes("colorful")) {
+    return {
+      colors: [
+        "#ff0000",
+        "#ff7700",
+        "#ffff00",
+        "#00ff00",
+        "#0077ff",
+        "#4b0082",
+      ],
+      gradient:
+        "linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #4b0082)",
+    };
+  }
+  if (playlistName.includes("party") || playlistName.includes("dance")) {
+    return {
       colors: ["#ff1493", "#00ffff", "#9400d3", "#ff4500"],
       gradient: "linear-gradient(135deg, #ff1493, #00ffff, #9400d3, #ff4500)",
-    },
-    chill: {
-      colors: ["#6a5acd", "#87ceeb", "#dda0dd"],
-      gradient: "linear-gradient(135deg, #6a5acd, #87ceeb, #dda0dd)",
-    },
-  };
-
-  // Check for keyword matches
-  for (const [keyword, gradient] of Object.entries(gradients)) {
-    if (name.includes(keyword)) return gradient;
+    };
   }
 
   // Fallback: Generate gradient based on playlist name hash and item count
-  const hash = name.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
+  const hash = playlistName.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
   const hue1 = hash % 360;
   const hue2 = (hash + itemCount * 30) % 360;
   const hue3 = (hash + itemCount * 60) % 360;
