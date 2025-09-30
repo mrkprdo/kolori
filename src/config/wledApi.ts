@@ -1139,7 +1139,9 @@ export const getWledBrightnessFromWin = async (
 ): Promise<ApiResponse & { brightness?: number }> => {
   try {
     const url = buildWledUrl(deviceAddress, protocol, "/win");
-    logger.log(`💡 Getting WLED brightness from /win endpoint: ${deviceAddress}`);
+    logger.log(
+      `💡 Getting WLED brightness from /win endpoint: ${deviceAddress}`
+    );
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -1165,21 +1167,23 @@ export const getWledBrightnessFromWin = async (
           success: true,
           message: `Brightness retrieved: ${brightness}`,
           brightness: brightness,
-          data: { brightness }
+          data: { brightness },
         };
       } else {
         logger.warn("⚠️ Could not find brightness value in /win response");
         return {
           success: false,
-          message: "Brightness value not found in XML response"
+          message: "Brightness value not found in XML response",
         };
       }
     } else {
       const errorText = await response.text();
-      logger.error(`❌ Failed to get WLED brightness from /win: ${response.status} - ${errorText}`);
+      logger.error(
+        `❌ Failed to get WLED brightness from /win: ${response.status} - ${errorText}`
+      );
       return {
         success: false,
-        message: `Failed to get brightness: ${response.status}`
+        message: `Failed to get brightness: ${response.status}`,
       };
     }
   } catch (error: any) {
@@ -1198,7 +1202,7 @@ export const getWledBrightnessFromWin = async (
 export const detectWledDimensions = async (
   deviceAddress: string,
   protocol = "http"
-): Promise<'1D' | '2D' | null> => {
+): Promise<"1D" | "2D" | null> => {
   try {
     const url = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=10");
     logger.log(`🔍 Detecting WLED dimensions for ${deviceAddress}`);
@@ -1214,7 +1218,9 @@ export const detectWledDimensions = async (
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText || "Unknown error"}`
+      );
     }
 
     const responseText = await response.text();
@@ -1222,12 +1228,14 @@ export const detectWledDimensions = async (
 
     if (sompMatch) {
       const sompValue = parseInt(sompMatch[1]);
-      const dimensions = sompValue === 0 ? '1D' : '2D';
-      logger.log(`✅ WLED dimensions detected: ${dimensions} (SOMP=${sompValue})`);
+      const dimensions = sompValue === 0 ? "1D" : "2D";
+      logger.log(
+        `✅ WLED dimensions detected: ${dimensions} (SOMP=${sompValue})`
+      );
       return dimensions;
     }
 
-    logger.warn('⚠️ Could not find SOMP value in WLED settings');
+    logger.warn("⚠️ Could not find SOMP value in WLED settings");
     return null;
   } catch (error: any) {
     logger.error("Failed to detect WLED dimensions:", error);
@@ -1255,7 +1263,9 @@ export const getWledMatrixDimensions = async (
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText || "Unknown error"}`
+      );
     }
 
     const deviceInfo = await response.json();
@@ -1265,9 +1275,11 @@ export const getWledMatrixDimensions = async (
       const dimensions = {
         is2D: true,
         width: deviceInfo.leds.matrix.w,
-        height: deviceInfo.leds.matrix.h
+        height: deviceInfo.leds.matrix.h,
       };
-      logger.log(`✅ WLED matrix dimensions: ${dimensions.width}×${dimensions.height}`);
+      logger.log(
+        `✅ WLED matrix dimensions: ${dimensions.width}×${dimensions.height}`
+      );
       return dimensions;
     }
 
@@ -1276,33 +1288,752 @@ export const getWledMatrixDimensions = async (
       const dimensions = {
         is2D: true,
         width: deviceInfo.matrix.w,
-        height: deviceInfo.matrix.h
+        height: deviceInfo.matrix.h,
       };
-      logger.log(`✅ WLED matrix dimensions (alt): ${dimensions.width}×${dimensions.height}`);
+      logger.log(
+        `✅ WLED matrix dimensions (alt): ${dimensions.width}×${dimensions.height}`
+      );
       return dimensions;
     }
 
     // Check segment-based 2D configuration
     if (deviceInfo.leds?.seglc && Array.isArray(deviceInfo.leds.seglc)) {
       for (const segment of deviceInfo.leds.seglc) {
-        if (segment.m && segment.m !== 0 && segment.w && segment.h) { // m = matrix mode
+        if (segment.m && segment.m !== 0 && segment.w && segment.h) {
+          // m = matrix mode
           const dimensions = {
             is2D: true,
             width: segment.w,
-            height: segment.h
+            height: segment.h,
           };
-          logger.log(`✅ WLED matrix dimensions (segment): ${dimensions.width}×${dimensions.height}`);
+          logger.log(
+            `✅ WLED matrix dimensions (segment): ${dimensions.width}×${dimensions.height}`
+          );
           return dimensions;
         }
       }
     }
 
-    logger.log('📏 No 2D matrix configuration found - device is 1D');
+    logger.log("📏 No 2D matrix configuration found - device is 1D");
     return { is2D: false, width: 0, height: 0 };
   } catch (error: any) {
     logger.error("Failed to get WLED matrix dimensions:", error);
     return null;
   }
+};
+
+// WLED Timer interfaces and types
+export interface WledTimer {
+  hour: number; // H0-H7: Hour value (0-23)
+  minute: number; // N0-N7: Minute value (0-59)
+  preset: number; // T0-T7: Target preset ID
+  weekdays: number; // W0-W7: Weekday bitmask (0-255, bit 0=Monday, bit 1=Tuesday, bit 2=Wednesday, bit 3=Thursday, bit 4=Friday, bit 5=Saturday, bit 6=Sunday)
+  month: number; // M0-M7: Month value (1-12, 1=January, 2=February, etc.)
+  dayStart: number; // P0-P7: Start day of month (1-31)
+  dayEnd: number; // D0-D7: End day of month (1-31)
+  enabled: boolean; // E0-E7: Timer enabled state
+}
+
+export interface WledTimerSettings {
+  timers: WledTimer[];
+  countdown: {
+    enabled: boolean; // CE: Countdown enabled
+    year: number; // CY: Countdown year
+    month: number; // CI: Countdown month
+    day: number; // CD: Countdown day
+    hour: number; // CH: Countdown hour
+    minute: number; // CM: Countdown minute
+    second: number; // CS: Countdown second
+    preset1: number; // A0: Countdown preset 1
+    preset2: number; // A1: Countdown preset 2
+  };
+  macro: {
+    enabled: boolean; // OL: Overlay enabled
+    start: number; // O1: Overlay start
+    end: number; // O2: Overlay end
+    mode: number; // OM: Overlay mode
+    sunrise: boolean; // OS: Sunrise simulation
+    minutes: boolean; // O5: Minutes mode
+    buttons: boolean; // OB: Button overlays
+  };
+  alexa: {
+    mode: number; // MC: Alexa mode
+    name: string; // MN: Alexa name (would need parsing)
+  };
+}
+
+// Function to fetch WLED timer settings
+export const fetchWledTimerSettings = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse & { timerSettings?: WledTimerSettings }> => {
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=5");
+    logger.log(`⏰ Fetching WLED timer settings from ${deviceAddress}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText || "Unknown error"}`
+      );
+    }
+
+    const jsText = await response.text();
+
+    // Parse the JavaScript response to extract timer values
+    const timerSettings = parseWledTimerSettings(jsText);
+
+    if (timerSettings) {
+      logger.log(`✅ WLED timer settings fetched successfully`);
+      return {
+        success: true,
+        message: "Timer settings retrieved successfully",
+        timerSettings: timerSettings,
+      };
+    } else {
+      return {
+        success: false,
+        message: "Failed to parse timer settings",
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to fetch WLED timer settings:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
+// Helper function to parse WLED timer JavaScript response
+const parseWledTimerSettings = (jsText: string): WledTimerSettings | null => {
+  try {
+    const timers: WledTimer[] = [];
+
+    // Parse 8 timer slots (0-7)
+    for (let i = 0; i < 8; i++) {
+      // Extract values using regex patterns
+      const hourMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.H${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const minuteMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.N${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const presetMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.T${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const weekdaysMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.W${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const monthMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.M${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const dayStartMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.P${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const dayEndMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.D${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+      const enabledMatch = jsText.match(
+        new RegExp(`d\\.Sf\\.E${i}\\.value\\s*=\\s*(\\d+)`)
+      );
+
+      if (i === 0) {
+        logger.log(`🔍 Timer ${i} regex matches:`, {
+          hour: hourMatch ? hourMatch[1] : "null",
+          minute: minuteMatch ? minuteMatch[1] : "null",
+          preset: presetMatch ? presetMatch[1] : "null",
+          weekdays: weekdaysMatch ? weekdaysMatch[1] : "null",
+          enabled: enabledMatch ? enabledMatch[1] : "null",
+        });
+      }
+
+      const timer: WledTimer = {
+        hour: hourMatch ? parseInt(hourMatch[1]) : 0,
+        minute: minuteMatch ? parseInt(minuteMatch[1]) : 0,
+        preset: presetMatch ? parseInt(presetMatch[1]) : 0,
+        weekdays: weekdaysMatch ? parseInt(weekdaysMatch[1]) : 255, // 255 = all days
+        month: monthMatch ? parseInt(monthMatch[1]) : 1, // Default to 1 (January) if not found
+        dayStart: dayStartMatch ? parseInt(dayStartMatch[1]) : 1,
+        dayEnd: dayEndMatch ? parseInt(dayEndMatch[1]) : 31,
+        enabled: enabledMatch ? parseInt(enabledMatch[1]) === 1 : false,
+      };
+
+      timers.push(timer);
+    }
+
+    // Parse countdown settings
+    const countdownSettings = {
+      enabled: /d\.Sf\.CE\.checked\s*=\s*1/.test(jsText),
+      year: extractNumericValue(jsText, "CY") || 20,
+      month: extractNumericValue(jsText, "CI") || 1,
+      day: extractNumericValue(jsText, "CD") || 1,
+      hour: extractNumericValue(jsText, "CH") || 0,
+      minute: extractNumericValue(jsText, "CM") || 0,
+      second: extractNumericValue(jsText, "CS") || 0,
+      preset1: extractNumericValue(jsText, "A0") || 0,
+      preset2: extractNumericValue(jsText, "A1") || 0,
+    };
+
+    // Parse macro/overlay settings
+    const macroSettings = {
+      enabled: /d\.Sf\.OL\.checked\s*=\s*1/.test(jsText),
+      start: extractNumericValue(jsText, "O1") || 0,
+      end: extractNumericValue(jsText, "O2") || 29,
+      mode: extractNumericValue(jsText, "OM") || 0,
+      sunrise: /d\.Sf\.OS\.checked\s*=\s*1/.test(jsText),
+      minutes: /d\.Sf\.O5\.checked\s*=\s*1/.test(jsText),
+      buttons: /d\.Sf\.OB\.checked\s*=\s*1/.test(jsText),
+    };
+
+    // Parse Alexa settings
+    const alexaSettings = {
+      mode: extractNumericValue(jsText, "MC") || 0,
+      name: extractStringValue(jsText, "MN") || "",
+    };
+
+    return {
+      timers,
+      countdown: countdownSettings,
+      macro: macroSettings,
+      alexa: alexaSettings,
+    };
+  } catch (error) {
+    logger.error("Failed to parse WLED timer settings:", error);
+    return null;
+  }
+};
+
+// Helper function to extract numeric values from JavaScript response
+const extractNumericValue = (
+  jsText: string,
+  fieldName: string
+): number | null => {
+  const match = jsText.match(
+    new RegExp(`d\\.Sf\\.${fieldName}\\.value\\s*=\\s*(\\d+)`)
+  );
+  return match ? parseInt(match[1]) : null;
+};
+
+// Helper function to extract string values from JavaScript response
+const extractStringValue = (
+  jsText: string,
+  fieldName: string
+): string | null => {
+  const match = jsText.match(
+    new RegExp(`d\\.Sf\\.${fieldName}\\.value\\s*=\\s*"([^"]*)"`)
+  );
+  return match ? match[1] : null;
+};
+
+// Function to parse WLED settings JavaScript to extract form values
+const parseWledSettingsJS = (jsText: string): Record<string, string> => {
+  const formValues: Record<string, string> = {};
+
+  try {
+    // Extract checkbox values (checked = 1, unchecked = 0)
+    const checkboxMatches = jsText.matchAll(
+      /d\.Sf\.(\w+)\.checked\s*=\s*(\d+)/g
+    );
+    for (const match of Array.from(checkboxMatches)) {
+      const fieldName = match[1];
+      const value = match[2] === "1" ? "on" : "0";
+      formValues[fieldName] = value;
+    }
+
+    // Extract input values
+    const valueMatches = jsText.matchAll(
+      /d\.Sf\.(\w+)\.value\s*=\s*"?([^";]*)"?/g
+    );
+    for (const match of Array.from(valueMatches)) {
+      const fieldName = match[1];
+      const value = match[2];
+      formValues[fieldName] = value;
+    }
+
+    // Extract selectedIndex values for dropdowns
+    const indexMatches = jsText.matchAll(
+      /d\.Sf\.(\w+)\.selectedIndex\s*=\s*(\d+)/g
+    );
+    for (const match of Array.from(indexMatches)) {
+      const fieldName = match[1];
+      const value = match[2];
+      formValues[fieldName] = value;
+    }
+
+    logger.log(
+      `📋 Parsed ${
+        Object.keys(formValues).length
+      } WLED form fields from settings`
+    );
+    return formValues;
+  } catch (error) {
+    logger.error("Failed to parse WLED settings JS:", error);
+    return {};
+  }
+};
+
+// Function to convert parsed values to POST form data
+const convertToPostFormData = (
+  parsedValues: Record<string, string>
+): URLSearchParams => {
+  const formData = new URLSearchParams();
+
+  // Convert parsed field names to POST parameter names
+  Object.entries(parsedValues).forEach(([fieldName, value]) => {
+    switch (fieldName) {
+      // Checkbox fields - only add if checked (value = 'on')
+      case "NT":
+        if (value === "on") formData.append("NT", "on");
+        break;
+      case "CF":
+        if (value === "on") formData.append("CF", "on");
+        break;
+      case "OL":
+        if (value === "on") formData.append("OL", "on");
+        break;
+      case "OS":
+        if (value === "on") formData.append("OS", "on");
+        break;
+      case "O5":
+        if (value === "on") formData.append("O5", "on");
+        break;
+      case "OB":
+        if (value === "on") formData.append("OB", "on");
+        break;
+      case "CE":
+        if (value === "on") formData.append("CE", "on");
+        break;
+
+      // Value fields - map to POST parameter names
+      case "NS":
+        formData.append("NS", value);
+        break;
+      case "TZ":
+        formData.append("TZ", value);
+        break;
+      case "UO":
+        formData.append("UO", value);
+        break;
+      case "LN":
+        formData.append("LN", value);
+        break;
+      case "LT":
+        formData.append("LT", value);
+        break;
+      case "O1":
+        formData.append("O1", value);
+        break;
+      case "O2":
+        formData.append("O2", value);
+        break;
+      case "OM":
+        formData.append("OM", value);
+        break;
+      case "CY":
+        formData.append("CY", value);
+        break;
+      case "CI":
+        formData.append("CI", value);
+        break;
+      case "CD":
+        formData.append("CD", value);
+        break;
+      case "CH":
+        formData.append("CH", value);
+        break;
+      case "CM":
+        formData.append("CM", value);
+        break;
+      case "CS":
+        formData.append("CS", value);
+        break;
+      case "A0":
+        formData.append("A0", value);
+        break;
+      case "A1":
+        formData.append("A1", value);
+        break;
+      case "MC":
+        formData.append("MC", value);
+        break;
+      case "MN":
+        formData.append("MN", value);
+        break;
+
+      // Timer fields H0-H7, N0-N7, T0-T7, W0-W7, M0-M7, P0-P7, D0-D7, E0-E7
+      default:
+        if (/^[HNTMWPDE]\d+$/.test(fieldName)) {
+          formData.append(fieldName, value);
+        }
+        break;
+    }
+  });
+
+  return formData;
+};
+
+// Function to save robust WLED timer schedule (fetches current settings first)
+export const saveWledRobustSchedule = async (
+  deviceAddress: string,
+  turnOnTime: string,
+  turnOffTime: string,
+  targetPresetId: number,
+  selectedDays: Set<number>,
+  protocol = "http"
+): Promise<ApiResponse> => {
+  try {
+    logger.log(
+      `⏰ Saving robust WLED schedule to ${deviceAddress}: ON at ${turnOnTime}, OFF at ${turnOffTime}, preset ${targetPresetId}`
+    );
+
+    // Step 1: Fetch current settings
+    const settingsUrl = buildWledUrl(
+      deviceAddress,
+      protocol,
+      "/settings/s.js?p=5"
+    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const settingsResponse = await fetch(settingsUrl, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!settingsResponse.ok) {
+      throw new Error(
+        `Failed to fetch current settings: ${settingsResponse.status}`
+      );
+    }
+
+    const jsText = await settingsResponse.text();
+    logger.log(`📥 Fetched current WLED settings (${jsText.length} chars)`);
+
+    // Step 2: Parse current settings to form data
+    const parsedValues = parseWledSettingsJS(jsText);
+    const formData = convertToPostFormData(parsedValues);
+
+    // Step 3: Override only our timer fields
+    const onTime = parseTimeString(turnOnTime);
+    const offTime = parseTimeString(turnOffTime);
+    const weekdaysBitmask = convertDaysToWledBitmask(selectedDays);
+
+    logger.log(`📤 Timer payload preparation:`, {
+      turnOnTime,
+      turnOffTime,
+      selectedDays: Array.from(selectedDays),
+      onTime,
+      offTime,
+      weekdaysBitmask,
+      targetPresetId,
+    });
+
+    // Timer 0: Turn ON - override specific fields
+    formData.set("H0", onTime.hour.toString()); // ON hour
+    formData.set("N0", onTime.minute.toString()); // ON minute
+    formData.set("T0", targetPresetId.toString()); // ON preset id
+    formData.set("W0", weekdaysBitmask.toString()); // ON days of the week
+    formData.set("M0", "1"); // ON start month
+    formData.set("P0", "12"); // ON start date
+    formData.set("D0", "1"); // ON end month
+    formData.set("E0", "31"); // ON end date
+
+    // Timer 1: Turn OFF - override specific fields
+    formData.set("H1", offTime.hour.toString()); // OFF hour
+    formData.set("N1", offTime.minute.toString()); // OFF minute
+    formData.set("T1", "62"); // OFF preset id - use preset 62
+    formData.set("W1", weekdaysBitmask.toString()); // OFF days of the week
+    formData.set("M1", "1"); // OFF start month
+    formData.set("P1", "12"); // OFF start date
+    formData.set("D1", "1"); // OFF end month
+    formData.set("E1", "31"); // OFF end date
+
+    // Log the complete form data being sent
+    const formEntries: Record<string, string> = {};
+    for (const [key, value] of Array.from(formData.entries())) {
+      formEntries[key] = value;
+    }
+    logger.log(`📤 Complete WLED form data payload:`, formEntries);
+
+    logger.log(
+      `📤 Posting ${formData.toString().split("&").length} form fields to WLED`
+    );
+
+    // Step 4: Post the complete form data
+    const postUrl = buildWledUrl(deviceAddress, protocol, "/settings/time");
+    const postController = new AbortController();
+    const postTimeoutId = setTimeout(() => postController.abort(), 10000);
+
+    const postResponse = await fetch(postUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData.toString(),
+      signal: postController.signal,
+    });
+
+    clearTimeout(postTimeoutId);
+
+    if (postResponse.ok) {
+      logger.log(`✅ WLED robust schedule saved successfully`);
+      return {
+        success: true,
+        message: "Schedule saved successfully",
+      };
+    } else {
+      const errorText = await postResponse.text();
+      logger.error(
+        `❌ Failed to save WLED robust schedule: ${postResponse.status} - ${errorText}`
+      );
+      return {
+        success: false,
+        message: `Failed to save schedule: ${postResponse.status}`,
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to save WLED robust schedule:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
+// Function to reset WLED timer settings to defaults
+export const resetWledTimerSettings = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse> => {
+  try {
+    logger.log(
+      `🔄 Resetting WLED timer settings to defaults on ${deviceAddress}`
+    );
+
+    // Build form data with WLED default values from the GetV() function
+    const formData = new URLSearchParams();
+
+    // NTP and time settings
+    formData.append("NT", "on"); // d.Sf.NT.checked = 1
+    formData.append("NS", "0.wled.pool.ntp.org"); // d.Sf.NS.value = "0.wled.pool.ntp.org"
+    formData.append("CF", "on"); // d.Sf.CF.checked = 1
+    formData.append("TZ", "4"); // d.Sf.TZ.selectedIndex = 4
+    formData.append("UO", "0"); // d.Sf.UO.value = 0
+    formData.append("LN", "0.00"); // d.Sf.LN.value = "0.00"
+    formData.append("LT", "0.00"); // d.Sf.LT.value = "0.00"
+
+    // Overlay/Macro settings
+    // d.Sf.OL.checked = 0 (no OL field needed when unchecked)
+    formData.append("O1", "0"); // d.Sf.O1.value = 0
+    formData.append("O2", "29"); // d.Sf.O2.value = 29
+    formData.append("OM", "0"); // d.Sf.OM.value = 0
+    // d.Sf.OS.checked = 0 (no OS field needed when unchecked)
+    // d.Sf.O5.checked = 0 (no O5 field needed when unchecked)
+    // d.Sf.OB.checked = 0 (no OB field needed when unchecked)
+
+    // Countdown settings
+    // d.Sf.CE.checked = 0 (no CE field needed when unchecked)
+    formData.append("CY", "20"); // d.Sf.CY.value = 20
+    formData.append("CI", "1"); // d.Sf.CI.value = 1
+    formData.append("CD", "1"); // d.Sf.CD.value = 1
+    formData.append("CH", "0"); // d.Sf.CH.value = 0
+    formData.append("CM", "0"); // d.Sf.CM.value = 0
+    formData.append("CS", "0"); // d.Sf.CS.value = 0
+    formData.append("A0", "0"); // d.Sf.A0.value = 0
+    formData.append("A1", "0"); // d.Sf.A1.value = 0
+
+    // Alexa settings
+    formData.append("MC", "0"); // d.Sf.MC.value = 0
+    formData.append("MN", "0"); // d.Sf.MN.value = 0
+
+    // Timer settings (all 8 timers with default values)
+    for (let i = 0; i < 8; i++) {
+      formData.append(`H${i}`, "0"); // d.Sf.H0.value = 0
+      formData.append(`N${i}`, "0"); // d.Sf.N0.value = 0
+      formData.append(`T${i}`, "0"); // d.Sf.T0.value = 0
+      formData.append(`W${i}`, "255"); // d.Sf.W0.value = 255
+      formData.append(`M${i}`, "1"); // d.Sf.M0.value = 1
+      formData.append(`P${i}`, "12"); // d.Sf.P0.value = 12
+      formData.append(`D${i}`, "1"); // d.Sf.D0.value = 1
+      formData.append(`E${i}`, "31"); // d.Sf.E0.value = 31
+    }
+
+    // Additional timer fields (8 and 9)
+    formData.append("N8", "0"); // d.Sf.N8.value = 0
+    formData.append("T8", "0"); // d.Sf.T8.value = 0
+    formData.append("W8", "255"); // d.Sf.W8.value = 255
+    formData.append("N9", "0"); // d.Sf.N9.value = 0
+    formData.append("T9", "0"); // d.Sf.T9.value = 0
+    formData.append("W9", "255"); // d.Sf.W9.value = 255
+
+    const url = buildWledUrl(deviceAddress, protocol, "/settings/time");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData.toString(),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      logger.log(`✅ WLED timer settings reset to defaults successfully`);
+      return {
+        success: true,
+        message: "Timer settings reset to defaults successfully",
+      };
+    } else {
+      const errorText = await response.text();
+      logger.error(
+        `❌ Failed to reset WLED timer settings: ${response.status} - ${errorText}`
+      );
+      return {
+        success: false,
+        message: `Failed to reset timer settings: ${response.status}`,
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to reset WLED timer settings:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
+// Helper function to convert day Set to WLED weekdays bitmask
+export const convertDaysToWledBitmask = (selectedDays: Set<number>): number => {
+  // If no days selected, return 0 (no days enabled)
+  if (selectedDays.size === 0) {
+    return 0;
+  }
+
+  // Based on WLED source: pure bitwise mapping, no base value
+  // WLED checkbox order: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday, 6=Sunday
+  // Our UI indexes: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+
+  // Map UI day indexes to WLED checkbox positions
+  // WLED checkbox structure: j=0 is control bit, j=1=Monday, j=2=Tuesday, j=3=Wednesday, etc.
+  // UI Wednesday (3) -> should map to WLED j=3 (bit 3, value 8), not j=2 (bit 2, value 4)
+  const uiDayToWledBit = {
+    0: 7, // UI Sunday -> WLED j=7 = bit 7 = value 128
+    1: 1, // UI Monday -> WLED j=1 = bit 1 = value 2
+    2: 2, // UI Tuesday -> WLED j=2 = bit 2 = value 4
+    3: 3, // UI Wednesday -> WLED j=3 = bit 3 = value 8 (correct!)
+    4: 4, // UI Thursday -> WLED j=4 = bit 4 = value 16
+    5: 5, // UI Friday -> WLED j=5 = bit 5 = value 32
+    6: 6, // UI Saturday -> WLED j=6 = bit 6 = value 64
+  };
+
+  let result = 0;
+  selectedDays.forEach((day) => {
+    const bitPosition = uiDayToWledBit[day as keyof typeof uiDayToWledBit];
+    const bitValue = 1 << bitPosition;
+    result |= bitValue; // Set the corresponding bit
+    logger.log(
+      `📅 UI day ${day} -> WLED bit ${bitPosition} -> value ${bitValue}`
+    );
+  });
+
+  // Add the enable bit (+1) to enable the timer
+  const finalResult = result + 1;
+
+  logger.log(
+    `📅 Final WLED weekdays bitmask: ${result} + 1 (enable) = ${finalResult} (binary: ${finalResult.toString(
+      2
+    )})`
+  );
+  return finalResult;
+};
+
+// Helper function to convert WLED weekdays bitmask to day Set
+export const convertWledBitmaskToDays = (weekdays: number): Set<number> => {
+  const days = new Set<number>();
+
+  // WLED uses 127 to mean "all days" (bits 0-6 set)
+  if (weekdays === 127) {
+    return new Set([0, 1, 2, 3, 4, 5, 6]);
+  }
+
+  // WLED uses 0 to mean "no dates"
+  if (weekdays === 0) {
+    return new Set<number>();
+  }
+
+  // WLED uses 1 to mean "timer enabled but no days selected"
+  if (weekdays === 1) {
+    return new Set<number>();
+  }
+
+  // Remove the enable bit (-1) before processing day bits
+  const dayBits = weekdays - 1;
+
+  // Map WLED bit positions back to UI day indexes
+  const wledBitToUiDay = {
+    1: 1, // WLED bit 1 -> UI Monday
+    2: 2, // WLED bit 2 -> UI Tuesday
+    3: 3, // WLED bit 3 -> UI Wednesday
+    4: 4, // WLED bit 4 -> UI Thursday
+    5: 5, // WLED bit 5 -> UI Friday
+    6: 6, // WLED bit 6 -> UI Saturday
+    7: 0, // WLED bit 7 -> UI Sunday
+  };
+
+  // Check each bit position (bits 1-7, skip bit 0)
+  for (let bit = 1; bit <= 7; bit++) {
+    if (dayBits & (1 << bit)) {
+      const uiDay = wledBitToUiDay[bit as keyof typeof wledBitToUiDay];
+      if (uiDay !== undefined) {
+        days.add(uiDay);
+      }
+    }
+  }
+
+  return days;
+};
+
+// Helper function to parse time string (HH:MM) to hour and minute
+export const parseTimeString = (
+  timeString: string
+): { hour: number; minute: number } => {
+  const [hourStr, minuteStr] = timeString.split(":");
+  return {
+    hour: parseInt(hourStr) || 0,
+    minute: parseInt(minuteStr) || 0,
+  };
+};
+
+// Helper function to format time to HH:MM string
+export const formatTimeString = (hour: number, minute: number): string => {
+  return `${hour.toString().padStart(2, "0")}:${minute
+    .toString()
+    .padStart(2, "0")}`;
 };
 
 // Function to get current WLED device state (including brightness)
@@ -1349,6 +2080,58 @@ export const getWledState = async (
     }
   } catch (error: any) {
     logger.error("Failed to get WLED state:", error);
+    return {
+      success: false,
+      message:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+};
+
+export const fetchWledCurrentPreset = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<{ success: boolean; presetId?: number; message: string }> => {
+  try {
+    const url = buildWledUrl(deviceAddress, protocol, "/json/state");
+    logger.log(`🎯 Getting current active preset from ${deviceAddress}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `HTTP ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    const data = await response.json();
+    const presetId = data.ps;
+
+    if (presetId && presetId > 0) {
+      logger.log(`✅ Current active preset: ${presetId}`);
+      return {
+        success: true,
+        presetId,
+        message: `Current active preset: ${presetId}`,
+      };
+    } else {
+      return {
+        success: false,
+        message: "No active preset (ps: 0 or undefined)",
+      };
+    }
+  } catch (error: any) {
+    logger.error("Failed to get current preset:", error);
     return {
       success: false,
       message:
