@@ -1,0 +1,181 @@
+import { ApiResponse } from "../types";
+
+/**
+ * WLED API Utility Functions
+ * Core utilities for making HTTP requests and formatting responses
+ */
+
+/**
+ * Helper function to build WLED URLs with protocol support
+ */
+export const buildWledUrl = (
+  deviceAddress: string,
+  protocol = "http",
+  path: string
+): string => {
+  // Handle mDNS names by appending .local if needed
+  if (deviceAddress && !deviceAddress.includes(":")) {
+    const ipPattern =
+      /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const isIP = ipPattern.test(deviceAddress);
+
+    if (!isIP && !deviceAddress.endsWith(".local")) {
+      deviceAddress = `${deviceAddress}.local`;
+    }
+  }
+  return `${protocol}://${deviceAddress}${path}`;
+};
+
+/**
+ * Generic fetch wrapper with timeout and error handling
+ * Reduces code duplication across all API functions
+ */
+export async function fetchWithTimeout<T = any>(
+  url: string,
+  options: RequestInit & { timeout?: number } = {},
+  parseResponse: (response: Response) => Promise<T> = (r) => r.json()
+): Promise<{ success: boolean; data?: T; error?: string; status?: number }> {
+  const { timeout = 5000, ...fetchOptions } = options;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return {
+        success: false,
+        status: response.status,
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    const data = await parseResponse(response);
+    return { success: true, data };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    return {
+      success: false,
+      error:
+        error.name === "AbortError"
+          ? "Request timeout"
+          : `Request failed: ${error.message}`,
+    };
+  }
+}
+
+/**
+ * Standardized API response formatter
+ */
+export function formatApiResponse(
+  success: boolean,
+  message: string,
+  data?: any
+): ApiResponse {
+  return { success, message, ...(data && { data }) };
+}
+
+/**
+ * Helper function to parse time string (HH:MM) to hour and minute
+ */
+export const parseTimeString = (
+  timeString: string
+): { hour: number; minute: number } => {
+  const [hourStr, minuteStr] = timeString.split(":");
+  return {
+    hour: parseInt(hourStr) || 0,
+    minute: parseInt(minuteStr) || 0,
+  };
+};
+
+/**
+ * Helper function to format time to HH:MM string
+ */
+export const formatTimeString = (hour: number, minute: number): string => {
+  return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+};
+
+/**
+ * Helper function to convert day Set to WLED weekdays bitmask
+ */
+export const convertDaysToWledBitmask = (selectedDays: Set<number>): number => {
+  if (selectedDays.size === 0) return 0;
+
+  const uiDayToWledBit: Record<number, number> = {
+    0: 7, // UI Sunday -> WLED bit 7
+    1: 1, // UI Monday -> WLED bit 1
+    2: 2, // UI Tuesday -> WLED bit 2
+    3: 3, // UI Wednesday -> WLED bit 3
+    4: 4, // UI Thursday -> WLED bit 4
+    5: 5, // UI Friday -> WLED bit 5
+    6: 6, // UI Saturday -> WLED bit 6
+  };
+
+  let result = 0;
+  selectedDays.forEach((day) => {
+    const bitPosition = uiDayToWledBit[day];
+    if (bitPosition !== undefined) {
+      result |= 1 << bitPosition;
+    }
+  });
+
+  return result + 1; // Add enable bit
+};
+
+/**
+ * Helper function to convert WLED weekdays bitmask to day Set
+ */
+export const convertWledBitmaskToDays = (weekdays: number): Set<number> => {
+  const days = new Set<number>();
+
+  if (weekdays === 127) return new Set([0, 1, 2, 3, 4, 5, 6]);
+  if (weekdays === 0 || weekdays === 1) return new Set<number>();
+
+  const dayBits = weekdays - 1;
+  const wledBitToUiDay: Record<number, number> = {
+    1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 0,
+  };
+
+  for (let bit = 1; bit <= 7; bit++) {
+    if (dayBits & (1 << bit)) {
+      const uiDay = wledBitToUiDay[bit];
+      if (uiDay !== undefined) {
+        days.add(uiDay);
+      }
+    }
+  }
+
+  return days;
+};
+
+/**
+ * Helper to extract numeric values from JavaScript response
+ */
+export const extractNumericValue = (
+  jsText: string,
+  fieldName: string
+): number | null => {
+  const match = jsText.match(
+    new RegExp(`d\\.Sf\\.${fieldName}\\.value\\s*=\\s*(\\d+)`)
+  );
+  return match ? parseInt(match[1]) : null;
+};
+
+/**
+ * Helper to extract string values from JavaScript response
+ */
+export const extractStringValue = (
+  jsText: string,
+  fieldName: string
+): string | null => {
+  const match = jsText.match(
+    new RegExp(`d\\.Sf\\.${fieldName}\\.value\\s*=\\s*"([^"]*)"`)
+  );
+  return match ? match[1] : null;
+};
