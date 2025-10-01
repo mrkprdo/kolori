@@ -150,37 +150,13 @@ function LEDVisualization({
   }, [matrixInfo.is2D ? 'fixed' : effectiveLedSize, matrixInfo.is2D]);
 
 
-  // Function to map matrix coordinates to LED index based on WLED wiring pattern
+  // Function to map matrix coordinates to LED index
+  // WLED WebSocket already sends data in the correct physical layout order,
+  // so we just need simple row-major indexing
   const mapMatrixToLEDIndex = (row: number, col: number, matrixInfo: any) => {
-    const { width, height, serpentine, transpose, vertical } = matrixInfo;
-    let x = col;
-    let y = row;
-
-    // Handle transpose (swap X and Y)
-    if (transpose) {
-      [x, y] = [y, x];
-    }
-
-    // Handle vertical orientation
-    if (vertical) {
-      // Column-major ordering
-      if (serpentine && x % 2 === 1) {
-        // Odd columns go bottom to top
-        return x * height + (height - 1 - y);
-      } else {
-        // Even columns go top to bottom
-        return x * height + y;
-      }
-    } else {
-      // Horizontal orientation (row-major)
-      if (serpentine && y % 2 === 1) {
-        // Odd rows go right to left (serpentine/zigzag)
-        return y * width + (width - 1 - x);
-      } else {
-        // Even rows go left to right
-        return y * width + x;
-      }
-    }
+    const { width } = matrixInfo;
+    // Simple row-major indexing: each row is 'width' LEDs
+    return row * width + col;
   };
 
   // Cache for 2D matrix layouts to prevent recalculation

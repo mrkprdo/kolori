@@ -17,7 +17,7 @@ import {
 
 // API & Config
 import {
-  activateWledPreset,
+  activateWledEffect,
   activateWledPresetById,
   getWledPresets,
   setWledBrightness,
@@ -120,6 +120,15 @@ function KoloriApp({
   const settingsRef = useRef(settings);
   const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
   const lastPresetLoadDeviceId = useRef<string | null>(null);
+
+  // Filter out seasonal presets (based on old implementation)
+  const EXCLUDE_PREFIXES = [
+    "preset 0",
+    "autumn-",
+    "xmas-", 
+    "canada day-",
+    "off-"
+  ];
   
   // Memoized helper function to generate hash for comparing data changes
   const generateHash = useCallback((data: any[]): string => {
@@ -790,14 +799,6 @@ function KoloriApp({
         `${result.presets?.length || 0} presets, ${result.playlists?.length || 0} playlists`);
       
       if (result.success) {
-        // Filter out seasonal presets (based on old implementation)
-        const EXCLUDE_PREFIXES = [
-          "preset 0",
-          "autumn-",
-          "xmas-", 
-          "canada day-",
-        ];
-        
         const filteredPresets = (result.presets || []).filter((preset) => {
           const presetNameLower = preset.name.toLowerCase();
           return !EXCLUDE_PREFIXES.some((prefix) =>
@@ -879,12 +880,13 @@ function KoloriApp({
           activeDevice.protocol || "http"
         );
       } else {
-        // For custom effects, use the preset name/data
-        logger.log('🎯 Activating custom effect:', preset.name);
-        
-        result = await activateWledPreset(
+        // For custom effects, use the effectId and paletteId
+        logger.log('🎯 Activating custom effect:', preset.name, 'FX:', preset.effectId, 'Palette:', preset.paletteId);
+
+        result = await activateWledEffect(
           getDeviceAddress(activeDevice),
-          preset,
+          preset.effectId,
+          preset.paletteId,
           activeDevice.protocol || "http"
         );
       }
@@ -992,14 +994,6 @@ function KoloriApp({
       );
 
       if (result.success) {
-        // Filter out excluded presets and playlists
-        const EXCLUDE_PREFIXES = [
-          "preset 0",
-          "autumn-",
-          "xmas-",
-          "canada day-",
-        ];
-
         const fetchedPresets = (result.presets || []).filter((effect: any) => {
           const effectNameLower = effect.name.toLowerCase();
           return !EXCLUDE_PREFIXES.some((prefix) =>
@@ -1051,10 +1045,18 @@ function KoloriApp({
         // Always clear loading state
         setIsLoadingPlaylists(false);
       } else {
-        throw new Error(result.message);
+        // Only log non-timeout errors
+        if (result.message !== "Request timeout") {
+          logger.error("❌ Failed to fetch WLED presets:", result.message);
+        }
+        setIsLoadingPlaylists(false);
       }
     } catch (error: any) {
-      logger.error("❌ Failed to fetch WLED presets:", error.message);
+      // Only log non-timeout errors
+      if (error.message !== "Request timeout") {
+        logger.error("❌ Failed to fetch WLED presets:", error.message);
+      }
+      setIsLoadingPlaylists(false);
     }
   }, [activeDevice?.isConnected, activeDevice?.id, activeDevice?.name, activeDevice?.protocol, getDeviceAddress, generateHash, hasDataChanged]);
 

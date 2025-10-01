@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomEffect, SavedPlaylist, Device } from '../types';
-import { createWledPlaylist } from '../config/wledApi';
+import { generatePlaylistGradient, createWledPlaylist } from '../config/wledApi';
 import FloatingModal from './FloatingModal';
 import CustomDropdown from './CustomDropdown';
 
@@ -360,47 +360,7 @@ export default function PlaylistCreationModal({
         console.warn('⚠️ Playlist saved but no preset ID returned');
       }
 
-      // Generate gradient for playlist based on name and content
-      const generatePlaylistGradient = (name: string, itemCount: number): { colors: string[], gradient: string } => {
-        const playlistName = name.toLowerCase();
-        
-        // Name-based gradients
-        if (playlistName.includes('fire') || playlistName.includes('flame')) {
-          return {
-            colors: ['#ff4500', '#ff6500', '#ffb347'],
-            gradient: 'linear-gradient(135deg, #ff4500, #ff6500, #ffb347)'
-          };
-        }
-        if (playlistName.includes('rainbow') || playlistName.includes('colorful')) {
-          return {
-            colors: ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0077ff', '#4b0082'],
-            gradient: 'linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #4b0082)'
-          };
-        }
-        if (playlistName.includes('party') || playlistName.includes('dance')) {
-          return {
-            colors: ['#ff1493', '#00ffff', '#9400d3', '#ff4500'],
-            gradient: 'linear-gradient(135deg, #ff1493, #00ffff, #9400d3, #ff4500)'
-          };
-        }
-        
-        // Fallback: Generate gradient based on playlist name hash and item count
-        const hash = playlistName.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-        const hue1 = hash % 360;
-        const hue2 = (hash + (itemCount * 30)) % 360;
-        const hue3 = (hash + (itemCount * 60)) % 360;
-        
-        const colors = [
-          `hsl(${hue1}, 70%, 50%)`,
-          `hsl(${hue2}, 70%, 60%)`,
-          `hsl(${hue3}, 70%, 55%)`
-        ];
-        
-        return {
-          colors,
-          gradient: `linear-gradient(135deg, ${colors.join(', ')})`
-        };
-      };
+      
 
       const playlistGradientData = generatePlaylistGradient(playlistName, validItems.length);
 
@@ -430,7 +390,6 @@ export default function PlaylistCreationModal({
         }),
         isActive: false,
         gradient: playlistGradientData.gradient,
-        linearGradientColors: playlistGradientData.colors,
       };
 
       console.log('✅ Calling onSavePlaylist with data:', playlistData);
