@@ -103,13 +103,6 @@ export const parseTimeString = (
 };
 
 /**
- * Helper function to format time to HH:MM string
- */
-export const formatTimeString = (hour: number, minute: number): string => {
-  return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
-};
-
-/**
  * Helper function to convert day Set to WLED weekdays bitmask
  */
 export const convertDaysToWledBitmask = (selectedDays: Set<number>): number => {
@@ -134,32 +127,6 @@ export const convertDaysToWledBitmask = (selectedDays: Set<number>): number => {
   });
 
   return result + 1; // Add enable bit
-};
-
-/**
- * Helper function to convert WLED weekdays bitmask to day Set
- */
-export const convertWledBitmaskToDays = (weekdays: number): Set<number> => {
-  const days = new Set<number>();
-
-  if (weekdays === 127) return new Set([0, 1, 2, 3, 4, 5, 6]);
-  if (weekdays === 0 || weekdays === 1) return new Set<number>();
-
-  const dayBits = weekdays - 1;
-  const wledBitToUiDay: Record<number, number> = {
-    1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 0,
-  };
-
-  for (let bit = 1; bit <= 7; bit++) {
-    if (dayBits & (1 << bit)) {
-      const uiDay = wledBitToUiDay[bit];
-      if (uiDay !== undefined) {
-        days.add(uiDay);
-      }
-    }
-  }
-
-  return days;
 };
 
 /**

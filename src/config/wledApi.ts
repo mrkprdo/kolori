@@ -15,9 +15,6 @@
 // RE-EXPORTS - All public APIs
 // ============================================================================
 
-// Utility Functions
-export { formatTimeString, convertWledBitmaskToDays } from "./wledUtils";
-
 // Device Operations
 export {
   checkWledHeartbeat,

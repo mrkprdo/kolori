@@ -41,8 +41,6 @@ import {
   getWledBrightnessFromWin,
   setWledBrightness,
   fetchWledTimerSettings,
-  convertWledBitmaskToDays,
-  formatTimeString,
   generatePresetGradient,
 } from "../config/wledApi";
 import CustomEffectsModal from "./CustomEffectsModal";
