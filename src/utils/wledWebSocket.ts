@@ -56,6 +56,9 @@ class WledWebSocketManager {
 
     try {
       this.wledSocket = new WebSocket(wsUrl);
+
+      // Set binary type for WLED 2D matrix data
+      this.wledSocket.binaryType = "arraybuffer";
     } catch (error) {
       logger.error("Failed to create WebSocket:", error);
       if (this.onErrorCallback) this.onErrorCallback(error as Event);
@@ -79,40 +82,92 @@ class WledWebSocketManager {
         if (event.data instanceof ArrayBuffer) {
           const byteArray = new Uint8Array(event.data);
           const colors: LEDColor[] = [];
-          let bytesPerLed = 3; // Default to RGB
 
-          // Heuristic: if array length is divisible by 4, it might be RGBW
-          if (byteArray.length > 0 && byteArray.length % 4 === 0) {
-            bytesPerLed = 4;
+          // Check if this is WLED 2D format: [76, 2, width, height, ...RGB data]
+          if (byteArray.length >= 4 && byteArray[0] === 76 && byteArray[1] === 2) {
+            // WLED 2D Matrix format
+            const width = byteArray[2];
+            const height = byteArray[3];
+            const expectedLEDs = width * height;
+
+
+            // Parse RGB data starting from byte 4
+            let dataIndex = 4;
+            for (let led = 0; led < expectedLEDs && dataIndex + 2 < byteArray.length; led++) {
+              colors.push({
+                r: byteArray[dataIndex],     // Red (standard RGB order)
+                g: byteArray[dataIndex + 1], // Green
+                b: byteArray[dataIndex + 2], // Blue
+                w: 0, // No white channel in 2D format
+              });
+              dataIndex += 3;
+            }
+
+          } else {
+            // Legacy 1D LED strip format (GRB order)
+            let bytesPerLed = 3; // Default to RGB
+
+            // Heuristic: if array length is divisible by 4, it might be RGBW
+            if (byteArray.length > 0 && byteArray.length % 4 === 0) {
+              bytesPerLed = 4;
+            }
+
+            for (let i = 0; i < byteArray.length; i += bytesPerLed) {
+              colors.push({
+                r: byteArray[i + 2], // Red (GRB order for 1D strips)
+                g: byteArray[i],     // Green
+                b: byteArray[i + 1], // Blue
+                w: bytesPerLed === 4 ? byteArray[i + 3] : undefined,
+              });
+            }
+
           }
 
-          for (let i = 0; i < byteArray.length; i += bytesPerLed) {
-            colors.push({
-              r: byteArray[i + 2], // Red (final GRB order)
-              g: byteArray[i], // Green
-              b: byteArray[i + 1], // Blue
-              w: bytesPerLed === 4 ? byteArray[i + 3] : undefined, // Include W if RGBW
-            });
-          }
           processedData = { type: "liveLedData", data: colors };
         } else if (event.data instanceof Blob) {
           const arrayBuffer = await event.data.arrayBuffer();
           const byteArray = new Uint8Array(arrayBuffer);
           const colors: LEDColor[] = [];
-          let bytesPerLed = 3;
 
-          if (byteArray.length > 0 && byteArray.length % 4 === 0) {
-            bytesPerLed = 4;
+          // Check if this is WLED 2D format: [76, 2, width, height, ...RGB data]
+          if (byteArray.length >= 4 && byteArray[0] === 76 && byteArray[1] === 2) {
+            // WLED 2D Matrix format
+            const width = byteArray[2];
+            const height = byteArray[3];
+            const expectedLEDs = width * height;
+
+
+            // Parse RGB data starting from byte 4
+            let dataIndex = 4;
+            for (let led = 0; led < expectedLEDs && dataIndex + 2 < byteArray.length; led++) {
+              colors.push({
+                r: byteArray[dataIndex],     // Red (standard RGB order)
+                g: byteArray[dataIndex + 1], // Green
+                b: byteArray[dataIndex + 2], // Blue
+                w: 0, // No white channel in 2D format
+              });
+              dataIndex += 3;
+            }
+
+          } else {
+            // Legacy 1D LED strip format (GRB order)
+            let bytesPerLed = 3;
+
+            if (byteArray.length > 0 && byteArray.length % 4 === 0) {
+              bytesPerLed = 4;
+            }
+
+            for (let i = 0; i < byteArray.length; i += bytesPerLed) {
+              colors.push({
+                r: byteArray[i + 2], // Red (GRB order for 1D strips)
+                g: byteArray[i],     // Green
+                b: byteArray[i + 1], // Blue
+                w: bytesPerLed === 4 ? byteArray[i + 3] : undefined,
+              });
+            }
+
           }
 
-          for (let i = 0; i < byteArray.length; i += bytesPerLed) {
-            colors.push({
-              r: byteArray[i + 2], // Red (final GRB order)
-              g: byteArray[i], // Green
-              b: byteArray[i + 1], // Blue
-              w: bytesPerLed === 4 ? byteArray[i + 3] : undefined,
-            });
-          }
           processedData = { type: "liveLedData", data: colors };
         } else if (typeof event.data === "string") {
           const jsonData = JSON.parse(event.data);

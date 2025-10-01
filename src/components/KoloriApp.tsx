@@ -17,7 +17,7 @@ import {
 
 // API & Config
 import {
-  activateWledPreset,
+  activateWledEffect,
   activateWledPresetById,
   getWledPresets,
   setWledBrightness,
@@ -62,12 +62,11 @@ interface KoloriAppProps {
 }
 
 /**
- * Main Kolori App Component - Optimized React Native component
- * Handles WLED device management, preset activation, and playlist functionality
- * 
- * @component
- * @param {KoloriAppProps} props - Component properties
- * @returns {JSX.Element} The main application interface
+ * Renders the Kolori application UI and manages WLED device lifecycle, presets, playlists, WebSocket connections, live view, caching, and related UI state.
+ *
+ * Manages device monitoring, per-device preset/playlist caching and synchronization, WebSocket connection lifecycle with automatic reconnection and HTTP fallbacks, preset and playlist activation, brightness control, and cleanup on unmount.
+ *
+ * @returns The root React element for the Kolori application
  */
 function KoloriApp({
   navigation,
@@ -121,6 +120,15 @@ function KoloriApp({
   const settingsRef = useRef(settings);
   const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
   const lastPresetLoadDeviceId = useRef<string | null>(null);
+
+  // Filter out seasonal presets (based on old implementation)
+  const EXCLUDE_PREFIXES = [
+    "preset 0",
+    "autumn-",
+    "xmas-", 
+    "canada day-",
+    "off-"
+  ];
   
   // Memoized helper function to generate hash for comparing data changes
   const generateHash = useCallback((data: any[]): string => {
@@ -446,6 +454,7 @@ function KoloriApp({
             
             // Only update if live view is enabled and this is from the active device
             if (isMounted && currentLiveViewEnabled) {
+
               setLiveLedData(message.data);
             } else {
               // Clear any existing data if live view is disabled
@@ -461,17 +470,36 @@ function KoloriApp({
                 deviceName: message.info.name,
                 ledCount: message.info.leds?.count,
                 ledMatrix: message.info.leds?.matrix,
-                rgbw: message.info.leds?.rgbw,
                 version: message.info.ver,
-                currentActiveDeviceId: currentActiveDevice.id,
-                currentActiveDeviceName: currentActiveDevice.name
+                currentActiveDeviceId: currentActiveDevice.id
               });
-              
+
               // Merge WebSocket info with existing wledInfo to preserve LED count and other details
               const currentWledInfo = currentActiveDevice.wledInfo || {};
-              const mergedInfo = { ...currentWledInfo, ...message.info };
-              
-              
+
+              // Try multiple sources for matrix data - prioritize fresh WebSocket data
+              let matrixData = null;
+              if (message.ledMatrix) {
+                matrixData = message.ledMatrix;
+              } else if (message.info.leds?.matrix) {
+                matrixData = message.info.leds.matrix;
+              }
+
+              const mergedInfo = {
+                ...currentWledInfo,
+                ...message.info,
+                // Add fresh matrix data if found
+                ...(matrixData && { ledMatrix: matrixData }),
+                // Also update the leds.matrix path to ensure fresh data overrides stale data
+                ...(matrixData && {
+                  leds: {
+                    ...currentWledInfo.leds,
+                    ...message.info.leds,
+                    matrix: matrixData
+                  }
+                })
+              };
+
               onDeviceUpdate(currentActiveDevice.id, { wledInfo: mergedInfo });
               logger.log('✅ Device info merged and updated for device ID:', currentActiveDevice.id);
             }
@@ -771,14 +799,6 @@ function KoloriApp({
         `${result.presets?.length || 0} presets, ${result.playlists?.length || 0} playlists`);
       
       if (result.success) {
-        // Filter out seasonal presets (based on old implementation)
-        const EXCLUDE_PREFIXES = [
-          "preset 0",
-          "autumn-",
-          "xmas-", 
-          "canada day-",
-        ];
-        
         const filteredPresets = (result.presets || []).filter((preset) => {
           const presetNameLower = preset.name.toLowerCase();
           return !EXCLUDE_PREFIXES.some((prefix) =>
@@ -860,12 +880,13 @@ function KoloriApp({
           activeDevice.protocol || "http"
         );
       } else {
-        // For custom effects, use the preset name/data
-        logger.log('🎯 Activating custom effect:', preset.name);
-        
-        result = await activateWledPreset(
+        // For custom effects, use the effectId and paletteId
+        logger.log('🎯 Activating custom effect:', preset.name, 'FX:', preset.effectId, 'Palette:', preset.paletteId);
+
+        result = await activateWledEffect(
           getDeviceAddress(activeDevice),
-          preset,
+          preset.effectId,
+          preset.paletteId,
           activeDevice.protocol || "http"
         );
       }
@@ -973,14 +994,6 @@ function KoloriApp({
       );
 
       if (result.success) {
-        // Filter out excluded presets and playlists
-        const EXCLUDE_PREFIXES = [
-          "preset 0",
-          "autumn-",
-          "xmas-",
-          "canada day-",
-        ];
-
         const fetchedPresets = (result.presets || []).filter((effect: any) => {
           const effectNameLower = effect.name.toLowerCase();
           return !EXCLUDE_PREFIXES.some((prefix) =>
@@ -1032,10 +1045,18 @@ function KoloriApp({
         // Always clear loading state
         setIsLoadingPlaylists(false);
       } else {
-        throw new Error(result.message);
+        // Only log non-timeout errors
+        if (result.message !== "Request timeout") {
+          logger.error("❌ Failed to fetch WLED presets:", result.message);
+        }
+        setIsLoadingPlaylists(false);
       }
     } catch (error: any) {
-      logger.error("❌ Failed to fetch WLED presets:", error.message);
+      // Only log non-timeout errors
+      if (error.message !== "Request timeout") {
+        logger.error("❌ Failed to fetch WLED presets:", error.message);
+      }
+      setIsLoadingPlaylists(false);
     }
   }, [activeDevice?.isConnected, activeDevice?.id, activeDevice?.name, activeDevice?.protocol, getDeviceAddress, generateHash, hasDataChanged]);
 
