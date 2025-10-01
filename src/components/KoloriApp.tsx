@@ -62,12 +62,12 @@ interface KoloriAppProps {
 }
 
 /**
- * Main Kolori App Component - Optimized React Native component
- * Handles WLED device management, preset activation, and playlist functionality
- * 
- * @component
- * @param {KoloriAppProps} props - Component properties
- * @returns {JSX.Element} The main application interface
+ * Render the Kolori main application UI and manage connected WLED devices, WebSocket lifecycle, presets, and playlists.
+ *
+ * Manages device discovery and status, WebSocket/live-view lifecycle, fetching and caching of presets/playlists,
+ * preset/playlist activation, brightness and state refresh handlers, and supplies state and callbacks to child components.
+ *
+ * @returns The root JSX element for the Kolori application UI
  */
 function KoloriApp({
   navigation,

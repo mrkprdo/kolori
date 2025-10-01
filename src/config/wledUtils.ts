@@ -27,8 +27,12 @@ export const buildWledUrl = (
 };
 
 /**
- * Generic fetch wrapper with timeout and error handling
- * Reduces code duplication across all API functions
+ * Performs an HTTP fetch with an abort timeout and returns a standardized result object.
+ *
+ * @param url - The request URL
+ * @param options - Fetch options; supports an additional `timeout` (milliseconds, default 5000) to abort the request
+ * @param parseResponse - Function that parses the Response into the expected value `T` (defaults to `response.json()`)
+ * @returns An object with `success: true` and `data` when the request and parsing succeed; otherwise `success: false` with `error` and, when available, `status`
  */
 export async function fetchWithTimeout<T = any>(
   url: string,
@@ -79,7 +83,12 @@ export async function fetchWithTimeout<T = any>(
 }
 
 /**
- * Standardized API response formatter
+ * Create a standardized API response object.
+ *
+ * @param success - Whether the operation succeeded
+ * @param message - Human-readable message describing the result
+ * @param data - Optional payload to include in the response
+ * @returns The ApiResponse object containing `success` and `message`, and `data` when provided
  */
 export function formatApiResponse(
   success: boolean,

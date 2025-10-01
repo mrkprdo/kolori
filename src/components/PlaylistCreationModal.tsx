@@ -170,6 +170,24 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
   );
 };
 
+/**
+ * Renders a modal UI for creating and saving a WLED playlist composed of existing presets.
+ *
+ * Provides controls to add, remove, and reorder playlist items, pick presets from `customEffects`,
+ * validate input and device connectivity, save the playlist to the WLED device, and persist a local
+ * SavedPlaylist via `onSavePlaylist`. On non-iOS platforms this component shows an inline name
+ * entry modal; on iOS it prompts natively.
+ *
+ * @param visible - Whether the modal is visible
+ * @param isDark - Theme flag; when true renders dark-themed styles
+ * @param onClose - Callback invoked when the modal is closed
+ * @param customEffects - Available presets/effects to choose from when building the playlist
+ * @param onSavePlaylist - Callback invoked with the constructed SavedPlaylist after a successful save
+ * @param onRefreshPresets - Optional callback to refresh presets/playlists from the device
+ * @param device - The current WLED device (used to validate connectivity and to send the playlist)
+ * @param savedPlaylists - Existing locally saved playlists used for name-collision checks
+ * @returns The rendered "Create Playlist" modal component
+ */
 export default function PlaylistCreationModal({
   visible,
   isDark = false,

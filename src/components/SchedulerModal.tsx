@@ -29,6 +29,23 @@ interface SchedulerModalProps {
   setSchedulerEnabled: (enabled: boolean) => void;
 }
 
+/**
+ * Modal UI for viewing and configuring a WLED device schedule.
+ *
+ * Provides controls to select weekdays, set turn-on/turn-off times, choose a preset ID,
+ * save the schedule to the device (with confirmation and optional reboot), and reset
+ * the device's timer settings back to defaults.
+ *
+ * @param visible - Whether the modal is visible
+ * @param onClose - Callback invoked when the modal requests to close
+ * @param isDark - True to render dark theme styles
+ * @param activeDevice - The currently active WLED device (used for API calls and connection state)
+ * @param configuredSchedule - The currently saved schedule configuration, or null if none
+ * @param setConfiguredSchedule - Callback to update the stored schedule configuration
+ * @param schedulerEnabled - Whether a schedule is currently enabled
+ * @param setSchedulerEnabled - Callback to enable or disable the scheduler state
+ * @returns A React element rendering the scheduler configuration modal
+ */
 export default function SchedulerModal({
   visible,
   onClose,
