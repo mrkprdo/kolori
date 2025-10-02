@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   resetWledTimerSettings,
   fetchWledCurrentPreset,
 } from '../config/wledApi';
+import { fetchWledTimerSettings, WledTimerSettings } from '../config/wledTimer';
 
 interface SchedulerModalProps {
   visible: boolean;
@@ -46,13 +47,102 @@ export default function SchedulerModal({
   const [turnOffTime, setTurnOffTime] = useState('07:00');
   const [targetPresetId, setTargetPresetId] = useState<number>(3);
   const [isSchedulerSaving, setIsSchedulerSaving] = useState(false);
+  const [isLoadingTimerSettings, setIsLoadingTimerSettings] = useState(false);
+
+  // Helper function to convert WLED timer weekdays bitmask to day set
+  const convertWledDaysToSet = useCallback((weekdaysBitmask: number): Set<number> => {
+    const daySet = new Set<number>();
+    for (let i = 0; i < 7; i++) {
+      // WLED uses Sunday = bit 0, Monday = bit 1, etc.
+      if (weekdaysBitmask & (1 << i)) {
+        daySet.add(i);
+      }
+    }
+    return daySet;
+  }, []);
+
+  // Helper function to format time from hour/minute
+  const formatTime = useCallback((hour: number, minute: number): string => {
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  }, []);
+
+  // Load current WLED timer settings
+  const loadTimerSettings = useCallback(async () => {
+    if (!activeDevice?.ip || !activeDevice?.isConnected) {
+      return;
+    }
+
+    setIsLoadingTimerSettings(true);
+    try {
+      logger.log(`📥 Loading WLED timer settings from ${activeDevice.ip}`);
+      const result = await fetchWledTimerSettings(
+        activeDevice.ip,
+        activeDevice.protocol || 'http'
+      );
+
+      if (result.success && result.timerSettings) {
+
+        // Find active timers (Timer 0 and Timer 1 are typically used for ON/OFF)
+        const timer0 = result.timerSettings.timers[0]; // Turn ON timer
+        const timer1 = result.timerSettings.timers[1]; // Turn OFF timer
+
+        logger.log(`🔎 Found timers - Timer0: preset=${timer0.preset}, time=${timer0.hour}:${timer0.minute}, Timer1: preset=${timer1.preset}, time=${timer1.hour}:${timer1.minute}`);
+
+        // If Timer 0 has a valid preset (indicating it's configured), load its settings
+        // Note: We check preset > 0 since enabled flag might not be parsed correctly
+        if (timer0.preset > 0 && timer0.preset !== 62) {
+          const onTime = formatTime(timer0.hour, timer0.minute);
+          const offTime = timer1.preset === 62
+            ? formatTime(timer1.hour, timer1.minute)
+            : turnOffTime; // Keep current value if no Timer 1
+
+          setTurnOnTime(onTime);
+          setTargetPresetId(timer0.preset);
+          setSelectedDays(convertWledDaysToSet(timer0.weekdays));
+
+          // If Timer 1 is set to turn off (preset 62), load its time
+          if (timer1.preset === 62) {
+            setTurnOffTime(offTime);
+          }
+
+          // Update the scheduler state to show as active (parent component state)
+          setSchedulerEnabled(true);
+          setConfiguredSchedule({
+            onTime: onTime,
+            offTime: offTime,
+            presetId: timer0.preset,
+          });
+
+          logger.log(`✅ Loaded timer settings: ON at ${onTime}, OFF at ${offTime}, preset ${timer0.preset}`);
+        } else {
+          // No active schedule found
+          setSchedulerEnabled(false);
+          setConfiguredSchedule(null);
+          logger.log(`ℹ️ No active schedule found on device`);
+        }
+      } else {
+        logger.warn(`⚠️ Failed to load timer settings: ${result.message}`);
+      }
+    } catch (error: any) {
+      logger.error('❌ Error loading timer settings:', error);
+    } finally {
+      setIsLoadingTimerSettings(false);
+    }
+  }, [activeDevice, convertWledDaysToSet, formatTime]);
+
+  // Load timer settings when modal opens
+  useEffect(() => {
+    if (visible && activeDevice?.isConnected) {
+      logger.log(`🔍 SchedulerModal opened: schedulerEnabled=${schedulerEnabled}, configuredSchedule=${JSON.stringify(configuredSchedule)}`);
+      loadTimerSettings();
+    }
+  }, [visible, activeDevice?.isConnected, loadTimerSettings]);
 
   // Handle time input formatting
   const handleTimeInput = useCallback(
     (
       text: string,
-      setter: (value: string) => void,
-      currentValue: string
+      setter: (value: string) => void
     ) => {
       let cleaned = text.replace(/[^0-9]/g, '');
 
@@ -73,7 +163,7 @@ export default function SchedulerModal({
 
   // Save scheduler state
   const saveSchedulerState = useCallback(
-    async (enabled: boolean, expanded: boolean) => {
+    async () => {
       // Implement storage logic here if needed
     },
     []
@@ -126,7 +216,7 @@ export default function SchedulerModal({
                   offTime: turnOffTime,
                   presetId: targetPresetId,
                 });
-                saveSchedulerState(true, true);
+                saveSchedulerState();
                 logger.log(`✅ Schedule saved successfully`);
 
                 // Prompt user to reboot device
@@ -215,7 +305,7 @@ export default function SchedulerModal({
                 setTurnOnTime('20:00');
                 setTurnOffTime('07:00');
                 setTargetPresetId(3);
-                saveSchedulerState(false, true);
+                saveSchedulerState();
                 logger.log(`✅ Timer settings reset successfully`);
               } else {
                 Alert.alert(
@@ -420,26 +510,58 @@ export default function SchedulerModal({
         <ScrollView contentContainerStyle={styles.contentContainer}>
           {/* Timer Status Info */}
           <View style={styles.statusCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
-              <Text style={{ fontSize: 16 }}>
-                {schedulerEnabled ? '✅' : '⏱️'}
-              </Text>
-              <Text
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                <Text style={{ fontSize: 16 }}>
+                  {isLoadingTimerSettings ? '⏳' : schedulerEnabled ? '✅' : '⏱️'}
+                </Text>
+                <Text
+                  style={[
+                    styles.statusTitle,
+                    {
+                      color: isLoadingTimerSettings
+                        ? isDark ? '#fbbf24' : '#f59e0b'
+                        : schedulerEnabled
+                        ? isDark
+                          ? '#10b981'
+                          : '#059669'
+                        : isDark
+                        ? '#9ca3af'
+                        : '#6b7280',
+                    },
+                  ]}
+                >
+                  {isLoadingTimerSettings
+                    ? 'Loading Timer Settings...'
+                    : schedulerEnabled
+                    ? 'Schedule Active'
+                    : 'No Schedule Set'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={loadTimerSettings}
                 style={[
-                  styles.statusTitle,
+                  styles.activePresetButton,
                   {
-                    color: schedulerEnabled
-                      ? isDark
-                        ? '#10b981'
-                        : '#059669'
-                      : isDark
-                      ? '#9ca3af'
-                      : '#6b7280',
+                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                    borderColor: isDark ? '#6b7280' : '#d1d5db',
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    minWidth: 0,
                   },
                 ]}
+                disabled={!activeDevice?.ip || !activeDevice?.isConnected || isLoadingTimerSettings}
               >
-                {schedulerEnabled ? 'Schedule Active' : 'No Schedule Set'}
-              </Text>
+                <Ionicons
+                  name="refresh-outline"
+                  size={16}
+                  color={
+                    !activeDevice?.ip || !activeDevice?.isConnected || isLoadingTimerSettings
+                      ? isDark ? '#6b7280' : '#9ca3af'
+                      : isDark ? '#d1d5db' : '#374151'
+                  }
+                />
+              </TouchableOpacity>
             </View>
             {schedulerEnabled && configuredSchedule && (
               <Text
@@ -448,10 +570,12 @@ export default function SchedulerModal({
                   {
                     color: isDark ? '#d1d5db' : '#4b5563',
                     textAlign: 'center',
+                    fontSize: 11,
+                    lineHeight: 14,
                   },
                 ]}
               >
-                🌅 Turn ON at {configuredSchedule.onTime} • 🌙 Turn OFF at {configuredSchedule.offTime} • 🎨 Preset #{configuredSchedule.presetId}
+                💡 ON {configuredSchedule.onTime} • ⚫ OFF {configuredSchedule.offTime} • 🎨 #{configuredSchedule.presetId}
               </Text>
             )}
           </View>
@@ -606,7 +730,7 @@ export default function SchedulerModal({
                       style={[styles.timeInput, { color: textColor }]}
                       value={turnOnTime}
                       onChangeText={(text) => {
-                        handleTimeInput(text, setTurnOnTime, turnOnTime);
+                        handleTimeInput(text, setTurnOnTime);
                       }}
                       placeholder="20:00"
                       placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
@@ -631,7 +755,7 @@ export default function SchedulerModal({
                       style={[styles.timeInput, { color: textColor }]}
                       value={turnOffTime}
                       onChangeText={(text) => {
-                        handleTimeInput(text, setTurnOffTime, turnOffTime);
+                        handleTimeInput(text, setTurnOffTime);
                       }}
                       placeholder="07:00"
                       placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}

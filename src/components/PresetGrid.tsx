@@ -18,7 +18,6 @@ import {
   BackHandler,
   ToastAndroid,
   Platform,
-  KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -386,8 +385,10 @@ const PresetCard = React.memo(
 
     const cardItemStyle = useMemo(
       () => ({
-        width: "22%",
-        margin: "1.5%",
+        flexBasis: '22%',
+        maxWidth: '22%',
+        marginHorizontal: '1.5%',
+        marginVertical: 6,
       }),
       []
     );
@@ -2012,11 +2013,7 @@ export default function PresetGrid({
   ]);
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor }]}
-      behavior={Platform.OS === "ios" ? "position" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-    >
+    <View style={[styles.container, { backgroundColor }]}>
       <ScrollView
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -3050,7 +3047,7 @@ export default function PresetGrid({
           </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -3200,6 +3197,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 4,
+    justifyContent: "flex-start",
   },
   presetCard: {
     borderRadius: 8,
@@ -3276,10 +3274,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 4,
+    justifyContent: "flex-start",
   },
   playlistItem: {
-    width: "22%",
-    margin: "1.5%",
+    flexBasis: '22%',
+    maxWidth: '22%',
+    marginHorizontal: '1.5%',
+    marginVertical: 6,
   },
   playlistCard: {
     borderRadius: 8,
