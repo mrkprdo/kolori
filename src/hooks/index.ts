@@ -2,6 +2,7 @@
  * Hooks Index - Central export point for all custom hooks
  */
 
+// App-level hooks
 export { useDeviceManagement } from './useDeviceManagement';
 export type { UseDeviceManagementReturn } from './useDeviceManagement';
 
@@ -13,3 +14,16 @@ export type { UseModalManagerReturn } from './useModalManager';
 
 export { useAppInitialization } from './useAppInitialization';
 export type { UseAppInitializationReturn } from './useAppInitialization';
+
+// KoloriApp-level hooks
+export { useDeviceCache } from './useDeviceCache';
+export type { UseDeviceCacheReturn } from './useDeviceCache';
+
+export { usePresetManager } from './usePresetManager';
+export type { UsePresetManagerReturn } from './usePresetManager';
+
+export { useWebSocketManager } from './useWebSocketManager';
+export type { UseWebSocketManagerReturn } from './useWebSocketManager';
+
+export { useDeviceMonitor } from './useDeviceMonitor';
+export type { UseDeviceMonitorReturn } from './useDeviceMonitor';

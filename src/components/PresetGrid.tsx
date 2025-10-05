@@ -48,6 +48,7 @@ import PlaylistCreationModal from "./PlaylistCreationModal";
 import DeviceManagementModal from "./DeviceManagementModal";
 import LEDVisualization from "./LEDVisualization";
 import { WLEDEffectData, getEffectByName } from "../data/wledEffects";
+import { WLED_PALETTES_DEF } from "../constants/palettes";
 
 // Animated playlist item component
 interface AnimatedPlaylistItemProps {
@@ -1929,9 +1930,20 @@ export default function PresetGrid({
         const randomPaletteIndex = Math.floor(
           Math.random() * devicePalettes.length
         );
+        const paletteName = devicePalettes[randomPaletteIndex];
+
+        // Find the actual palette ID from WLED_PALETTES_DEF
+        const paletteDef = WLED_PALETTES_DEF.find(p => p.name === paletteName);
+
+        if (!paletteDef) {
+          console.warn(`⚠️ Palette "${paletteName}" not found in WLED_PALETTES_DEF, using palette index ${randomPaletteIndex} as ID`);
+        }
+
+        const paletteId = paletteDef?.id ?? randomPaletteIndex;
+
         randomPalette = {
-          id: randomPaletteIndex,
-          name: devicePalettes[randomPaletteIndex],
+          id: paletteId,
+          name: paletteName,
         };
         presetName = `${randomEffect.name}+${randomPalette.name}`;
         console.log(
@@ -1956,9 +1968,8 @@ export default function PresetGrid({
           `🎲 Successfully created random custom effect with preset ID: ${result.presetId}`
         );
 
-        const gradientData = generatePresetGradient(
-          randomPalette?.name
-        );
+        console.log(`🎲 Generating gradient for palette ID: ${randomPalette?.id || 0}`);
+        const gradient = generatePresetGradient(randomPalette?.id || 0);
 
         // Add to local custom effects
         const newCustomEffect: CustomEffect = {
@@ -1970,9 +1981,7 @@ export default function PresetGrid({
           paletteId: randomPalette?.id || 0,
           paletteName: randomPalette?.name || "",
           isWledPreset: true,
-          gradient: `linear-gradient(135deg, ${gradientData.colors.join(
-            ", "
-          )})`,
+          gradient: gradient,
           isCustom: false,
         };
 
