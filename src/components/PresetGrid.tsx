@@ -198,11 +198,14 @@ export default function PresetGrid({
   const [sliderBrightness, setSliderBrightness] = useState<number>(
     activeDevice?.wledInfo?.bri || 0
   );
+  const [isFetchingBrightness, setIsFetchingBrightness] = useState(false);
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(0);
 
   // Function to fetch brightness from device
   const fetchDeviceBrightness = useCallback(async () => {
     if (!activeDevice?.ip || !activeDevice?.isConnected) return;
 
+    setIsFetchingBrightness(true);
     try {
       const result = await getWledBrightnessFromWin(
         activeDevice.ip,
@@ -210,10 +213,13 @@ export default function PresetGrid({
       );
       if (result.success && result.brightness !== undefined) {
         setSliderBrightness(result.brightness);
+        setLastRefreshTimestamp(Date.now()); // Mark that we just refreshed
         logger.log(`💡 Fetched brightness from device: ${result.brightness}`);
       }
     } catch (error) {
       logger.error("Failed to fetch device brightness:", error);
+    } finally {
+      setIsFetchingBrightness(false);
     }
   }, [activeDevice?.ip, activeDevice?.isConnected, activeDevice?.protocol]);
   const [isCooldownActive, setIsCooldownActive] = useState(false);
@@ -606,18 +612,25 @@ export default function PresetGrid({
   // Track previous device ID for immediate updates on device switch
   const prevDeviceId = useRef(activeDevice?.id);
 
-  // Update slider when device changes or fetch brightness on device switch
+  // Update slider ONLY when device ID actually changes (not on connection state changes)
   useEffect(() => {
-    if (activeDevice?.wledInfo?.bri !== undefined) {
-      setSliderBrightness(Math.round(activeDevice.wledInfo.bri));
-    } else if (activeDevice?.isConnected) {
-      // If no brightness info in wledInfo, fetch it from device
-      fetchDeviceBrightness();
+    const currentDeviceId = activeDevice?.id;
+
+    // Only update if device ID actually changed
+    if (prevDeviceId.current !== currentDeviceId) {
+      prevDeviceId.current = currentDeviceId;
+
+      if (activeDevice?.wledInfo?.bri !== undefined) {
+        setSliderBrightness(Math.round(activeDevice.wledInfo.bri));
+      } else if (activeDevice?.isConnected) {
+        // If no brightness info in wledInfo, fetch it from device
+        fetchDeviceBrightness();
+      }
     }
   }, [
-    activeDevice?.id,
-    activeDevice?.wledInfo?.bri,
+    activeDevice?.id, // Only watch device ID changes
     activeDevice?.isConnected,
+    activeDevice?.wledInfo?.bri,
     fetchDeviceBrightness,
   ]);
 
@@ -695,14 +708,28 @@ export default function PresetGrid({
     [activeDevice?.ip, isTogglingDevice, onRefreshPresets]
   );
 
+  // Use ref to always get latest device info
+  const activeDeviceRef = useRef(activeDevice);
+  useEffect(() => {
+    activeDeviceRef.current = activeDevice;
+  }, [activeDevice]);
+
   const handleRefresh = useCallback(async () => {
     if (!onRefreshPresets || isRefreshing) return;
 
     setIsRefreshing(true);
     try {
       await onRefreshPresets();
-      // Also fetch current brightness from device after refresh
-      await fetchDeviceBrightness();
+      // After refresh completes, wledInfo.bri is updated by refreshDeviceState
+      // Read from the ref to get the latest value
+      const currentDevice = activeDeviceRef.current;
+      if (currentDevice?.wledInfo?.bri !== undefined) {
+        const newBrightness = Math.round(currentDevice.wledInfo.bri);
+        console.log(`💡 Setting slider brightness from ${sliderBrightness} to ${newBrightness}`);
+        setSliderBrightness(newBrightness);
+        setLastRefreshTimestamp(Date.now());
+        logger.log(`💡 Brightness updated from refresh: ${newBrightness}`);
+      }
     } catch (error) {
       logger.error("Failed to refresh presets:", error);
     } finally {
@@ -711,7 +738,7 @@ export default function PresetGrid({
   }, [
     onRefreshPresets,
     isRefreshing,
-    fetchDeviceBrightness,
+    sliderBrightness,
   ]);
 
   // Animation coordination (non-blocking)
@@ -1490,6 +1517,8 @@ export default function PresetGrid({
           liveLedData={liveLedData}
           liveViewLedSize={liveViewLedSize}
           sliderBrightness={sliderBrightness}
+          isFetchingBrightness={isFetchingBrightness}
+          lastRefreshTimestamp={lastRefreshTimestamp}
           fadeAnim={fadeAnim}
           scaleAnim={scaleAnim}
           isDark={isDark}

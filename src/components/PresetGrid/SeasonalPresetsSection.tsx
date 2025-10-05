@@ -35,14 +35,19 @@ const MemoizedSeasonalPresetCard = React.memo(
     isDark: boolean;
     PresetCard: React.ComponentType<any>;
   }) {
+    const gradient = useMemo(
+      () => getSeasonalGradient(preset.name),
+      [preset.name]
+    );
+
     const presetObj = useMemo(
       () => ({
         id: preset.presetId,
         name: preset.name,
         icon: preset.icon,
-        gradient: getSeasonalGradient(preset.name),
+        gradient: gradient,
       }),
-      [preset.presetId, preset.name, preset.icon]
+      [preset.presetId, preset.name, preset.icon, gradient]
     );
 
     const isActive = useMemo(

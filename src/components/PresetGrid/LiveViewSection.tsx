@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -15,6 +15,8 @@ interface LiveViewSectionProps {
   liveLedData: LEDColor[];
   liveViewLedSize: number;
   sliderBrightness: number;
+  isFetchingBrightness: boolean;
+  lastRefreshTimestamp: number;
   fadeAnim: Animated.Value;
   scaleAnim: Animated.Value;
   isDark: boolean;
@@ -34,6 +36,8 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   liveLedData,
   liveViewLedSize,
   sliderBrightness,
+  isFetchingBrightness,
+  lastRefreshTimestamp,
   fadeAnim,
   scaleAnim,
   isDark,
@@ -46,15 +50,52 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   onBrightnessChange,
 }) => {
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
+  const [localBrightness, setLocalBrightness] = useState(sliderBrightness);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
 
   const isConnected = activeDevice?.isConnected || false;
   const ledCount = activeDevice?.wledInfo?.leds?.count;
   const isRgbw = activeDevice?.wledInfo?.leds?.rgbw;
   const canShowLiveView = liveViewEnabled && isConnected && liveLedData.length > 0;
 
-  const handleBrightnessChange = async (value: number) => {
+  // Clear interaction flag when refresh happens (timestamp changes)
+  useEffect(() => {
+    if (lastRefreshTimestamp > 0) {
+      console.log(`🔄 Refresh detected, clearing interaction flags`);
+      setIsUserInteracting(false);
+      setIsAdjustingBrightness(false);
+    }
+  }, [lastRefreshTimestamp]);
+
+  // Update local brightness when slider brightness changes (only when user is NOT interacting)
+  useEffect(() => {
+    console.log(`🔍 Effect triggered - sliderBrightness: ${sliderBrightness}, localBrightness: ${localBrightness}, adjusting: ${isAdjustingBrightness}, interacting: ${isUserInteracting}, timestamp: ${lastRefreshTimestamp}`);
+    if (!isAdjustingBrightness && !isUserInteracting) {
+      console.log(`🔄 Updating local brightness to: ${sliderBrightness} (was: ${localBrightness})`);
+      setLocalBrightness(sliderBrightness);
+    } else {
+      console.log(`🚫 Blocked brightness update: adjusting=${isAdjustingBrightness}, interacting=${isUserInteracting}`);
+    }
+  }, [sliderBrightness, isAdjustingBrightness, isUserInteracting, lastRefreshTimestamp, localBrightness]);
+
+  const handleBrightnessSlidingStart = () => {
+    setIsUserInteracting(true);
+  };
+
+  const handleBrightnessValueChange = (value: number) => {
+    // Also set interacting flag on value change (handles taps)
+    if (!isUserInteracting) {
+      setIsUserInteracting(true);
+    }
+    setLocalBrightness(Math.round(value));
+  };
+
+  const handleBrightnessSlidingComplete = async (value: number) => {
     const finalValue = Math.round(value);
     setIsAdjustingBrightness(true);
+
+    // Update parent state
+    onSetSliderBrightness(finalValue);
 
     if (activeDevice?.ip) {
       try {
@@ -67,16 +108,21 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
           logger.log(`💡 Brightness set to ${finalValue}`);
         } else {
           logger.error('Failed to set brightness:', result.message);
+          // Revert on failure
+          setLocalBrightness(activeDevice?.wledInfo?.bri || 0);
           onSetSliderBrightness(activeDevice?.wledInfo?.bri || 0);
         }
       } catch (error) {
         logger.error('Error setting brightness:', error);
+        // Revert on error
+        setLocalBrightness(activeDevice?.wledInfo?.bri || 0);
         onSetSliderBrightness(activeDevice?.wledInfo?.bri || 0);
       }
     }
 
     onBrightnessChange?.(finalValue);
     setIsAdjustingBrightness(false);
+    setIsUserInteracting(false);
   };
 
   return (
@@ -115,6 +161,25 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
       </View>
 
       <View style={sharedStyles.sectionContent}>
+        {/* Active Preset Badge */}
+        {activePresetData && isConnected && (
+          <View
+            style={[
+              styles.activePresetBadge,
+              {
+                backgroundColor: isDark ? '#1f2937' : '#eff6ff',
+                borderColor: isDark ? '#3b82f6' : '#93c5fd',
+              },
+            ]}
+          >
+            <Ionicons name="radio-button-on" size={12} color="#3b82f6" />
+            <Text style={[styles.activePresetText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
+              {activePresetData.name}
+            </Text>
+          </View>
+        )}
+
+        {/* Main Content Card */}
         <View
           style={[
             styles.innerCard,
@@ -124,6 +189,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
             },
           ]}
         >
+          {/* LED Visualization or Status */}
           <Animated.View
             style={[
               styles.cardContent,
@@ -133,171 +199,91 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
               },
             ]}
           >
-            {activePresetData && (
-              <Text style={[styles.activePresetText, { color: textColor }]}>
-                Active: {activePresetData.name}
-              </Text>
-            )}
-
-            {/* Live LED Data */}
-            {liveViewEnabled && !activeDevice?.isConnected && (
-              <View style={styles.disabledContainer}>
-                <Text style={[styles.disabledText, { color: '#ef4444' }]}>
-                  Device offline - Connect to view LED data
-                </Text>
-              </View>
-            )}
-            {liveViewEnabled &&
-              activeDevice?.isConnected &&
-              liveLedData.length > 0 && (
-                <LEDVisualization
-                  ledData={liveLedData}
-                  subtextColor={subtextColor}
-                  liveViewLedSize={liveViewLedSize}
-                  showLedCount={true}
-                  wledInfo={activeDevice?.wledInfo}
+            {canShowLiveView ? (
+              <LEDVisualization
+                ledData={liveLedData}
+                subtextColor={subtextColor}
+                liveViewLedSize={liveViewLedSize}
+                showLedCount={true}
+                wledInfo={activeDevice?.wledInfo}
+                brightness={localBrightness}
+              />
+            ) : (
+              <View style={styles.statusContainer}>
+                <Ionicons
+                  name={!isConnected ? 'cloud-offline' : liveViewEnabled ? 'eye-off' : 'eye-off-outline'}
+                  size={32}
+                  color={!isConnected ? '#ef4444' : subtextColor}
+                  style={{ marginBottom: 8 }}
                 />
-              )}
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: !isConnected ? '#ef4444' : textColor },
+                  ]}
+                >
+                  {!isConnected
+                    ? 'Device Offline'
+                    : !liveViewEnabled
+                    ? 'Live View Disabled'
+                    : 'Waiting for LED data...'}
+                </Text>
 
-            {!liveViewEnabled && (
-              <View style={styles.disabledContainer}>
-                {!activeDevice?.isConnected ? (
-                  <Text style={[styles.disabledText, { color: '#ef4444' }]}>
-                    Device offline - Connect to view LED data
-                  </Text>
-                ) : (
-                  <Text
-                    style={[styles.disabledText, { color: subtextColor }]}
-                  >
-                    Live view disabled
-                  </Text>
-                )}
-                {(() => {
-                  // Don't show LED count if device is offline
-                  if (!activeDevice?.isConnected) {
-                    return null;
-                  }
-
-                  // Check for LED count in WLED device info
-                  const ledCount = activeDevice?.wledInfo?.leds?.count;
-
-                  if (ledCount) {
-                    return (
-                      <View>
-                        <Text
-                          style={[
-                            styles.ledCount,
-                            { color: subtextColor, marginTop: 4 },
-                          ]}
-                        >
-                          {ledCount} LED{ledCount !== 1 ? 's' : ''}{' '}
-                          available
+                {/* LED Info */}
+                {isConnected && ledCount && (
+                  <View style={styles.ledInfoContainer}>
+                    <View style={styles.ledInfoRow}>
+                      <Ionicons name="bulb" size={14} color={subtextColor} />
+                      <Text style={[styles.ledInfoText, { color: subtextColor }]}>
+                        {ledCount} LED{ledCount !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    {isRgbw && (
+                      <View style={[styles.ledInfoRow, { marginTop: 4 }]}>
+                        <Ionicons name="color-palette" size={14} color={subtextColor} />
+                        <Text style={[styles.ledInfoText, { color: subtextColor }]}>
+                          RGBW Support
                         </Text>
-                        {activeDevice?.wledInfo?.leds?.rgbw && (
-                          <Text
-                            style={[
-                              styles.ledCount,
-                              {
-                                color: subtextColor,
-                                fontSize: 10,
-                                marginTop: 2,
-                              },
-                            ]}
-                          >
-                            RGBW LEDs supported
-                          </Text>
-                        )}
                       </View>
-                    );
-                  } else if (activeDevice?.isConnected) {
-                    return (
-                      <Text
-                        style={[
-                          styles.ledCount,
-                          {
-                            color: subtextColor,
-                            marginTop: 4,
-                            fontSize: 12,
-                          },
-                        ]}
-                      >
-                        Device connected - LED count not available
-                      </Text>
-                    );
-                  } else {
-                    return (
-                      <Text
-                        style={[
-                          styles.ledCount,
-                          {
-                            color: subtextColor,
-                            marginTop: 4,
-                            fontSize: 12,
-                          },
-                        ]}
-                      >
-                        Device offline
-                      </Text>
-                    );
-                  }
-                })()}
+                    )}
+                  </View>
+                )}
               </View>
             )}
           </Animated.View>
 
-          {/* Brightness Slider - Always visible when device is connected */}
-          {activeDevice?.isConnected && (
-            <View style={styles.sliderContainer}>
-              <Ionicons
-                name="sunny-outline"
-                size={20}
-                color={subtextColor}
-              />
+          {/* Brightness Slider */}
+          {isConnected && (
+            <View style={styles.brightnessContainer}>
+              <View style={styles.brightnessHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="sunny" size={16} color={textColor} />
+                  <Text style={[styles.brightnessLabel, { color: textColor }]}>
+                    Brightness
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.brightnessValue, { color: isDark ? '#93c5fd' : '#3b82f6' }]}>
+                    {localBrightness}
+                  </Text>
+                  {(isAdjustingBrightness || isFetchingBrightness) && (
+                    <ActivityIndicator size="small" color={isDark ? '#93c5fd' : '#3b82f6'} />
+                  )}
+                </View>
+              </View>
               <Slider
                 style={styles.slider}
                 minimumValue={0}
                 maximumValue={255}
                 step={1}
-                value={sliderBrightness}
-                onValueChange={(value) => {
-                  onSetSliderBrightness(Math.round(value));
-                }}
-                onSlidingComplete={async (value) => {
-                  const finalValue = Math.round(value);
-
-                  // Use direct API call for setting brightness
-                  if (activeDevice?.ip) {
-                    try {
-                      const result = await setWledBrightness(
-                        activeDevice.ip,
-                        finalValue,
-                        activeDevice.protocol || 'http'
-                      );
-                      if (result.success) {
-                        logger.log(`💡 Brightness set to ${finalValue}`);
-                      } else {
-                        logger.error(
-                          'Failed to set brightness:',
-                          result.message
-                        );
-                        // Revert slider to previous value on failure
-                        onSetSliderBrightness(
-                          activeDevice?.wledInfo?.bri || 0
-                        );
-                      }
-                    } catch (error) {
-                      logger.error('Error setting brightness:', error);
-                      // Revert slider to previous value on error
-                      onSetSliderBrightness(activeDevice?.wledInfo?.bri || 0);
-                    }
-                  }
-
-                  // Also call the original callback if provided
-                  onBrightnessChange?.(finalValue);
-                }}
+                value={localBrightness}
+                onSlidingStart={handleBrightnessSlidingStart}
+                onValueChange={handleBrightnessValueChange}
+                onSlidingComplete={handleBrightnessSlidingComplete}
                 minimumTrackTintColor="#3b82f6"
                 maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
                 thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
+                disabled={isFetchingBrightness || isAdjustingBrightness}
               />
             </View>
           )}

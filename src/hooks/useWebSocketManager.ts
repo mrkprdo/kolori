@@ -180,11 +180,17 @@ export function useWebSocketManager({
               // Handle device state updates
               if (message.state) {
                 const currentWledInfo = currentActiveDevice.wledInfo || {};
+
+                // Preserve nested matrix/LED info when updating state
                 const updatedWledInfo = {
                   ...currentWledInfo,
-                  bri: message.state.bri,
+                  // Don't update brightness from WebSocket - only from manual refresh
+                  // bri: message.state.bri,
                   on: message.state.on,
-                  ps: message.state.ps || currentWledInfo.ps
+                  ps: message.state.ps || currentWledInfo.ps,
+                  // Explicitly preserve matrix info
+                  ledMatrix: currentWledInfo.ledMatrix,
+                  leds: currentWledInfo.leds
                 };
 
                 onDeviceUpdate(currentActiveDevice.id, { wledInfo: updatedWledInfo });

@@ -249,10 +249,48 @@ export const liveViewStyles = StyleSheet.create({
     minHeight: 100,
   },
 
+  activePresetBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 10,
+    gap: 6,
+  },
+
   activePresetText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 8,
+  },
+
+  statusContainer: {
+    ...FLEX_CENTER,
+    paddingVertical: 24,
+    gap: 4,
+  },
+
+  statusText: {
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  ledInfoContainer: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+
+  ledInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  ledInfoText: {
+    fontSize: 13,
   },
 
   disabledContainer: {
@@ -268,6 +306,34 @@ export const liveViewStyles = StyleSheet.create({
   ledCount: {
     fontSize: 12,
     textAlign: 'center',
+  },
+
+  brightnessContainer: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(156, 163, 175, 0.2)',
+  },
+
+  brightnessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+
+  brightnessLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+
+  brightnessValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    minWidth: 32,
+    textAlign: 'right',
   },
 
   sliderContainer: {
