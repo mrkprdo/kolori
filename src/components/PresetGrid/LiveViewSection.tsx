@@ -189,6 +189,42 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
             },
           ]}
         >
+          {/* Brightness Slider - Moved to top */}
+          {isConnected && (
+            <View style={styles.brightnessContainer}>
+              <View style={styles.brightnessHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="sunny" size={16} color={textColor} />
+                  <Text style={[styles.brightnessLabel, { color: textColor }]}>
+                    Brightness
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.brightnessValue, { color: isDark ? '#93c5fd' : '#3b82f6' }]}>
+                    {localBrightness}
+                  </Text>
+                  {(isAdjustingBrightness || isFetchingBrightness) && (
+                    <ActivityIndicator size="small" color={isDark ? '#93c5fd' : '#3b82f6'} />
+                  )}
+                </View>
+              </View>
+              <Slider
+                style={styles.slider}
+                minimumValue={0}
+                maximumValue={255}
+                step={1}
+                value={localBrightness}
+                onSlidingStart={handleBrightnessSlidingStart}
+                onValueChange={handleBrightnessValueChange}
+                onSlidingComplete={handleBrightnessSlidingComplete}
+                minimumTrackTintColor="#3b82f6"
+                maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
+                thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
+                disabled={isFetchingBrightness || isAdjustingBrightness}
+              />
+            </View>
+          )}
+
           {/* LED Visualization or Status */}
           <Animated.View
             style={[
@@ -251,42 +287,6 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
               </View>
             )}
           </Animated.View>
-
-          {/* Brightness Slider */}
-          {isConnected && (
-            <View style={styles.brightnessContainer}>
-              <View style={styles.brightnessHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="sunny" size={16} color={textColor} />
-                  <Text style={[styles.brightnessLabel, { color: textColor }]}>
-                    Brightness
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.brightnessValue, { color: isDark ? '#93c5fd' : '#3b82f6' }]}>
-                    {localBrightness}
-                  </Text>
-                  {(isAdjustingBrightness || isFetchingBrightness) && (
-                    <ActivityIndicator size="small" color={isDark ? '#93c5fd' : '#3b82f6'} />
-                  )}
-                </View>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={0}
-                maximumValue={255}
-                step={1}
-                value={localBrightness}
-                onSlidingStart={handleBrightnessSlidingStart}
-                onValueChange={handleBrightnessValueChange}
-                onSlidingComplete={handleBrightnessSlidingComplete}
-                minimumTrackTintColor="#3b82f6"
-                maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
-                thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
-                disabled={isFetchingBrightness || isAdjustingBrightness}
-              />
-            </View>
-          )}
         </View>
       </View>
     </View>

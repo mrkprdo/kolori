@@ -1550,22 +1550,8 @@ export default function PresetGrid({
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <ScrollView
-        style={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={textColor}
-            colors={["#3b82f6"]}
-            progressBackgroundColor={cardBackground}
-          />
-        }
-      >
-        {/* Live View Section */}
+      {/* Sticky Live View Section */}
+      <View style={styles.stickyHeader}>
         <LiveViewSection
           activeDevice={activeDevice}
           activePresetData={activePresetData}
@@ -1586,7 +1572,24 @@ export default function PresetGrid({
           onSetSliderBrightness={setSliderBrightness}
           onBrightnessChange={onBrightnessChange}
         />
+      </View>
 
+      {/* Scrollable Content */}
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={textColor}
+            colors={["#3b82f6"]}
+            progressBackgroundColor={cardBackground}
+          />
+        }
+      >
         {/* Seasonal Presets */}
         <SeasonalPresetsSection
           seasonalPresets={seasonalPresets}
@@ -2058,11 +2061,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  stickyHeader: {
+    zIndex: 10,
+    elevation: 4,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
   scrollContainer: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 0, // Remove top padding since sticky header has it
     paddingBottom: 100,
   },
 });

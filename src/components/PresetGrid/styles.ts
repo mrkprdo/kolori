@@ -309,10 +309,10 @@ export const liveViewStyles = StyleSheet.create({
   },
 
   brightnessContainer: {
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(156, 163, 175, 0.2)',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(156, 163, 175, 0.2)',
   },
 
   brightnessHeader: {
