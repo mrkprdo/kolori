@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import './global.css';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,7 +8,6 @@ import { StatusBar } from 'expo-status-bar';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SheetProvider } from 'react-native-actions-sheet';
-import { useColorScheme } from 'react-native';
 import { BackHandler, Animated } from 'react-native';
 
 // Components
@@ -20,324 +19,77 @@ import ScanNetworkModal from './src/components/ScanNetworkModal';
 import SettingsModal from './src/components/SettingsModal';
 import AddDeviceManuallyModal from './src/components/AddDeviceManuallyModal';
 
-// Utils
-import { loadDevices, saveDevices, loadSettings, saveSettings, loadActiveDeviceId, saveActiveDeviceId, loadDeviceSeasonalPresets, saveDeviceSeasonalPresets, hasDeviceSeasonalPresets } from './src/utils/storage';
-import { hasValidAgreement, saveAgreementSignature } from './src/utils/userAgreement';
+// Hooks
+import { useDeviceManagement } from './src/hooks/useDeviceManagement';
+import { useSettingsManagement } from './src/hooks/useSettingsManagement';
+import { useModalManager } from './src/hooks/useModalManager';
+import { useAppInitialization } from './src/hooks/useAppInitialization';
 
 // Types
-import { Device, Settings } from './src/types';
 import { MdnsWledDevice } from './src/utils/wledMdnsDiscovery';
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
 
-const DEFAULT_SEASONAL_PRESETS = [
-  { id: '1', name: 'Halloween', icon: '🎃', presetId: 1 },
-  { id: '2', name: 'Canada Day', icon: '🇨🇦', presetId: 2 },
-  { id: '3', name: 'Holidays', icon: '🎄', presetId: 3 },
-];
-
 export default function App() {
-  const systemColorScheme = useColorScheme();
-  const [isLoading, setIsLoading] = useState(true);
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [activeDeviceId, setActiveDeviceId] = useState<number | null>(null);
-  const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
+  // Custom Hooks
+  const deviceManager = useDeviceManagement();
+  const settingsManager = useSettingsManagement();
+  const modalManager = useModalManager();
+  const appInit = useAppInitialization();
+
+  // Local State
   const [isDiscoveryInProgress, setIsDiscoveryInProgress] = useState(false);
-  const [scanModalOpenedFrom, setScanModalOpenedFrom] = useState<'main' | 'settings'>('main');
-  const [addModalOpenedFrom, setAddModalOpenedFrom] = useState<'main' | 'settings'>('main');
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
+  const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
 
-  // Track modal states from child components
-  const [childModalStates, setChildModalStates] = useState<Record<string, boolean>>({});
+  // Initialize app on mount
+  useEffect(() => {
+    appInit.initialize(async () => {
+      // Load devices and settings
+      const { devices, activeDeviceId } = await deviceManager.loadInitialDevices();
 
-  // Track if any modal is currently open to optimize performance
-  const isAnyModalOpen = showScanNetworkModal || showSettings || showAddManuallyModal ||
-                         Object.values(childModalStates).some(isOpen => isOpen);
+      // Find active device
+      const activeDevice = activeDeviceId
+        ? devices.find(d => d.id === activeDeviceId) || null
+        : null;
 
-  // Check if CustomEffectsModal specifically is open (needs WebSocket for live view)
-  const isCustomEffectsModalOpen = childModalStates.showCustomEffectsModal || false;
+      // Load settings with device-specific presets
+      await settingsManager.loadInitialSettings(activeDevice);
 
-  // Callback for child components to report their modal states
-  const updateChildModalState = useCallback((modalName: string, isOpen: boolean) => {
-    setChildModalStates(prev => ({
-      ...prev,
-      [modalName]: isOpen
-    }));
-  }, []);
-  
-  // Helper function to determine if theme should be dark
+      return { hasAgreed: true }; // Will be checked by appInit
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helper to get current theme isDark value
   const getIsDark = (theme: string | undefined) => {
-    if (!theme) return false;
+    if (!theme) return settingsManager.isDark;
     if (theme === 'system') {
-      return systemColorScheme === 'dark';
+      return settingsManager.isDark;
     }
     return theme === 'dark';
   };
-  
-  // Optimized modal state handler
-  const handleSetShowScanNetworkModal = React.useCallback((show: boolean) => {
-    if (showScanNetworkModal !== show) {
-      console.log('🔍 Modal state changing from', showScanNetworkModal, 'to', show);
-      setShowScanNetworkModal(show);
-    }
-  }, [showScanNetworkModal]);
-
-  // Smart scan modal handler - memoized to prevent re-renders
-  const handleCloseScanModal = useCallback(() => {
-    setShowScanNetworkModal(false);
-    // If opened from settings, reopen settings
-    if (scanModalOpenedFrom === 'settings') {
-      setShowSettings(true);
-    }
-  }, [scanModalOpenedFrom]);
-
-  const handleOpenScanModalFromSettings = useCallback(() => {
-    setShowSettings(false);
-    setScanModalOpenedFrom('settings');
-    setShowScanNetworkModal(true);
-  }, []);
-
-  const handleOpenScanModalFromMain = useCallback(() => {
-    setScanModalOpenedFrom('main');
-    setShowScanNetworkModal(true);
-  }, []);
-
-  const handleOpenAddManuallyModalFromMain = useCallback(() => {
-    console.log('handleOpenAddManuallyModalFromMain called');
-    setAddModalOpenedFrom('main');
-    setShowAddManuallyModal(true);
-  }, []);
-
-  const handleCloseAddManuallyModal = useCallback(() => {
-    setShowAddManuallyModal(false);
-    // If opened from settings, reopen settings
-    if (addModalOpenedFrom === 'settings') {
-      setShowSettings(true);
-    }
-  }, [addModalOpenedFrom]);
-  const [hasAgreed, setHasAgreed] = useState<boolean | null>(null);
-  const [backgroundScanDevices, setBackgroundScanDevices] = useState<MdnsWledDevice[]>([]);
-  
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [currentScreen, setCurrentScreen] = useState<'loading' | 'agreement' | 'main'>('loading');
-
-  const transitionToScreen = (nextScreen: 'loading' | 'agreement' | 'main') => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start(() => {
-      setCurrentScreen(nextScreen);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start();
-    });
-  };
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      const startTime = Date.now();
-      
-      try {
-        const [loadedDevices, loadedSettings, agreementResult, loadedActiveId] = await Promise.all([
-          loadDevices(),
-          loadSettings(),
-          hasValidAgreement(),
-          loadActiveDeviceId(),
-        ]);
-
-        setDevices(loadedDevices);
-        setActiveDeviceId(loadedActiveId);
-        setHasAgreed(agreementResult);
-
-        // Load device-specific seasonal presets for the active device
-        let loadedSeasonalPresets = [];
-        if (loadedActiveId && loadedDevices.length > 0) {
-          const activeDevice = loadedDevices.find(device => device.id === loadedActiveId);
-          if (activeDevice) {
-            loadedSeasonalPresets = await loadDeviceSeasonalPresets(activeDevice);
-          }
-        }
-
-        if (loadedSettings && Object.keys(loadedSettings).length > 0) {
-          setSettings({
-            ...loadedSettings,
-            seasonalPresets: loadedSeasonalPresets,
-          } as Settings);
-        } else {
-          setSettings({ 
-            theme: 'dark', 
-            scheduleMode: 'all-day', 
-            liveViewEnabled: false,
-            autoScan: true,
-            debugLogs: false,
-            scanTimeout: 15,
-            maxDevices: 10,
-            backgroundScanEnabled: true,
-            seasonalPresets: loadedSeasonalPresets,
-          });
-        }
-
-        if (!agreementResult) {
-          transitionToScreen('agreement');
-        } else {
-          transitionToScreen('main');
-        }
-      } catch (error) {
-        console.error("Failed to load initial data:", error);
-        setHasAgreed(false);
-        transitionToScreen('agreement');
-      } finally {
-        // Ensure loading screen shows for at least 2 seconds
-        const elapsedTime = Date.now() - startTime;
-        const minLoadTime = 2000; // 2 seconds
-        const remainingTime = Math.max(0, minLoadTime - elapsedTime);
-        
-        setTimeout(() => {
-          setIsLoading(false);
-        }, remainingTime);
-      }
-    };
-    loadInitialData();
-  }, []);
-
-  const handleAddDevice = async (device: Device) => {
-    // Check current route OUTSIDE the setState callback to avoid stale closures
-    const currentRoute = navigationRef.getCurrentRoute();
-    const isOnOnboardingScreen = currentRoute?.name === 'DeviceOnboarding';
-    const shouldNavigate = devices.length === 0 && isOnOnboardingScreen && !isDiscoveryInProgress;
-    
-    setDevices(prevDevices => {
-      const newDevices = [...prevDevices, device];
-      saveDevices(newDevices);
-      return newDevices;
-    });
-    
-    // Check if this device has previously stored seasonal presets
-    try {
-      const hasExistingPresets = await hasDeviceSeasonalPresets(device);
-      let deviceSeasonalPresets;
-      
-      if (hasExistingPresets) {
-        // Device has stored presets, load them
-        deviceSeasonalPresets = await loadDeviceSeasonalPresets(device);
-        console.log('📝 Restored existing seasonal presets for device:', device.name);
-      } else {
-        // This is truly a new device, save and use default presets
-        await saveDeviceSeasonalPresets(device, DEFAULT_SEASONAL_PRESETS);
-        deviceSeasonalPresets = DEFAULT_SEASONAL_PRESETS;
-        console.log('✨ Initialized default seasonal presets for new device:', device.name);
-      }
-      
-      // Always set the newly added device as active device
-      // This ensures WebSocket connection is established and device info is retrieved
-      setActiveDeviceId(device.id);
-      saveActiveDeviceId(device.id);
-      
-      // Update settings to show the presets for this device
-      if (settings) {
-        setSettings({
-          ...settings,
-          seasonalPresets: deviceSeasonalPresets,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to initialize seasonal presets for device:', error);
-      
-      // Fallback to defaults on error
-      setActiveDeviceId(device.id);
-      saveActiveDeviceId(device.id);
-      
-      if (settings) {
-        setSettings({
-          ...settings,
-          seasonalPresets: DEFAULT_SEASONAL_PRESETS,
-        });
-      }
-    }
-    
-    console.log('🔧 Device added and set as active:', device.name, 'ID:', device.id);
-  };
-
-  const handleUpdateDevice = (deviceId: number, updates: Partial<Device>) => {
-    setDevices(prevDevices => {
-      const newDevices = prevDevices.map(d => d.id === deviceId ? { ...d, ...updates } : d);
-      saveDevices(newDevices);
-      return newDevices;
-    });
-  };
-
-  const handleDeleteDevice = async (deviceId: number) => {
-    // Find the device being deleted
-    const deviceToDelete = devices.find(d => d.id === deviceId);
-    
-    setDevices(prevDevices => {
-      const newDevices = prevDevices.filter(d => d.id !== deviceId);
-      saveDevices(newDevices);
-      // The navigation will automatically switch to DeviceOnboarding 
-      // when devices.length === 0 due to the conditional rendering
-      return newDevices;
-    });
-    
-    // Keep device-specific seasonal presets (don't clean them up)
-    // This allows the device to remember its presets if it's added back later
-    if (deviceToDelete) {
-      console.log('📝 Keeping seasonal presets for removed device:', deviceToDelete.name, 'in case it\'s added back');
-    }
-    
-    // If the deleted device was the active device, reset seasonal presets to defaults
-    if (deviceId === activeDeviceId) {
-      setSettings(prevSettings => prevSettings ? {
-        ...prevSettings,
-        seasonalPresets: DEFAULT_SEASONAL_PRESETS,
-      } : null);
-    }
-  };
-
-  const handleSetActiveDeviceId = async (id: number | null) => {
-    console.log('🔄 Active device changing to ID:', id);
-    setActiveDeviceId(id);
-    saveActiveDeviceId(id);
-    
-    // Load device-specific seasonal presets when switching devices
-    if (id && devices.length > 0) {
-      const newActiveDevice = devices.find(device => device.id === id);
-      if (newActiveDevice && settings) {
-        const deviceSeasonalPresets = await loadDeviceSeasonalPresets(newActiveDevice);
-        setSettings(prevSettings => prevSettings ? {
-          ...prevSettings,
-          seasonalPresets: deviceSeasonalPresets,
-        } : null);
-      }
-    }
-    
-    // WebSocket connection will be managed globally by KoloriApp
-  };
-
-  const handleUpdateSettings = (newSettings: Settings) => {
-    setSettings(prevSettings => {
-      const updatedSettings = { ...newSettings };
-      saveSettings(updatedSettings);
-      return updatedSettings;
-    });
-  };
-
-  const handleAgreementAccept = async () => {
-    await saveAgreementSignature();
-    setHasAgreed(true);
-    transitionToScreen('main');
-  };
-
-  // Derive the active device from devices and activeDeviceId
-  const activeDevice = activeDeviceId ? devices.find(device => device.id === activeDeviceId) || null : null;
 
   const renderContent = () => {
-    if (isLoading || hasAgreed === null || settings === null || currentScreen === 'loading') {
-      return <LoadingScreen isDark={getIsDark(settings?.theme)} activeDevice={activeDevice} />;
+    if (appInit.isLoading || appInit.hasAgreed === null || settingsManager.settings === null || appInit.currentScreen === 'loading') {
+      return (
+        <LoadingScreen
+          isDark={getIsDark(settingsManager.settings?.theme)}
+          activeDevice={deviceManager.activeDevice || undefined}
+        />
+      );
     }
 
-    if (currentScreen === 'agreement') {
-      return <UserAgreement isDark={getIsDark(settings.theme)} onAccept={handleAgreementAccept} onReject={() => BackHandler.exitApp()} />;
+    if (appInit.currentScreen === 'agreement') {
+      return (
+        <UserAgreement
+          isDark={getIsDark(settingsManager.settings.theme)}
+          onAccept={appInit.handleAgreementAccept}
+          onReject={() => BackHandler.exitApp()}
+        />
+      );
     }
 
-    const isDark = getIsDark(settings.theme);
+    const isDark = getIsDark(settingsManager.settings.theme);
 
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -346,18 +98,31 @@ export default function App() {
             <SafeAreaProvider>
               <NavigationContainer ref={navigationRef}>
                 <StatusBar style={isDark ? "light" : "dark"} />
-                <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' } }}>
-                  {(devices.length === 0 && !isDiscoveryInProgress) ? (
+                <Stack.Navigator
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' }
+                  }}
+                >
+                  {(deviceManager.devices.length === 0 && !isDiscoveryInProgress) ? (
                     <Stack.Screen name="DeviceOnboarding">
                       {(props) => (
                         <DeviceOnboardingScreen
                           {...props}
                           isDark={isDark}
-                          onDeviceAdded={handleAddDevice}
+                          onDeviceAdded={(device) =>
+                            deviceManager.handleAddDevice(
+                              device,
+                              settingsManager.settings,
+                              settingsManager.handleUpdateSettings
+                            )
+                          }
                           backgroundScanDevices={backgroundScanDevices}
-                          existingDevices={devices}
-                          showScanNetworkModal={showScanNetworkModal}
-                          setShowScanNetworkModal={handleSetShowScanNetworkModal}
+                          existingDevices={deviceManager.devices}
+                          showScanNetworkModal={modalManager.showScanNetworkModal}
+                          setShowScanNetworkModal={(show) => {
+                            if (show) modalManager.openScanModalFromMain();
+                          }}
                           setIsDiscoveryInProgress={setIsDiscoveryInProgress}
                         />
                       )}
@@ -367,23 +132,43 @@ export default function App() {
                       {(props) => (
                         <KoloriApp
                           {...props}
-                          devices={devices}
-                          activeDeviceId={activeDeviceId}
-                          settings={settings}
-                          onDeviceAdd={handleAddDevice}
-                          onDeviceUpdate={handleUpdateDevice}
-                          onDeviceDelete={handleDeleteDevice}
-                          onSettingsUpdate={handleUpdateSettings}
-                          onSetActiveDeviceId={handleSetActiveDeviceId}
-                          showScanNetworkModal={showScanNetworkModal}
-                          setShowScanNetworkModal={handleSetShowScanNetworkModal}
+                          devices={deviceManager.devices}
+                          activeDeviceId={deviceManager.activeDeviceId}
+                          settings={settingsManager.settings!}
+                          onDeviceAdd={(device) =>
+                            deviceManager.handleAddDevice(
+                              device,
+                              settingsManager.settings,
+                              settingsManager.handleUpdateSettings
+                            )
+                          }
+                          onDeviceUpdate={deviceManager.handleUpdateDevice}
+                          onDeviceDelete={(deviceId) =>
+                            deviceManager.handleDeleteDevice(
+                              deviceId,
+                              settingsManager.settings,
+                              settingsManager.handleUpdateSettings
+                            )
+                          }
+                          onSettingsUpdate={settingsManager.handleUpdateSettings}
+                          onSetActiveDeviceId={(id) =>
+                            deviceManager.handleSetActiveDeviceId(
+                              id,
+                              settingsManager.settings,
+                              settingsManager.handleUpdateSettings
+                            )
+                          }
+                          showScanNetworkModal={modalManager.showScanNetworkModal}
+                          setShowScanNetworkModal={(show) => {
+                            if (show) modalManager.openScanModalFromMain();
+                          }}
                           setIsDiscoveryInProgress={setIsDiscoveryInProgress}
-                          onShowSettings={() => setShowSettings(true)}
-                          onScanFromMain={handleOpenScanModalFromMain}
-                          onShowAddManually={handleOpenAddManuallyModalFromMain}
-                          isAnyModalOpen={isAnyModalOpen}
-                          isCustomEffectsModalOpen={isCustomEffectsModalOpen}
-                          updateChildModalState={updateChildModalState}
+                          onShowSettings={modalManager.openSettings}
+                          onScanFromMain={modalManager.openScanModalFromMain}
+                          onShowAddManually={modalManager.openAddManuallyModalFromMain}
+                          isAnyModalOpen={modalManager.isAnyModalOpen}
+                          isCustomEffectsModalOpen={modalManager.isCustomEffectsModalOpen}
+                          updateChildModalState={modalManager.updateChildModalState}
                         />
                       )}
                     </Stack.Screen>
@@ -398,45 +183,61 @@ export default function App() {
   };
 
   return (
-    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+    <Animated.View style={{ flex: 1, opacity: appInit.fadeAnim }}>
       {renderContent()}
-      
+
       {/* Global ScanNetworkModal - outside navigation to prevent unmounting */}
       <ScanNetworkModal
-        isVisible={showScanNetworkModal}
-        onClose={handleCloseScanModal}
-        onDeviceAdded={handleAddDevice}
-        isDark={getIsDark(settings?.theme)}
-        existingDevices={devices}
+        isVisible={modalManager.showScanNetworkModal}
+        onClose={modalManager.closeScanModal}
+        onDeviceAdded={(device) =>
+          deviceManager.handleAddDevice(
+            device,
+            settingsManager.settings,
+            settingsManager.handleUpdateSettings
+          )
+        }
+        isDark={getIsDark(settingsManager.settings?.theme)}
+        existingDevices={deviceManager.devices}
         backgroundScanDevices={backgroundScanDevices}
         setIsDiscoveryInProgress={setIsDiscoveryInProgress}
-        onManualEntry={handleOpenAddManuallyModalFromMain}
+        onManualEntry={modalManager.openAddManuallyModalFromMain}
       />
-      
+
       {/* Global SettingsModal */}
-      {settings && (
+      {settingsManager.settings && (
         <SettingsModal
-          isVisible={showSettings}
-          onClose={() => setShowSettings(false)}
-          isDark={getIsDark(settings.theme)}
-          theme={settings.theme}
-          onThemeChange={(theme) => handleUpdateSettings({ ...settings, theme })}
-          scheduleMode={settings.scheduleMode}
-          onScheduleModeChange={(mode) => handleUpdateSettings({ ...settings, scheduleMode: mode })}
-          settings={settings}
-          onSettingsUpdate={handleUpdateSettings}
-          activeDevice={activeDevice}
-          updateChildModalState={updateChildModalState}
+          isVisible={modalManager.showSettings}
+          onClose={modalManager.closeSettings}
+          isDark={getIsDark(settingsManager.settings.theme)}
+          theme={settingsManager.settings.theme}
+          onThemeChange={(theme) =>
+            settingsManager.handleUpdateSettings({ ...settingsManager.settings!, theme })
+          }
+          scheduleMode={settingsManager.settings.scheduleMode}
+          onScheduleModeChange={(mode) =>
+            settingsManager.handleUpdateSettings({ ...settingsManager.settings!, scheduleMode: mode })
+          }
+          settings={settingsManager.settings}
+          onSettingsUpdate={settingsManager.handleUpdateSettings}
+          activeDevice={deviceManager.activeDevice}
+          updateChildModalState={modalManager.updateChildModalState}
         />
       )}
 
       {/* Global AddDeviceManuallyModal */}
       <AddDeviceManuallyModal
-        isVisible={showAddManuallyModal}
-        onClose={handleCloseAddManuallyModal}
-        onDeviceAdded={handleAddDevice}
-        isDark={getIsDark(settings?.theme)}
-        existingDevices={devices}
+        isVisible={modalManager.showAddManuallyModal}
+        onClose={modalManager.closeAddManuallyModal}
+        onDeviceAdded={(device) =>
+          deviceManager.handleAddDevice(
+            device,
+            settingsManager.settings,
+            settingsManager.handleUpdateSettings
+          )
+        }
+        isDark={getIsDark(settingsManager.settings?.theme)}
+        existingDevices={deviceManager.devices}
       />
     </Animated.View>
   );

@@ -310,15 +310,6 @@ export default function SettingsModal({
           <Ionicons name="information-circle-outline" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
         </TouchableOpacity>
       </View>
-
-      
-
-      
-
-      
-
-      
-
     </ScrollView>
   );
 
