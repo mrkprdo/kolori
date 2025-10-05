@@ -29,8 +29,33 @@ const MemoizedPresetCard = React.memo(
     showIcon = false,
   }: MemoizedPresetCardProps) {
     const isActive = useMemo(
-      () => activePreset?.toString() === preset.id.toString(),
-      [activePreset, preset.id]
+      () => {
+        if (!activePreset) return false;
+
+        // Direct match by id
+        if (activePreset.toString() === preset.id.toString()) {
+          console.log('✅ Active match (by id):', preset.name, activePreset, '===', preset.id);
+          return true;
+        }
+
+        // Match by presetId if available
+        if (preset.presetId && activePreset.toString() === preset.presetId.toString()) {
+          console.log('✅ Active match (by presetId):', preset.name, activePreset, '===', preset.presetId);
+          return true;
+        }
+
+        // For WLED presets with "wled_X" format, match numeric part
+        if (typeof preset.id === 'string' && preset.id.startsWith('wled_')) {
+          const numericId = parseInt(preset.id.replace('wled_', ''));
+          if (activePreset.toString() === numericId.toString()) {
+            console.log('✅ Active match (by wled_ numeric):', preset.name, activePreset, '===', numericId);
+            return true;
+          }
+        }
+
+        return false;
+      },
+      [activePreset, preset.id, preset.presetId]
     );
 
     const handleClick = useCallback(() => {

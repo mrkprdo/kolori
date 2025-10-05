@@ -54,10 +54,13 @@ export function useWebSocketManager({
   // Refs to avoid stale closures
   const activeDeviceRef = useRef<WledDevice | undefined>(undefined);
   const settingsRef = useRef<Settings>(settings);
+  const matrixDimensionsSavedRef = useRef<boolean>(false); // Track if we've already saved matrix dimensions
 
   // Update refs when props change
   useEffect(() => {
     activeDeviceRef.current = activeDevice;
+    // Reset matrix dimensions saved flag when device changes
+    matrixDimensionsSavedRef.current = false;
   }, [activeDevice?.id, activeDevice?.name, activeDevice?.isConnected]);
 
   useEffect(() => {
@@ -146,6 +149,46 @@ export function useWebSocketManager({
               } else {
                 setLiveLedData([]);
               }
+
+              // CRITICAL FIX: Extract and persist 2D matrix metadata from binary WebSocket data
+              // When binary data contains matrix dimensions, save them to wledInfo
+              if (message.matrixDimensions && !matrixDimensionsSavedRef.current) {
+                const currentWledInfo = currentActiveDevice.wledInfo || {};
+                const { width, height } = message.matrixDimensions;
+
+                // Only update if we don't already have matrix info OR if dimensions changed
+                const existingMatrix = currentWledInfo.ledMatrix || currentWledInfo.leds?.matrix;
+
+                // Check if update is truly needed (missing or different dimensions)
+                const needsUpdate = !existingMatrix ||
+                                   existingMatrix.w !== width ||
+                                   existingMatrix.h !== height;
+
+                if (needsUpdate) {
+                  logger.log(`📐 Matrix dimensions detected from WebSocket: ${width}×${height} - saving to device info`);
+
+                  const matrixData = {
+                    w: width,
+                    h: height,
+                    serpentine: true, // Default for most matrices
+                    transpose: false,
+                    vertical: false
+                  };
+
+                  const updatedInfo = {
+                    ...currentWledInfo,
+                    ledMatrix: matrixData,
+                    leds: {
+                      ...currentWledInfo.leds,
+                      matrix: matrixData
+                    }
+                  };
+
+                  // Mark as saved to prevent repeated updates
+                  matrixDimensionsSavedRef.current = true;
+                  onDeviceUpdate(currentActiveDevice.id, { wledInfo: updatedInfo });
+                }
+              }
             } else if (typeof message === 'object' && message !== null) {
               // Handle device info response
               if (message.info) {
@@ -193,7 +236,21 @@ export function useWebSocketManager({
                   leds: currentWledInfo.leds
                 };
 
-                onDeviceUpdate(currentActiveDevice.id, { wledInfo: updatedWledInfo });
+                // Build device updates object
+                const deviceUpdates: Partial<WledDevice> = { wledInfo: updatedWledInfo };
+
+                // Update activePreset if ps changed (preset changed from WLED UI or other source)
+                // Note: We store ps as numeric value, the UI will handle matching it properly
+                if (message.state.ps !== undefined && message.state.ps !== null) {
+                  const currentPs = currentWledInfo.ps;
+                  if (message.state.ps !== currentPs) {
+                    logger.log(`🎯 Active preset changed via WebSocket: ${message.state.ps}`);
+                    // Store the numeric preset ID - UI components will match it correctly
+                    deviceUpdates.activePreset = message.state.ps;
+                  }
+                }
+
+                onDeviceUpdate(currentActiveDevice.id, deviceUpdates);
               }
             }
           },

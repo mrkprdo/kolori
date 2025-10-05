@@ -131,14 +131,6 @@ export function usePresetManager(): UsePresetManagerReturn {
 
         // Load stored presets to preserve custom gradients
         const storedPresets = await storage.loadFromStorage(STORAGE_KEYS.CUSTOM_EFFECTS, []);
-        console.log(`📦 Loaded ${storedPresets.length} stored presets for gradient preservation`);
-        if (storedPresets.length > 0) {
-          console.log(`📦 Stored preset IDs:`, storedPresets.map((p: CustomEffect) => `${p.id}/${p.presetId}`).join(', '));
-        }
-        console.log(`📡 Fetched ${fetchedPresets.length} presets from WLED`);
-        if (fetchedPresets.length > 0) {
-          console.log(`📡 Fetched preset IDs:`, fetchedPresets.slice(0, 5).map((p: CustomEffect) => `${p.id}/${p.presetId}`).join(', '));
-        }
 
         // Merge fetched presets with stored ones, preserving gradients from storage
         const mergedPresets = fetchedPresets.map((fetchedPreset: CustomEffect) => {
@@ -158,13 +150,11 @@ export function usePresetManager(): UsePresetManagerReturn {
 
           if (storedPreset && storedPreset.gradient) {
             // Preserve the original gradient from storage
-            console.log(`🎨 Preserving gradient for preset ${fetchedPreset.presetId} (matched with stored ${storedPreset.id}/${storedPreset.presetId}): ${storedPreset.gradient.substring(0, 50)}...`);
             return {
               ...fetchedPreset,
               gradient: storedPreset.gradient,
             };
           }
-          console.log(`⚠️ No stored gradient found for preset ${fetchedPreset.id}/${fetchedPreset.presetId}, using fetched: ${fetchedPreset.gradient?.substring(0, 50)}...`);
           return fetchedPreset;
         });
 
@@ -353,7 +343,16 @@ export function usePresetManager(): UsePresetManagerReturn {
           ps: stateResponse.data.ps // current preset
         };
 
-        onDeviceUpdate(device.id, { wledInfo: updatedWledInfo });
+        // Build device updates
+        const deviceUpdates: Partial<WledDevice> = { wledInfo: updatedWledInfo };
+
+        // Update activePreset to match current preset from device
+        if (stateResponse.data.ps) {
+          deviceUpdates.activePreset = stateResponse.data.ps;
+          logger.log('🎯 Active preset synced from device:', stateResponse.data.ps);
+        }
+
+        onDeviceUpdate(device.id, deviceUpdates);
 
         logger.log(
           '✅ Device state and info refreshed - brightness:',

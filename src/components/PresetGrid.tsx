@@ -634,9 +634,48 @@ export default function PresetGrid({
     fetchDeviceBrightness,
   ]);
 
-  const activePresetData = [...seasonalPresets, ...memoizedCustomEffects].find(
-    (p) => p.presetId?.toString() === activePreset?.toString()
-  );
+  const activePresetData = useMemo(() => {
+    if (!activePreset) return null;
+
+    const allPresets = [...seasonalPresets, ...memoizedCustomEffects];
+
+    logger.log('🔍 Looking for activePreset:', activePreset, 'in', allPresets.length, 'presets');
+
+    const found = allPresets.find((p) => {
+      // Match by presetId (for seasonal and WLED presets)
+      if (p.presetId?.toString() === activePreset?.toString()) {
+        logger.log('✅ Found preset by presetId:', p.name, p.presetId);
+        return true;
+      }
+      // Match by id (for WLED presets with "wled_X" format)
+      if (p.id?.toString() === activePreset?.toString()) {
+        logger.log('✅ Found preset by id:', p.name, p.id);
+        return true;
+      }
+      // Match by numeric part of id (e.g., "wled_60" matches activePreset 60)
+      if (typeof p.id === 'string' && p.id.startsWith('wled_')) {
+        const numericId = parseInt(p.id.replace('wled_', ''));
+        if (numericId.toString() === activePreset?.toString()) {
+          logger.log('✅ Found preset by wled_ numeric:', p.name, 'wled_' + numericId);
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (found) {
+      return found;
+    }
+
+    // If not found, create a placeholder object for display
+    logger.log('⚠️ Preset', activePreset, 'not in list - creating placeholder');
+    return {
+      id: activePreset,
+      presetId: typeof activePreset === 'number' ? activePreset : parseInt(activePreset.toString()),
+      name: `Preset ${activePreset}`,
+      isUnknown: true
+    };
+  }, [activePreset, seasonalPresets, memoizedCustomEffects]);
 
   const handleLiveViewToggle = () => {
     const newValue = !liveViewEnabled;

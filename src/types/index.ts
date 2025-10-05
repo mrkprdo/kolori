@@ -6,7 +6,7 @@ export interface WledDevice {
   readonly protocol: "http" | "https";
   readonly bestAddress?: string;
   readonly isConnected: boolean;
-  readonly activePreset?: string | null;
+  readonly activePreset?: string | number | null;
   readonly isPlaying: boolean;
   readonly wledInfo?: any;
   readonly lastHeartbeat?: string;
