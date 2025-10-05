@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  FlatList,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +19,23 @@ import CustomDropdown from './CustomDropdown';
 import { WLED_EFFECTS } from '../data/wledEffects';
 import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, PaletteColor } from '../constants/palettes';
 import { LinearGradient } from 'expo-linear-gradient';
+
+// Cache for gradient colors to avoid recalculating
+const paletteGradientCache = new Map<string, [string, string, ...string[]]>();
+
 // Helper function to convert palette colors to LinearGradient colors
 const getPaletteGradientColors = (paletteName: string): [string, string, ...string[]] => {
+  // Check cache first
+  if (paletteGradientCache.has(paletteName)) {
+    return paletteGradientCache.get(paletteName)!;
+  }
+
   const paletteData = WLED_PALETTES_DATA[paletteName];
 
   if (!paletteData || paletteData.length === 0) {
-    return ['#888888', '#555555']; // Default gradient
+    const defaultGradient: [string, string, ...string[]] = ['#888888', '#555555'];
+    paletteGradientCache.set(paletteName, defaultGradient);
+    return defaultGradient;
   }
 
   // Convert palette color data to RGB strings
@@ -32,13 +44,18 @@ const getPaletteGradientColors = (paletteName: string): [string, string, ...stri
   );
 
   // Ensure at least 2 colors for LinearGradient
+  let result: [string, string, ...string[]];
   if (colors.length === 0) {
-    return ['#888888', '#555555'];
+    result = ['#888888', '#555555'];
   } else if (colors.length === 1) {
-    return [colors[0], colors[0]];
+    result = [colors[0], colors[0]];
+  } else {
+    result = colors as [string, string, ...string[]];
   }
 
-  return colors as [string, string, ...string[]];
+  // Cache the result
+  paletteGradientCache.set(paletteName, result);
+  return result;
 };
 
 // Custom Palette Dropdown Item Component
@@ -126,17 +143,35 @@ const PaletteDropdown = React.memo<{
 }>(({ data, selectedValue, onValueChange, placeholder = 'Select a palette...', isDark = false, disabled = false }) => {
   const [isVisible, setIsVisible] = React.useState(false);
   const [searchText, setSearchText] = React.useState('');
+  const [debouncedSearchText, setDebouncedSearchText] = React.useState('');
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce search text updates
+  React.useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 150);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchText]);
 
   const filteredData = React.useMemo(() => {
-    if (searchText.trim() === '') {
+    if (debouncedSearchText.trim() === '') {
       return data;
     } else {
-      const searchLower = searchText.toLowerCase();
+      const searchLower = debouncedSearchText.toLowerCase();
       return data.filter(item =>
         item.label.toLowerCase().includes(searchLower)
       );
     }
-  }, [searchText, data]);
+  }, [debouncedSearchText, data]);
 
   const openDropdown = React.useCallback(() => {
     if (disabled) return;
@@ -315,17 +350,30 @@ const PaletteDropdown = React.memo<{
             </View>
 
             {/* Palettes List */}
-            <ScrollView style={{ flex: 1 }}>
-              {filteredData.map((item) => (
+            <FlatList
+              data={filteredData}
+              keyExtractor={(item) => `palette-${item.id}`}
+              renderItem={({ item }) => (
                 <PaletteDropdownItem
-                  key={item.id}
                   item={item}
                   isSelected={item.value === selectedValue}
                   isDark={isDark}
                   onPress={selectItem}
                 />
-              ))}
-              {filteredData.length === 0 && (
+              )}
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={true}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              initialNumToRender={15}
+              windowSize={10}
+              getItemLayout={(data, index) => ({
+                length: 56,
+                offset: 56 * index,
+                index,
+              })}
+              ListEmptyComponent={
                 <View style={{
                   alignItems: 'center',
                   paddingVertical: 32,
@@ -343,8 +391,8 @@ const PaletteDropdown = React.memo<{
                     No palettes found
                   </Text>
                 </View>
-              )}
-            </ScrollView>
+              }
+            />
           </View>
         </TouchableOpacity>
       </Modal>
@@ -590,7 +638,7 @@ export default function CustomEffectsModal({
     } else {
       setDeviceDimensions(null);
     }
-  }, [visible, selectedDevices.length > 0 ? selectedDevices[0]?.ip : null, selectedDevices.length > 0 ? selectedDevices[0]?.isConnected : false]);
+  }, [visible, selectedDevices, detectWledDimensions]);
 
   // Filter effects based on device capabilities
   const effects = useMemo(() => {
@@ -633,6 +681,15 @@ export default function CustomEffectsModal({
       value: palette.id,
     }));
   }, [palettes]);
+
+  // Memoize effects dropdown data to prevent re-renders
+  const memoizedEffectsData = useMemo(() => {
+    return effects.map(effect => ({
+      id: effect.id,
+      label: effect.displayName,
+      value: effect.id,
+    }));
+  }, [effects]);
 
   const sectionStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
@@ -1065,11 +1122,7 @@ export default function CustomEffectsModal({
                 </View>
 
                 <CustomDropdown
-                  data={effects.map(effect => ({
-                    id: effect.id,
-                    label: effect.displayName,
-                    value: effect.id,
-                  }))}
+                  data={memoizedEffectsData}
                   selectedValue={selectedEffect}
                   onValueChange={handleEffectChange}
                   placeholder="Select an effect..."

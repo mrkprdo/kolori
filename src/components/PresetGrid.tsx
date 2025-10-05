@@ -1398,28 +1398,45 @@ export default function PresetGrid({
       let presetName = randomEffect.name;
 
       if (randomEffect.supportsPalette && devicePalettes.length > 0) {
-        const randomPaletteIndex = Math.floor(
-          Math.random() * devicePalettes.length
+        // Filter out unwanted palettes
+        const excludedPalettes = [
+          'Default',
+          'Random Cycle',
+          'Color 1',
+          'Color 1&2',
+          'Color Gradient',
+          'Colors Only'
+        ];
+
+        const validPalettes = devicePalettes.filter(
+          paletteName => !excludedPalettes.includes(paletteName)
         );
-        const paletteName = devicePalettes[randomPaletteIndex];
 
-        // Find the actual palette ID from WLED_PALETTES_DEF
-        const paletteDef = WLED_PALETTES_DEF.find(p => p.name === paletteName);
+        // Only proceed if we have valid palettes
+        if (validPalettes.length > 0) {
+          const randomPaletteIndex = Math.floor(
+            Math.random() * validPalettes.length
+          );
+          const paletteName = validPalettes[randomPaletteIndex];
 
-        if (!paletteDef) {
-          console.warn(`⚠️ Palette "${paletteName}" not found in WLED_PALETTES_DEF, using palette index ${randomPaletteIndex} as ID`);
+          // Find the actual palette ID from WLED_PALETTES_DEF
+          const paletteDef = WLED_PALETTES_DEF.find(p => p.name === paletteName);
+
+          if (!paletteDef) {
+            console.warn(`⚠️ Palette "${paletteName}" not found in WLED_PALETTES_DEF`);
+          }
+
+          const paletteId = paletteDef?.id ?? 0;
+
+          randomPalette = {
+            id: paletteId,
+            name: paletteName,
+          };
+          presetName = `${randomEffect.name}+${randomPalette.name}`;
+          console.log(
+            `🎲 Selected random palette: "${randomPalette.name}" (ID: ${randomPalette.id})`
+          );
         }
-
-        const paletteId = paletteDef?.id ?? randomPaletteIndex;
-
-        randomPalette = {
-          id: paletteId,
-          name: paletteName,
-        };
-        presetName = `${randomEffect.name}+${randomPalette.name}`;
-        console.log(
-          `🎲 Selected random palette: "${randomPalette.name}" (ID: ${randomPalette.id})`
-        );
       }
 
       console.log(`🎲 Generated preset name: "${presetName}"`);

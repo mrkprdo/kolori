@@ -17,7 +17,7 @@ export const DEFAULT_SEASONAL_PRESETS = [
  * Default application settings
  */
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'dark',
+  theme: 'system',
   scheduleMode: 'all-day',
   liveViewEnabled: false,
   autoScan: true,

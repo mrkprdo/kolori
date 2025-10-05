@@ -254,7 +254,8 @@ function KoloriApp({
   const activePreset = useMemo(() => activeDevice?.activePreset || null, [activeDevice?.activePreset]);
   const isDark = useMemo(() => {
     if (settings.theme === 'system') {
-      return systemColorScheme === 'dark';
+      // Handle null case - default to dark if system preference is not available yet
+      return systemColorScheme === 'dark' || systemColorScheme === null;
     }
     return settings.theme === 'dark';
   }, [settings.theme, systemColorScheme]);
