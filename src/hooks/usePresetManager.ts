@@ -129,14 +129,53 @@ export function usePresetManager(): UsePresetManagerReturn {
         const fetchedPresets = filterSeasonalPresets(result.presets || []);
         const fetchedPlaylists = filterSeasonalPresets(result.playlists || []);
 
-        const { presetsChanged, playlistsChanged } = onCacheUpdate(fetchedPresets, fetchedPlaylists);
+        // Load stored presets to preserve custom gradients
+        const storedPresets = await storage.loadFromStorage(STORAGE_KEYS.CUSTOM_EFFECTS, []);
+        console.log(`📦 Loaded ${storedPresets.length} stored presets for gradient preservation`);
+        if (storedPresets.length > 0) {
+          console.log(`📦 Stored preset IDs:`, storedPresets.map((p: CustomEffect) => `${p.id}/${p.presetId}`).join(', '));
+        }
+        console.log(`📡 Fetched ${fetchedPresets.length} presets from WLED`);
+        if (fetchedPresets.length > 0) {
+          console.log(`📡 Fetched preset IDs:`, fetchedPresets.slice(0, 5).map((p: CustomEffect) => `${p.id}/${p.presetId}`).join(', '));
+        }
+
+        // Merge fetched presets with stored ones, preserving gradients from storage
+        const mergedPresets = fetchedPresets.map((fetchedPreset: CustomEffect) => {
+          // Try multiple matching strategies to find the stored preset
+          const storedPreset = storedPresets.find((p: CustomEffect) => {
+            // Match by exact ID
+            if (p.id === fetchedPreset.id) return true;
+            // Match by presetId
+            if (p.presetId === fetchedPreset.presetId) return true;
+            // Match by numeric part of ID (e.g., "wled_60" matches presetId 60)
+            const fetchedNumericId = typeof fetchedPreset.id === 'string'
+              ? parseInt(fetchedPreset.id.replace('wled_', ''))
+              : fetchedPreset.id;
+            if (p.presetId === fetchedNumericId || p.id === fetchedNumericId) return true;
+            return false;
+          });
+
+          if (storedPreset && storedPreset.gradient) {
+            // Preserve the original gradient from storage
+            console.log(`🎨 Preserving gradient for preset ${fetchedPreset.presetId} (matched with stored ${storedPreset.id}/${storedPreset.presetId}): ${storedPreset.gradient.substring(0, 50)}...`);
+            return {
+              ...fetchedPreset,
+              gradient: storedPreset.gradient,
+            };
+          }
+          console.log(`⚠️ No stored gradient found for preset ${fetchedPreset.id}/${fetchedPreset.presetId}, using fetched: ${fetchedPreset.gradient?.substring(0, 50)}...`);
+          return fetchedPreset;
+        });
+
+        const { presetsChanged, playlistsChanged } = onCacheUpdate(mergedPresets, fetchedPlaylists);
 
         // Only update UI if data actually changed
         let updatedCount = 0;
         if (presetsChanged) {
-          setCustomEffects(fetchedPresets);
-          storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, fetchedPresets);
-          updatedCount += fetchedPresets.length;
+          setCustomEffects(mergedPresets);
+          storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, mergedPresets);
+          updatedCount += mergedPresets.length;
         }
 
         if (playlistsChanged) {

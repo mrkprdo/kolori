@@ -323,12 +323,16 @@ function KoloriApp({
           activeDeviceId={activeDeviceId}
           onSetActiveDeviceId={onSetActiveDeviceId}
           customEffects={presetManager.customEffects}
-          onAddCustomEffect={(effect) =>
-            presetManager.setCustomEffects(prev => [...prev, effect])
-          }
-          onRemoveCustomEffect={(id) =>
-            presetManager.setCustomEffects(prev => prev.filter(e => e.id !== id))
-          }
+          onAddCustomEffect={(effect) => {
+            const newEffects = [...presetManager.customEffects, effect];
+            presetManager.setCustomEffects(newEffects);
+            storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, newEffects);
+          }}
+          onRemoveCustomEffect={(id) => {
+            const newEffects = presetManager.customEffects.filter(e => e.id !== id);
+            presetManager.setCustomEffects(newEffects);
+            storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, newEffects);
+          }}
           savedPlaylists={presetManager.savedPlaylists}
           isLoadingPlaylists={presetManager.isLoadingPlaylists}
           onPlaylistRemove={(id) =>

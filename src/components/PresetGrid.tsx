@@ -19,9 +19,7 @@ import {
   ToastAndroid,
   Platform,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import Slider from "@react-native-community/slider";
 import { logger } from "../utils/logger";
 import { SeasonalPreset } from "../types";
 import {
@@ -46,574 +44,17 @@ import CustomEffectsModal from "./CustomEffectsModal";
 import SchedulerModal from "./SchedulerModal";
 import PlaylistCreationModal from "./PlaylistCreationModal";
 import DeviceManagementModal from "./DeviceManagementModal";
-import LEDVisualization from "./LEDVisualization";
 import { WLEDEffectData, getEffectByName } from "../data/wledEffects";
 import { WLED_PALETTES_DEF } from "../constants/palettes";
-
-// Animated playlist item component
-interface AnimatedPlaylistItemProps {
-  playlist: SavedPlaylist;
-  index: number;
-  onPress: (id: number) => void;
-  isDeleteMode?: boolean;
-  isSelected?: boolean;
-  onToggleSelection?: (id: string | number) => void;
-  wiggleAnim?: Animated.Value;
-}
-
-const AnimatedPlaylistItem = React.memo(
-  function AnimatedPlaylistItem({
-    playlist,
-    index,
-    onPress,
-    isDeleteMode = false,
-    isSelected = false,
-    onToggleSelection,
-    wiggleAnim,
-  }: AnimatedPlaylistItemProps) {
-    const scaleAnim = useRef(new Animated.Value(0)).current;
-
-    // Animate in when playlist appears
-    useEffect(() => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 100,
-        friction: 8,
-        delay: index * 50, // Staggered animation
-        useNativeDriver: true,
-      }).start();
-    }, [scaleAnim, index]);
-
-    const handlePress = useCallback(() => {
-      if (isDeleteMode && onToggleSelection) {
-        onToggleSelection(playlist.id);
-      } else if (!isDeleteMode) {
-        onPress(playlist.id);
-      }
-    }, [playlist.id, onPress, isDeleteMode, onToggleSelection]);
-
-    // Use LinearGradient colors for playlists if available
-    const shouldUseGradient = playlist.gradient;
-    const gradientColors = playlist.gradient ? parseGradientString(playlist.gradient).colors : null;
-
-    // Ensure gradient colors are valid before using LinearGradient
-    const hasValidGradient =
-      gradientColors &&
-      Array.isArray(gradientColors) &&
-      gradientColors.length >= 2 &&
-      gradientColors.every(
-        (color: string) => typeof color === "string" && color.length > 0
-      );
-
-    const cardStyle = useMemo(
-      () => [
-        styles.playlistCard,
-        shouldUseGradient && hasValidGradient
-          ? { padding: 0 }
-          : {
-              backgroundColor: playlist.gradient
-                ? extractPrimaryColor(playlist.gradient)
-                : "#8b5cf6",
-            },
-        playlist.isActive &&
-          !isDeleteMode && {
-            borderWidth: 2,
-            borderColor: "#3b82f6",
-            borderRadius: 8,
-          },
-        isSelected && {
-          borderWidth: 3,
-          borderColor: "#ef4444",
-          borderRadius: 8,
-        },
-      ],
-      [
-        playlist.isActive,
-        isDeleteMode,
-        isSelected,
-        shouldUseGradient,
-        hasValidGradient,
-        playlist.gradient,
-      ]
-    );
-
-    return (
-      <Animated.View
-        style={[
-          styles.playlistItem,
-          {
-            transform: [
-              { scale: scaleAnim },
-              ...(isDeleteMode && wiggleAnim
-                ? [
-                    {
-                      rotate: wiggleAnim.interpolate({
-                        inputRange: [-1, 1],
-                        outputRange: ["-2deg", "2deg"],
-                      }),
-                    },
-                  ]
-                : []),
-            ],
-          },
-        ]}
-      >
-        <TouchableOpacity onPress={handlePress} style={styles.touchableArea}>
-          <View style={cardStyle}>
-            {shouldUseGradient && hasValidGradient && (
-              <LinearGradient
-                colors={gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradientBackground}
-              />
-            )}
-            <View
-              style={
-                shouldUseGradient && hasValidGradient
-                  ? styles.gradientContent
-                  : styles.cardContent
-              }
-            >
-              <Text style={styles.playlistName}>{playlist.name}</Text>
-              <Text style={styles.playlistId}>ID: {playlist.id}</Text>
-              <Text style={styles.playlistCount}>
-                {playlist.items?.length || 0} effects
-              </Text>
-            </View>
-            {playlist.isActive && !isDeleteMode && (
-              <View style={styles.activeIndicator}>
-                <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-              </View>
-            )}
-            {isDeleteMode && (
-              <View style={styles.deleteOverlay}>
-                <View style={styles.deleteXButton}>
-                  <Ionicons name="close" size={16} color="#ffffff" />
-                </View>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.playlist.id === nextProps.playlist.id &&
-      prevProps.playlist.name === nextProps.playlist.name &&
-      prevProps.playlist.isActive === nextProps.playlist.isActive &&
-      prevProps.playlist.items?.length === nextProps.playlist.items?.length &&
-      prevProps.index === nextProps.index &&
-      prevProps.isDeleteMode === nextProps.isDeleteMode &&
-      prevProps.isSelected === nextProps.isSelected
-    );
-  }
-);
-
-// Helper function to extract primary color from gradient string - pure function for reusability
-const extractPrimaryColor = (gradient: string): string => {
-  if (!gradient || typeof gradient !== "string") {
-    return "#6366f1"; // fallback color
-  }
-
-  // Extract first RGB/hex color from gradient string
-  const colorMatch = gradient.match(
-    /(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\(\d+,\s*\d+,\s*\d+\))/
-  );
-  return colorMatch ? colorMatch[0] : "#6366f1";
-};
-
-// Helper function to get seasonal gradient based on preset name
-const getSeasonalGradient = (presetName: string): string => {
-  const name = presetName.toLowerCase();
-
-  if (
-    name.includes("halloween") ||
-    name.includes("fall") ||
-    name.includes("autumn")
-  ) {
-    return "linear-gradient(135deg, #ff6600, #ff9933)";
-  }
-  if (name.includes("canada")) {
-    return "linear-gradient(135deg, #ff0000, #ff4444)";
-  }
-  if (name.includes("christmas") || name.includes("holiday")) {
-    return "linear-gradient(135deg, #228B22, #32CD32)";
-  }
-  if (name.includes("valentine")) {
-    return "linear-gradient(135deg, #ff1493, #ff69b4)";
-  }
-  if (name.includes("easter") || name.includes("spring")) {
-    return "linear-gradient(135deg, #98fb98, #ffb6c1)";
-  }
-  if (name.includes("july") || name.includes("independence")) {
-    return "linear-gradient(135deg, #0066cc, #ff0000)";
-  }
-
-  // Default gradient
-  return "linear-gradient(135deg, #6366f1, #8b5cf6)";
-};
-
-// Helper function to parse gradient string and extract colors for LinearGradient - pure function
-const parseGradientString = (
-  gradientString: string
-): { colors: string[]; locations?: number[] } => {
-  if (!gradientString || typeof gradientString !== "string") {
-    return { colors: ["#6366f1", "#8b5cf6"] }; // default gradient
-  }
-
-  // Extract colors from gradient string like "linear-gradient(135deg, rgb(255, 170, 0), rgb(255, 0, 0), rgb(0, 255, 0))"
-  const colorMatches = gradientString.match(
-    /rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/g
-  );
-
-  if (colorMatches && colorMatches.length > 0) {
-    // Ensure at least 2 colors for LinearGradient
-    if (colorMatches.length === 1) {
-      return { colors: [colorMatches[0], colorMatches[0]] };
-    }
-    return { colors: colorMatches };
-  }
-
-  // Fallback: try to extract hex colors
-  const hexMatches = gradientString.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/g);
-  if (hexMatches && hexMatches.length > 0) {
-    // Ensure at least 2 colors for LinearGradient
-    if (hexMatches.length === 1) {
-      return { colors: [hexMatches[0], hexMatches[0]] };
-    }
-    return { colors: hexMatches };
-  }
-
-  // Final fallback
-  return { colors: ["#6366f1", "#8b5cf6"] };
-};
-
-interface PresetCardProps {
-  preset: any;
-  animationDelay?: number;
-  isActive: boolean;
-  onClick: (id: string | number) => void;
-  showIcon?: boolean;
-  isDark?: boolean;
-  isDeleteMode?: boolean;
-  isSelected?: boolean;
-  onToggleSelection?: (id: string | number) => void;
-  wiggleAnim?: Animated.Value;
-}
-
-const PresetCard = React.memo(
-  function PresetCard({
-    preset,
-    animationDelay = 0,
-    isActive,
-    onClick,
-    showIcon = false,
-    isDark = false,
-    isDeleteMode = false,
-    isSelected = false,
-    onToggleSelection,
-    wiggleAnim,
-  }: PresetCardProps) {
-    // Simplified animation values - only native driver animations
-    const scaleAnim = useRef(new Animated.Value(0)).current;
-
-    // Track if animation has been started to prevent re-animating
-    const hasAnimated = useRef(false);
-
-    // Entrance animation - only run once
-    useEffect(() => {
-      if (!hasAnimated.current) {
-        hasAnimated.current = true;
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 100,
-          friction: 8,
-          delay: animationDelay || Math.random() * 200, // Staggered animation
-          useNativeDriver: true,
-        }).start();
-      }
-    }, [scaleAnim, animationDelay]);
-
-    // Memoize gradient calculations to prevent expensive re-computations
-    const { shouldUseGradient, gradientColors, hasValidGradient } =
-      useMemo(() => {
-        const shouldUse = preset.isWledPreset && preset.gradient;
-        const colors = preset.gradient ? parseGradientString(preset.gradient).colors : null;
-
-        const hasValid =
-          colors &&
-          Array.isArray(colors) &&
-          colors.length >= 2 &&
-          colors.every(
-            (color) => typeof color === "string" && color.length > 0
-          );
-
-        return {
-          shouldUseGradient: shouldUse,
-          gradientColors: colors,
-          hasValidGradient: hasValid,
-        };
-      }, [preset.isWledPreset, preset.gradient]);
-
-    const handleCardPress = useCallback(() => {
-      if (isDeleteMode && onToggleSelection) {
-        onToggleSelection(preset.id);
-      } else if (!isDeleteMode) {
-        onClick(preset.id);
-      }
-    }, [preset.id, onClick, isDeleteMode, onToggleSelection]);
-
-    const animatedTransformStyle = useMemo(
-      () => ({
-        transform: [
-          { scale: scaleAnim },
-          ...(isDeleteMode && wiggleAnim
-            ? [
-                {
-                  rotate: wiggleAnim.interpolate({
-                    inputRange: [-1, 1],
-                    outputRange: ["-2deg", "2deg"],
-                  }),
-                },
-              ]
-            : []),
-        ],
-      }),
-      [scaleAnim, isDeleteMode, wiggleAnim]
-    );
-
-    const cardItemStyle = useMemo(
-      () => ({
-        flexBasis: '22%',
-        maxWidth: '22%',
-        marginHorizontal: '1.5%',
-        marginVertical: 6,
-      }),
-      []
-    );
-
-    const cardViewStyle = useMemo(
-      () => [
-        styles.presetCard,
-        shouldUseGradient && hasValidGradient
-          ? { padding: 0 }
-          : {
-              backgroundColor: preset.gradient
-                ? extractPrimaryColor(preset.gradient)
-                : "#6366f1",
-            },
-        isActive &&
-          !isDeleteMode && {
-            borderWidth: 2,
-            borderColor: "#3b82f6",
-            borderRadius: 8,
-          },
-        isSelected && {
-          borderWidth: 3,
-          borderColor: "#ef4444",
-          borderRadius: 8,
-        },
-      ],
-      [
-        shouldUseGradient,
-        hasValidGradient,
-        preset.gradient,
-        isActive,
-        isDeleteMode,
-        isSelected,
-      ]
-    );
-
-    // Use unified structure for all preset cards (with gradient support)
-    return (
-      <Animated.View style={[animatedTransformStyle, cardItemStyle]}>
-        <TouchableOpacity
-          onPress={handleCardPress}
-          style={styles.touchableArea}
-        >
-          <View style={cardViewStyle}>
-            {shouldUseGradient && hasValidGradient && (
-              <LinearGradient
-                colors={gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradientBackground}
-              />
-            )}
-            <View
-              style={
-                shouldUseGradient && hasValidGradient
-                  ? styles.gradientContent
-                  : styles.cardContent
-              }
-            >
-              {showIcon && <Text style={styles.cardIcon}>{preset.icon}</Text>}
-              <Text style={styles.cardTitle}>{preset.name}</Text>
-              <Text style={styles.cardPresetId}>
-                ID: {preset.presetId || preset.id}
-              </Text>
-              {preset.effectName && (
-                <Text style={styles.cardSubtitle}>{preset.effectName}</Text>
-              )}
-            </View>
-            {isActive && !isDeleteMode && (
-              <View style={styles.activeIndicator}>
-                <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-              </View>
-            )}
-            {isDeleteMode && (
-              <View style={styles.deleteOverlay}>
-                <View style={styles.deleteXButton}>
-                  <Ionicons name="close" size={16} color="#ffffff" />
-                </View>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.preset.id === nextProps.preset.id &&
-      prevProps.preset.name === nextProps.preset.name &&
-      prevProps.preset.presetId === nextProps.preset.presetId &&
-      prevProps.preset.effectName === nextProps.preset.effectName &&
-      prevProps.animationDelay === nextProps.animationDelay &&
-      prevProps.isActive === nextProps.isActive &&
-      prevProps.isDeleteMode === nextProps.isDeleteMode &&
-      prevProps.isSelected === nextProps.isSelected &&
-      prevProps.showIcon === nextProps.showIcon &&
-      prevProps.isDark === nextProps.isDark
-    );
-  }
-);
-
-// Memoized wrapper for PresetCard to prevent unnecessary re-renders
-const MemoizedPresetCard = React.memo(
-  function MemoizedPresetCard({
-    preset,
-    index,
-    activePreset,
-    onPresetSelect,
-    isDark,
-    isDeleteMode,
-    isSelected,
-    onToggleSelection,
-    wiggleAnim,
-    showIcon = false,
-  }: {
-    preset: any;
-    index: number;
-    activePreset: string | number | null;
-    onPresetSelect: (id: string | number) => void;
-    isDark: boolean;
-    isDeleteMode: boolean;
-    isSelected: boolean;
-    onToggleSelection: (id: string | number) => void;
-    wiggleAnim?: Animated.Value;
-    showIcon?: boolean;
-  }) {
-    const isActive = useMemo(
-      () => activePreset?.toString() === preset.id.toString(),
-      [activePreset, preset.id]
-    );
-
-    const handleClick = useCallback(() => {
-      onPresetSelect(preset.id);
-    }, [onPresetSelect, preset.id]);
-
-    return (
-      <PresetCard
-        preset={preset}
-        animationDelay={index * 50}
-        isActive={isActive}
-        onClick={handleClick}
-        showIcon={showIcon}
-        isDark={isDark}
-        isDeleteMode={isDeleteMode}
-        isSelected={isSelected}
-        onToggleSelection={onToggleSelection}
-        wiggleAnim={wiggleAnim}
-      />
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.preset.id === nextProps.preset.id &&
-      prevProps.preset.name === nextProps.preset.name &&
-      prevProps.preset.presetId === nextProps.preset.presetId &&
-      prevProps.preset.effectName === nextProps.preset.effectName &&
-      prevProps.index === nextProps.index &&
-      prevProps.activePreset === nextProps.activePreset &&
-      prevProps.isDark === nextProps.isDark &&
-      prevProps.isDeleteMode === nextProps.isDeleteMode &&
-      prevProps.isSelected === nextProps.isSelected &&
-      prevProps.showIcon === nextProps.showIcon
-    );
-  }
-);
-
-// Seasonal preset wrapper
-const MemoizedSeasonalPresetCard = React.memo(
-  function MemoizedSeasonalPresetCard({
-    preset,
-    index,
-    activePreset,
-    onPresetSelect,
-    isDark,
-  }: {
-    preset: any;
-    index: number;
-    activePreset: string | number | null;
-    onPresetSelect: (id: string | number) => void;
-    isDark: boolean;
-  }) {
-    const presetObj = useMemo(
-      () => ({
-        id: preset.presetId,
-        name: preset.name,
-        icon: preset.icon,
-        gradient: getSeasonalGradient(preset.name),
-      }),
-      [preset.presetId, preset.name, preset.icon]
-    );
-
-    const isActive = useMemo(
-      () => activePreset?.toString() === preset.presetId.toString(),
-      [activePreset, preset.presetId]
-    );
-
-    const handleClick = useCallback(() => {
-      onPresetSelect(preset.presetId);
-    }, [onPresetSelect, preset.presetId]);
-
-    return (
-      <PresetCard
-        preset={presetObj}
-        animationDelay={index * 50}
-        isActive={isActive}
-        onClick={handleClick}
-        showIcon={true}
-        isDark={isDark}
-        isDeleteMode={false}
-        isSelected={false}
-      />
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.preset.presetId === nextProps.preset.presetId &&
-      prevProps.preset.name === nextProps.preset.name &&
-      prevProps.preset.icon === nextProps.preset.icon &&
-      prevProps.index === nextProps.index &&
-      prevProps.activePreset === nextProps.activePreset &&
-      prevProps.isDark === nextProps.isDark
-    );
-  }
-);
+import DeviceSelection from "./PresetGrid/DeviceSelection";
+import LiveViewSection from "./PresetGrid/LiveViewSection";
+import SeasonalPresetsSection from "./PresetGrid/SeasonalPresetsSection";
+import CustomEffectsSection from "./PresetGrid/CustomEffectsSection";
+import PlaylistsSection from "./PresetGrid/PlaylistsSection";
+import PresetCard from "./PresetGrid/PresetCard";
+import MemoizedPresetCard from "./PresetGrid/MemoizedPresetCard";
+import { fabStyles } from "./PresetGrid/FABStyles";
+import { deleteModeStyles } from "./PresetGrid/DeleteModeStyles";
 
 interface PresetGridProps {
   activePreset: string | number | null;
@@ -1562,6 +1003,12 @@ export default function PresetGrid({
 
                 if (result.success) {
                   onRemoveCustomEffect(item.id as number);
+                  // Remove from selection immediately
+                  setSelectedForDelete(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(item.id);
+                    return newSet;
+                  });
                   results.success.push(item.name);
                   console.log(`✅ Successfully deleted effect "${item.name}"`);
                 } else {
@@ -1576,6 +1023,12 @@ export default function PresetGrid({
               } else {
                 // Local effect only, remove from local state
                 onRemoveCustomEffect(item.id as number);
+                // Remove from selection immediately
+                setSelectedForDelete(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(item.id);
+                  return newSet;
+                });
                 results.success.push(item.name);
               }
             } else if (item.type === "playlist") {
@@ -1624,25 +1077,16 @@ export default function PresetGrid({
 
                 if (deletionResult?.success) {
                   onPlaylistRemove(item.id as number);
+                  // Remove from selection immediately
+                  setSelectedForDelete(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(item.id);
+                    return newSet;
+                  });
                   results.success.push(item.name);
                   console.log(
                     `✅ Successfully deleted playlist "${item.name}"`
                   );
-
-                  // Refresh presets to ensure UI is in sync with device
-                  if (onRefreshPresets) {
-                    try {
-                      await onRefreshPresets();
-                      console.log(
-                        `🔄 Refreshed presets after deleting playlist "${item.name}"`
-                      );
-                    } catch (refreshError) {
-                      console.warn(
-                        `⚠️ Failed to refresh presets after deleting playlist "${item.name}":`,
-                        refreshError
-                      );
-                    }
-                  }
                 } else {
                   results.failed.push(
                     `${item.name}: ${
@@ -2039,580 +1483,116 @@ export default function PresetGrid({
         }
       >
         {/* Live View Section */}
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: cardBackground, borderColor },
-          ]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.headerLeft}>
-              <Ionicons name="play" size={20} color={textColor} />
-              <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Live View
-              </Text>
-            </View>
-
-            {/* Toggle Switch */}
-            <TouchableOpacity
-              onPress={handleLiveViewToggle}
-              style={[
-                styles.toggleSwitch,
-                { backgroundColor: liveViewEnabled ? "#3b82f6" : borderColor },
-              ]}
-            >
-              <View
-                style={[
-                  styles.toggleThumb,
-                  {
-                    backgroundColor: "#ffffff",
-                    marginLeft: liveViewEnabled ? 22 : 2,
-                  },
-                ]}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.sectionContent}>
-            <View
-              style={[
-                styles.innerCard,
-                {
-                  backgroundColor: isDark ? "#374151" : "#f9fafb",
-                  borderColor: isDark ? "#4b5563" : "#e5e7eb",
-                },
-              ]}
-            >
-              <Animated.View
-                style={[
-                  styles.cardContent,
-                  {
-                    opacity: fadeAnim,
-                    transform: [{ scale: scaleAnim }],
-                  },
-                ]}
-              >
-                {activePresetData && (
-                  <Text style={[styles.activePresetText, { color: textColor }]}>
-                    Active: {activePresetData.name}
-                  </Text>
-                )}
-
-                {/* Live LED Data */}
-                {liveViewEnabled && !activeDevice?.isConnected && (
-                  <View style={styles.disabledContainer}>
-                    <Text style={[styles.disabledText, { color: "#ef4444" }]}>
-                      Device offline - Connect to view LED data
-                    </Text>
-                  </View>
-                )}
-                {liveViewEnabled &&
-                  activeDevice?.isConnected &&
-                  liveLedData.length > 0 && (
-                    <LEDVisualization
-                      ledData={liveLedData}
-                      subtextColor={subtextColor}
-                      liveViewLedSize={liveViewLedSize}
-                      showLedCount={true}
-                      wledInfo={activeDevice?.wledInfo}
-                    />
-                  )}
-
-                {!liveViewEnabled && (
-                  <View style={styles.disabledContainer}>
-                    {!activeDevice?.isConnected ? (
-                      <Text style={[styles.disabledText, { color: "#ef4444" }]}>
-                        Device offline - Connect to view LED data
-                      </Text>
-                    ) : (
-                      <Text
-                        style={[styles.disabledText, { color: subtextColor }]}
-                      >
-                        Live view disabled
-                      </Text>
-                    )}
-                    {(() => {
-                      // Don't show LED count if device is offline
-                      if (!activeDevice?.isConnected) {
-                        return null;
-                      }
-
-                      // Check for LED count in WLED device info
-                      const ledCount = activeDevice?.wledInfo?.leds?.count;
-
-                      if (ledCount) {
-                        return (
-                          <View>
-                            <Text
-                              style={[
-                                styles.ledCount,
-                                { color: subtextColor, marginTop: 4 },
-                              ]}
-                            >
-                              {ledCount} LED{ledCount !== 1 ? "s" : ""}{" "}
-                              available
-                            </Text>
-                            {activeDevice?.wledInfo?.leds?.rgbw && (
-                              <Text
-                                style={[
-                                  styles.ledCount,
-                                  {
-                                    color: subtextColor,
-                                    fontSize: 10,
-                                    marginTop: 2,
-                                  },
-                                ]}
-                              >
-                                RGBW LEDs supported
-                              </Text>
-                            )}
-                          </View>
-                        );
-                      } else if (activeDevice?.isConnected) {
-                        return (
-                          <Text
-                            style={[
-                              styles.ledCount,
-                              {
-                                color: subtextColor,
-                                marginTop: 4,
-                                fontSize: 12,
-                              },
-                            ]}
-                          >
-                            Device connected - LED count not available
-                          </Text>
-                        );
-                      } else {
-                        return (
-                          <Text
-                            style={[
-                              styles.ledCount,
-                              {
-                                color: subtextColor,
-                                marginTop: 4,
-                                fontSize: 12,
-                              },
-                            ]}
-                          >
-                            Device offline
-                          </Text>
-                        );
-                      }
-                    })()}
-                  </View>
-                )}
-              </Animated.View>
-
-              {/* Brightness Slider - Always visible when device is connected */}
-              {activeDevice?.isConnected && (
-                <View style={styles.sliderContainer}>
-                  <Ionicons
-                    name="sunny-outline"
-                    size={20}
-                    color={subtextColor}
-                  />
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={0}
-                    maximumValue={255}
-                    step={1}
-                    value={sliderBrightness}
-                    onValueChange={(value) => {
-                      setSliderBrightness(Math.round(value));
-                    }}
-                    onSlidingComplete={async (value) => {
-                      const finalValue = Math.round(value);
-
-                      // Use direct API call for setting brightness
-                      if (activeDevice?.ip) {
-                        try {
-                          const result = await setWledBrightness(
-                            activeDevice.ip,
-                            finalValue,
-                            activeDevice.protocol || "http"
-                          );
-                          if (result.success) {
-                            logger.log(`💡 Brightness set to ${finalValue}`);
-                          } else {
-                            logger.error(
-                              "Failed to set brightness:",
-                              result.message
-                            );
-                            // Revert slider to previous value on failure
-                            setSliderBrightness(
-                              activeDevice?.wledInfo?.bri || 0
-                            );
-                          }
-                        } catch (error) {
-                          logger.error("Error setting brightness:", error);
-                          // Revert slider to previous value on error
-                          setSliderBrightness(activeDevice?.wledInfo?.bri || 0);
-                        }
-                      }
-
-                      // Also call the original callback if provided
-                      onBrightnessChange?.(finalValue);
-                    }}
-                    minimumTrackTintColor="#3b82f6"
-                    maximumTrackTintColor={isDark ? "#4b5563" : "#e5e7eb"}
-                    thumbTintColor={isDark ? "#ffffff" : "#3b82f6"}
-                  />
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
+        <LiveViewSection
+          activeDevice={activeDevice}
+          activePresetData={activePresetData}
+          liveViewEnabled={liveViewEnabled}
+          liveLedData={liveLedData}
+          liveViewLedSize={liveViewLedSize}
+          sliderBrightness={sliderBrightness}
+          fadeAnim={fadeAnim}
+          scaleAnim={scaleAnim}
+          isDark={isDark}
+          cardBackground={cardBackground}
+          borderColor={borderColor}
+          textColor={textColor}
+          subtextColor={subtextColor}
+          onLiveViewToggle={handleLiveViewToggle}
+          onSetSliderBrightness={setSliderBrightness}
+          onBrightnessChange={onBrightnessChange}
+        />
 
         {/* Seasonal Presets */}
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: cardBackground, borderColor },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
-            style={styles.sectionHeader}
-          >
-            <View style={styles.headerLeft}>
-              <Ionicons name="calendar" size={20} color={textColor} />
-              <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Seasonal Presets
-              </Text>
-            </View>
-            <Ionicons
-              name={isSeasonalCollapsed ? "chevron-down" : "chevron-up"}
-              size={20}
-              color={subtextColor}
-            />
-          </TouchableOpacity>
-
-          {!isSeasonalCollapsed && (
-            <View style={styles.sectionContent}>
-              <View style={styles.presetGrid}>
-                {seasonalPresets.map((preset, index) => (
-                  <MemoizedSeasonalPresetCard
-                    key={`seasonal-${preset.id}-${index}`}
-                    preset={preset}
-                    index={index}
-                    activePreset={activePreset}
-                    onPresetSelect={onPresetSelect}
-                    isDark={isDark}
-                  />
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
+        <SeasonalPresetsSection
+          seasonalPresets={seasonalPresets}
+          activePreset={activePreset}
+          isCollapsed={isSeasonalCollapsed}
+          isDark={isDark}
+          cardBackground={cardBackground}
+          borderColor={borderColor}
+          textColor={textColor}
+          subtextColor={subtextColor}
+          onToggleCollapse={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
+          onPresetSelect={onPresetSelect}
+          PresetCard={PresetCard}
+        />
 
         {/* Custom Effects */}
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: cardBackground, borderColor },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() =>
-              setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)
-            }
-            style={styles.sectionHeader}
-          >
-            <View style={styles.headerLeft}>
-              <Ionicons name="color-palette" size={20} color={textColor} />
-              <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Custom Effects ({memoizedCustomEffects.length})
-              </Text>
-            </View>
-            <Ionicons
-              name={isCustomEffectsCollapsed ? "chevron-down" : "chevron-up"}
-              size={20}
-              color={subtextColor}
-            />
-          </TouchableOpacity>
-
-          {!isCustomEffectsCollapsed && (
-            <View style={styles.sectionContent}>
-              {/* Random Custom Effect Button */}
-              {activeDevice?.isConnected && (
-                <View
-                  style={[styles.randomEffectContainer, { marginBottom: 16 }]}
-                >
-                  <TouchableOpacity
-                    onPress={
-                      isCooldownActive ? undefined : generateRandomCustomEffect
-                    }
-                    disabled={isCooldownActive}
-                    style={[
-                      styles.randomEffectButton,
-                      {
-                        backgroundColor: isCooldownActive
-                          ? isDark
-                            ? "#4b5563"
-                            : "#e5e7eb"
-                          : isDark
-                          ? "#374151"
-                          : "#f3f4f6",
-                        borderColor: isDark ? "#6b7280" : "#d1d5db",
-                        opacity: isCooldownActive ? 0.6 : 1,
-                      },
-                    ]}
-                  >
-                    <View style={styles.randomEffectButtonContent}>
-                      <Ionicons
-                        name="dice"
-                        size={18}
-                        color={isCooldownActive ? subtextColor : textColor}
-                      />
-                      <Text
-                        style={[
-                          styles.randomEffectButtonText,
-                          {
-                            color: isCooldownActive ? subtextColor : textColor,
-                          },
-                        ]}
-                      >
-                        {isCooldownActive
-                          ? `Cooldown (${Math.ceil(3 - cooldownProgress * 3)}s)`
-                          : "Generate Random Effect"}
-                      </Text>
-                    </View>
-                    {isCooldownActive && (
-                      <Animated.View
-                        style={[
-                          styles.cooldownProgress,
-                          {
-                            width: cooldownAnimRef.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: ["0%", "100%"],
-                            }),
-                            backgroundColor: "#3b82f6",
-                          },
-                        ]}
-                      />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-              {!activeDevice?.isConnected ? (
-                <View style={styles.infoCard}>
-                  <Ionicons
-                    name="wifi-outline"
-                    size={24}
-                    color={subtextColor}
-                    style={styles.infoIcon}
-                  />
-                  <Text style={[styles.infoText, { color: subtextColor }]}>
-                    Connect to a WLED device to load available effects
-                  </Text>
-                </View>
-              ) : (
-                <View>
-                  {memoizedCustomEffects.length > 0 ? (
-                    <View style={styles.presetGrid}>
-                      {memoizedCustomEffects.map((preset, index) => (
-                        <MemoizedPresetCard
-                          key={`device-${preset.id}-${index}`}
-                          preset={preset}
-                          index={index}
-                          activePreset={activePreset}
-                          onPresetSelect={onPresetSelect}
-                          isDark={isDark}
-                          isDeleteMode={isDeleteMode}
-                          isSelected={selectedForDelete.has(preset.id)}
-                          onToggleSelection={toggleCardSelection}
-                          wiggleAnim={wiggleAnim}
-                          showIcon={false}
-                        />
-                      ))}
-                    </View>
-                  ) : (
-                    <View style={styles.infoCard}>
-                      <Ionicons
-                        name="color-palette-outline"
-                        size={24}
-                        color={subtextColor}
-                        style={styles.infoIcon}
-                      />
-                      <Text style={[styles.infoText, { color: subtextColor }]}>
-                        No presets or custom effects found.
-                      </Text>
-                      <Text
-                        style={[styles.infoSubtext, { color: subtextColor }]}
-                      >
-                        Save presets on your WLED device or create custom
-                        effects here.
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          )}
-        </View>
+        <CustomEffectsSection
+          customEffects={memoizedCustomEffects}
+          activePreset={activePreset}
+          activeDevice={activeDevice}
+          isCollapsed={isCustomEffectsCollapsed}
+          isDeleteMode={isDeleteMode}
+          selectedForDelete={selectedForDelete}
+          wiggleAnim={wiggleAnim}
+          isCooldownActive={isCooldownActive}
+          cooldownProgress={cooldownProgress}
+          cooldownAnimRef={cooldownAnimRef}
+          isDark={isDark}
+          cardBackground={cardBackground}
+          borderColor={borderColor}
+          textColor={textColor}
+          subtextColor={subtextColor}
+          onToggleCollapse={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
+          onPresetSelect={onPresetSelect}
+          onToggleSelection={toggleCardSelection}
+          onGenerateRandom={generateRandomCustomEffect}
+          PresetCard={MemoizedPresetCard}
+        />
 
         {/* Playlists */}
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: cardBackground, borderColor },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
-            style={styles.sectionHeader}
-          >
-            <View style={styles.headerLeft}>
-              <Ionicons name="list" size={20} color={textColor} />
-              <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Playlists ({savedPlaylists.length})
-              </Text>
-            </View>
-            <Ionicons
-              name={isPlaylistsCollapsed ? "chevron-down" : "chevron-up"}
-              size={20}
-              color={subtextColor}
-            />
-          </TouchableOpacity>
-
-          {!isPlaylistsCollapsed && (
-            <View style={styles.sectionContent}>
-              {isLoadingPlaylists ? (
-                // Loading state - brief empty state for smooth transition
-                <View
-                  style={{
-                    height: 120,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Empty space during loading for smooth transition */}
-                </View>
-              ) : savedPlaylists && savedPlaylists.length > 0 ? (
-                <View style={styles.playlistGrid}>
-                  {savedPlaylists.map((playlist, index) => (
-                    <AnimatedPlaylistItem
-                      key={`playlist-${playlist.id}-${index}`}
-                      playlist={playlist}
-                      index={index}
-                      onPress={onPlaylistSelect}
-                      isDeleteMode={isDeleteMode}
-                      isSelected={selectedForDelete.has(playlist.id)}
-                      onToggleSelection={toggleCardSelection}
-                      wiggleAnim={wiggleAnim}
-                    />
-                  ))}
-                </View>
-              ) : (
-                memoizedCustomEffects.length === 0 && (
-                  <View style={styles.infoCard}>
-                    <Ionicons
-                      name="play-outline"
-                      size={24}
-                      color={subtextColor}
-                      style={styles.infoIcon}
-                    />
-                    <Text style={[styles.infoText, { color: subtextColor }]}>
-                      No playlists saved yet
-                    </Text>
-                    <Text style={[styles.infoSubtext, { color: subtextColor }]}>
-                      Create custom effects first to build playlists
-                    </Text>
-                  </View>
-                )
-              )}
-            </View>
-          )}
-        </View>
+        <PlaylistsSection
+          savedPlaylists={savedPlaylists}
+          customEffectsCount={memoizedCustomEffects.length}
+          isCollapsed={isPlaylistsCollapsed}
+          isDeleteMode={isDeleteMode}
+          isLoadingPlaylists={isLoadingPlaylists}
+          selectedForDelete={selectedForDelete}
+          wiggleAnim={wiggleAnim}
+          cardBackground={cardBackground}
+          borderColor={borderColor}
+          textColor={textColor}
+          subtextColor={subtextColor}
+          onToggleCollapse={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
+          onPlaylistSelect={onPlaylistSelect}
+          onToggleSelection={toggleCardSelection}
+        />
 
       </ScrollView>
 
-      {/* Floating Device Controls - Hidden in delete mode */}
-      {!isDeleteMode && (
-        <View
-          style={[
-            styles.floatingDropdown,
-            { backgroundColor: `${cardBackground}CC`, borderColor },
-          ]}
-        >
-          {/* On/Off Button */}
-          <TouchableOpacity
-            onPress={() => handleDeviceToggle(!activeDevice?.wledInfo?.on)}
-            disabled={!activeDevice?.isConnected || isTogglingDevice}
-            style={[
-              styles.powerButton,
-              {
-                backgroundColor: activeDevice?.wledInfo?.on
-                  ? "#10b981"
-                  : "#6b7280",
-                opacity:
-                  !activeDevice?.isConnected || isTogglingDevice ? 0.5 : 1,
-              },
-            ]}
-          >
-            {isTogglingDevice ? (
-              <Ionicons
-                name="refresh"
-                size={20}
-                color="#ffffff"
-                style={{ transform: [{ rotate: "180deg" }] }}
-              />
-            ) : (
-              <Ionicons
-                name={activeDevice?.wledInfo?.on ? "power" : "power-outline"}
-                size={20}
-                color="#ffffff"
-              />
-            )}
-          </TouchableOpacity>
-
-          {/* Device Dropdown */}
-          <TouchableOpacity
-            onPress={() => setShowDeviceDropdown(!showDeviceDropdown)}
-            style={styles.dropdownButton}
-          >
-            <View style={styles.dropdownContent}>
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor: activeDevice?.isConnected
-                      ? "#10b981"
-                      : "#ef4444",
-                  },
-                ]}
-              />
-              <Text
-                style={[styles.dropdownText, { color: textColor }]}
-                numberOfLines={1}
-              >
-                {activeDevice?.name || "No Device"}
-              </Text>
-              <Ionicons
-                name={showDeviceDropdown ? "chevron-up" : "chevron-down"}
-                size={16}
-                color={subtextColor}
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Device Selection */}
+      <DeviceSelection
+        activeDevice={activeDevice}
+        activeDeviceId={activeDeviceId}
+        devices={devices}
+        isDeleteMode={isDeleteMode}
+        isTogglingDevice={isTogglingDevice}
+        showDeviceDropdown={showDeviceDropdown}
+        isDark={isDark}
+        cardBackground={cardBackground}
+        borderColor={borderColor}
+        textColor={textColor}
+        subtextColor={subtextColor}
+        onDeviceToggle={handleDeviceToggle}
+        onSetShowDeviceDropdown={setShowDeviceDropdown}
+        onSetActiveDeviceId={onSetActiveDeviceId}
+      />
 
       {/* Delete Mode Action Buttons */}
       {isDeleteMode && (
-        <View style={styles.deleteActionContainer}>
+        <View style={deleteModeStyles.deleteActionContainer}>
           <TouchableOpacity
             onPress={exitDeleteMode}
             style={[
-              styles.deleteActionButton,
-              styles.cancelButton,
+              deleteModeStyles.deleteActionButton,
+              deleteModeStyles.cancelButton,
               { backgroundColor: isDark ? "#4b5563" : "#f3f4f6" },
             ]}
           >
             <Text
               style={[
-                styles.deleteActionText,
+                deleteModeStyles.deleteActionText,
                 { color: isDark ? "#9ca3af" : "#6b7280" },
               ]}
             >
@@ -2624,7 +1604,7 @@ export default function PresetGrid({
             onPress={handleDeleteSelected}
             disabled={selectedForDelete.size === 0}
             style={[
-              styles.deleteActionButton,
+              deleteModeStyles.deleteActionButton,
               {
                 backgroundColor:
                   selectedForDelete.size === 0 ? "#9ca3af" : "#ef4444",
@@ -2632,83 +1612,11 @@ export default function PresetGrid({
               },
             ]}
           >
-            <Text style={[styles.deleteActionText, { color: "white" }]}>
+            <Text style={[deleteModeStyles.deleteActionText, { color: "white" }]}>
               Delete ({selectedForDelete.size})
             </Text>
           </TouchableOpacity>
         </View>
-      )}
-
-      {/* Device Selection Modal */}
-      {showDeviceDropdown && devices.length > 1 && (
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setShowDeviceDropdown(false)}
-          style={styles.dropdownOverlay}
-        >
-          <View
-            style={[styles.dropdownModal, { backgroundColor: cardBackground }]}
-          >
-            <Text style={[styles.dropdownTitle, { color: textColor }]}>
-              Select Device
-            </Text>
-            <ScrollView
-              style={styles.deviceScrollContainer}
-              showsVerticalScrollIndicator={true}
-              nestedScrollEnabled={true}
-            >
-              {devices.map((device, index) => (
-                <TouchableOpacity
-                  key={`device-option-${device.id}-${index}`}
-                  onPress={() => {
-                    if (onSetActiveDeviceId) {
-                      onSetActiveDeviceId(device.id);
-                    }
-                    setShowDeviceDropdown(false);
-                  }}
-                  style={[
-                    styles.deviceOption,
-                    index < devices.length - 1
-                      ? { borderBottomWidth: 1, borderBottomColor: borderColor }
-                      : { borderBottomWidth: 0 },
-                    device.id === activeDeviceId && {
-                      backgroundColor: isDark ? "#374151" : "#f3f4f6",
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor: device.isConnected
-                          ? "#10b981"
-                          : "#ef4444",
-                      },
-                    ]}
-                  />
-                  <View style={styles.deviceInfo}>
-                    <Text
-                      style={[styles.deviceOptionText, { color: textColor }]}
-                    >
-                      {device.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.deviceOptionSubtext,
-                        { color: subtextColor },
-                      ]}
-                    >
-                      {device.mdns || "Unknown"} · {device.ip}
-                    </Text>
-                  </View>
-                  {device.id === activeDeviceId && (
-                    <Ionicons name="checkmark" size={20} color="#3b82f6" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
       )}
 
       {/* FAB Overlay - Close when touching outside */}
@@ -2716,17 +1624,17 @@ export default function PresetGrid({
         <TouchableOpacity
           activeOpacity={1}
           onPress={toggleFabOptions}
-          style={[styles.fabOverlay, { backgroundColor: "transparent" }]}
+          style={[fabStyles.fabOverlay, { backgroundColor: "transparent" }]}
         />
       )}
 
       {/* Floating Action Buttons - Hidden in delete mode */}
       {!isDeleteMode && (
-        <View style={styles.fabContainer}>
+        <View style={fabStyles.fabContainer}>
           {/* Mini FAB 1 - Create New */}
           <Animated.View
             style={[
-              styles.miniFab,
+              fabStyles.miniFab,
               {
                 transform: [{ scale: fabScaleAnim1 }],
                 bottom: 320,
@@ -2739,7 +1647,7 @@ export default function PresetGrid({
                 closeFabAndOpenModal(() => setShowCreateNewOptions(true));
               }}
               style={[
-                styles.miniFabButton,
+                fabStyles.miniFabButton,
                 {
                   backgroundColor: "#10b981",
                   shadowColor: isDark ? "#000" : "#10b981",
@@ -2753,7 +1661,7 @@ export default function PresetGrid({
           {/* Mini FAB 2 - Device Management */}
           <Animated.View
             style={[
-              styles.miniFab,
+              fabStyles.miniFab,
               {
                 transform: [{ scale: fabScaleAnim2 }],
                 bottom: 200,
@@ -2766,7 +1674,7 @@ export default function PresetGrid({
                 closeFabAndOpenModal(() => setShowDeviceManagementModal(true));
               }}
               style={[
-                styles.miniFabButton,
+                fabStyles.miniFabButton,
                 {
                   backgroundColor: "#f59e0b",
                   shadowColor: isDark ? "#000" : "#f59e0b",
@@ -2780,7 +1688,7 @@ export default function PresetGrid({
           {/* Mini FAB 3 - Delete */}
           <Animated.View
             style={[
-              styles.miniFab,
+              fabStyles.miniFab,
               {
                 transform: [{ scale: fabScaleAnim3 }],
                 bottom: 140,
@@ -2793,7 +1701,7 @@ export default function PresetGrid({
                 closeFabAndOpenModal(() => enterDeleteMode());
               }}
               style={[
-                styles.miniFabButton,
+                fabStyles.miniFabButton,
                 {
                   backgroundColor: "#ef4444",
                   shadowColor: isDark ? "#000" : "#ef4444",
@@ -2807,7 +1715,7 @@ export default function PresetGrid({
           {/* Mini FAB 4 - Settings */}
           <Animated.View
             style={[
-              styles.miniFab,
+              fabStyles.miniFab,
               {
                 transform: [{ scale: fabScaleAnim4 }],
                 bottom: 80,
@@ -2820,7 +1728,7 @@ export default function PresetGrid({
                 closeFabAndOpenModal(() => setShowSettings(true));
               }}
               style={[
-                styles.miniFabButton,
+                fabStyles.miniFabButton,
                 {
                   backgroundColor: "#6b7280",
                   shadowColor: isDark ? "#000" : "#6b7280",
@@ -2834,7 +1742,7 @@ export default function PresetGrid({
           {/* Mini FAB 5 - Scheduler */}
           <Animated.View
             style={[
-              styles.miniFab,
+              fabStyles.miniFab,
               {
                 transform: [{ scale: fabScaleAnim5 }],
                 bottom: 260,
@@ -2847,7 +1755,7 @@ export default function PresetGrid({
                 closeFabAndOpenModal(() => setShowSchedulerModal(true));
               }}
               style={[
-                styles.miniFabButton,
+                fabStyles.miniFabButton,
                 {
                   backgroundColor: "#8b5cf6",
                   shadowColor: isDark ? "#000" : "#8b5cf6",
@@ -2861,7 +1769,7 @@ export default function PresetGrid({
           {/* Main FAB */}
           <Animated.View
             style={[
-              styles.floatingButton,
+              fabStyles.floatingButton,
               {
                 transform: [
                   {
@@ -2879,7 +1787,7 @@ export default function PresetGrid({
               disabled={false}
               activeOpacity={0.8}
               style={[
-                styles.mainFabButton,
+                fabStyles.mainFabButton,
                 {
                   backgroundColor: "#3b82f6",
                   shadowColor: isDark ? "#000" : "#3b82f6",
@@ -2903,15 +1811,15 @@ export default function PresetGrid({
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setShowCreateNewOptions(false)}
-          style={styles.fabOverlay}
+          style={fabStyles.fabOverlay}
         >
           <View
             style={[
-              styles.fabOptionsContainer,
+              fabStyles.fabOptionsContainer,
               { backgroundColor: cardBackground },
             ]}
           >
-            <Text style={[styles.fabTitle, { color: textColor }]}>
+            <Text style={[fabStyles.fabTitle, { color: textColor }]}>
               Create New
             </Text>
 
@@ -2920,10 +1828,10 @@ export default function PresetGrid({
                 setShowCreateNewOptions(false);
                 closeFabAndOpenModal(() => setShowCustomEffectsModal(true));
               }}
-              style={styles.fabOption}
+              style={fabStyles.fabOption}
             >
               <Ionicons name="color-palette" size={20} color={textColor} />
-              <Text style={[styles.fabOptionText, { color: textColor }]}>
+              <Text style={[fabStyles.fabOptionText, { color: textColor }]}>
                 Custom Effect
               </Text>
             </TouchableOpacity>
@@ -2936,10 +1844,10 @@ export default function PresetGrid({
                     setShowPlaylistCreationModal(true)
                   );
                 }}
-                style={styles.fabOption}
+                style={fabStyles.fabOption}
               >
                 <Ionicons name="play" size={20} color={textColor} />
-                <Text style={[styles.fabOptionText, { color: textColor }]}>
+                <Text style={[fabStyles.fabOptionText, { color: textColor }]}>
                   Playlist
                 </Text>
               </TouchableOpacity>
@@ -3012,24 +1920,24 @@ export default function PresetGrid({
 
       {/* Deletion Progress Modal */}
       {isDeletionInProgress && (
-        <View style={styles.deletionProgressOverlay}>
+        <View style={deleteModeStyles.deletionProgressOverlay}>
           <View
             style={[
-              styles.deletionProgressModal,
+              deleteModeStyles.deletionProgressModal,
               { backgroundColor: cardBackground },
             ]}
           >
-            <Text style={[styles.deletionProgressTitle, { color: textColor }]}>
+            <Text style={[deleteModeStyles.deletionProgressTitle, { color: textColor }]}>
               Deleting Items...
             </Text>
             <Text
-              style={[styles.deletionProgressText, { color: subtextColor }]}
+              style={[deleteModeStyles.deletionProgressText, { color: subtextColor }]}
             >
               {deletionProgress.current} of {deletionProgress.total}
             </Text>
             {deletionProgress.currentItem && (
               <Text
-                style={[styles.deletionProgressItem, { color: subtextColor }]}
+                style={[deleteModeStyles.deletionProgressItem, { color: subtextColor }]}
                 numberOfLines={1}
               >
                 {deletionProgress.currentItem}
@@ -3037,13 +1945,13 @@ export default function PresetGrid({
             )}
             <View
               style={[
-                styles.progressBar,
+                deleteModeStyles.progressBar,
                 { backgroundColor: isDark ? "#374151" : "#f3f4f6" },
               ]}
             >
               <View
                 style={[
-                  styles.progressBarFill,
+                  deleteModeStyles.progressBarFill,
                   {
                     width: `${
                       (deletionProgress.current / deletionProgress.total) * 100
@@ -3060,6 +1968,7 @@ export default function PresetGrid({
   );
 }
 
+// Layout styles - simple container styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -3070,724 +1979,5 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 100,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionCard: {
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    elevation: 2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    overflow: "visible",
-  },
-  sectionContent: {
-    marginTop: 8,
-    overflow: "visible",
-  },
-  innerCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    minHeight: 30,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginTop: 8,
-  },
-  toggleSwitch: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    padding: 2,
-    justifyContent: "center",
-  },
-  toggleThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-  },
-  enableToggleContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  enableToggleCard: {
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  enableToggleText: {
-    fontSize: 16,
-    fontWeight: "500",
-    lineHeight: 24, // Match toggle switch height
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 80,
-  },
-  activePresetText: {
-    fontWeight: "500",
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  ledContainer: {
-    marginTop: 12,
-  },
-  ledGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    minHeight: 20, // Revert to original minHeight
-  },
-  ledPill: {
-    width: 6,
-    height: 11,
-    marginRight: 2,
-    marginBottom: 2,
-    borderRadius: 2,
-    borderWidth: 0.2,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    elevation: 5, // Keep a default elevation for Android shadow
-  },
-  ledCount: {
-    fontSize: 12,
-    marginTop: 8,
-  },
-  sliderContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 16,
-  },
-  slider: {
-    flex: 1,
-    height: 40,
-    marginHorizontal: 8,
-  },
-  dynamicLedGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    minHeight: 20,
-  },
-  disabledText: {
-    fontSize: 14,
-    marginTop: 8,
-  },
-  presetGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 4,
-    justifyContent: "flex-start",
-  },
-  presetCard: {
-    borderRadius: 8,
-    padding: 8,
-    aspectRatio: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  cardOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    borderRadius: 12,
-  },
-  cardContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  disabledContainer: {
-    alignItems: "center",
-  },
-  cardIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  cardTitle: {
-    fontWeight: "500",
-    fontSize: 10,
-    color: "white",
-    textAlign: "center",
-    marginBottom: 1,
-  },
-  cardPresetId: {
-    fontSize: 8,
-    color: "white",
-    textAlign: "center",
-    opacity: 0.8,
-    marginBottom: 2,
-  },
-  cardSubtitle: {
-    fontSize: 8,
-    opacity: 0.75,
-    color: "white",
-    textAlign: "center",
-  },
-  activeIndicator: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-  },
-  infoCard: {
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  infoIcon: {
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  infoSubtext: {
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  playlistGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 4,
-    justifyContent: "flex-start",
-  },
-  playlistItem: {
-    flexBasis: '22%',
-    maxWidth: '22%',
-    marginHorizontal: '1.5%',
-    marginVertical: 6,
-  },
-  playlistCard: {
-    borderRadius: 8,
-    padding: 8,
-    aspectRatio: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  playlistName: {
-    color: "white",
-    fontSize: 10,
-    textAlign: "center",
-    fontWeight: "500",
-    marginBottom: 1,
-  },
-  playlistId: {
-    color: "white",
-    fontSize: 8,
-    textAlign: "center",
-    opacity: 0.8,
-    marginBottom: 2,
-  },
-  playlistCount: {
-    color: "white",
-    fontSize: 8,
-    opacity: 0.75,
-    textAlign: "center",
-  },
-  gradientBackground: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 8,
-  },
-  gradientContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 8,
-  },
-  touchableArea: {
-    flex: 1,
-  },
-  floatingDropdown: {
-    position: "absolute",
-    bottom: 24,
-    left: 24,
-    right: 100,
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 28,
-    paddingLeft: 7,
-    paddingRight: 10,
-    zIndex: 999,
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  powerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dropdownButton: {
-    flex: 1,
-  },
-  dropdownContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  dropdownText: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-    flex: 1,
-  },
-  menuButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  dropdownOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1002,
-  },
-  dropdownModal: {
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 320,
-    maxWidth: 400,
-    maxHeight: 400, // Limit modal height to prevent overflow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  deviceScrollContainer: {
-    maxHeight: 300, // Allow for title + padding while limiting device list height
-  },
-  dropdownTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  deviceOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-  },
-  deviceInfo: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  deviceOptionText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  deviceOptionSubtext: {
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  fabContainer: {
-    position: "absolute",
-    bottom: 24,
-    right: 24,
-    alignItems: "center",
-    zIndex: 1002,
-  },
-  floatingButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  mainFabButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  miniFab: {
-    position: "absolute",
-    right: 8,
-  },
-  miniFabButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-  },
-  fabOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1001,
-  },
-  fabOptionsContainer: {
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  fabTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  fabOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-  },
-  fabOptionText: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginLeft: 12,
-  },
-  deleteOverlay: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    zIndex: 10,
-  },
-  deleteXButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#ef4444",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  deleteActionContainer: {
-    position: "absolute",
-    bottom: 24,
-    left: 24,
-    right: 24,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 16,
-    zIndex: 1000,
-  },
-  deleteActionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  deleteActionText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelButton: {
-    borderWidth: 1,
-    borderColor: "rgba(107, 114, 128, 0.3)",
-  },
-  diceButton: {
-    marginLeft: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(107, 114, 128, 0.3)",
-    elevation: 1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  deletionProgressOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1003,
-  },
-  deletionProgressModal: {
-    borderRadius: 12,
-    padding: 24,
-    minWidth: 280,
-    maxWidth: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  deletionProgressTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  deletionProgressText: {
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  deletionProgressItem: {
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: "center",
-    fontStyle: "italic",
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  randomEffectContainer: {
-    alignItems: "center",
-  },
-  randomEffectButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    overflow: "hidden",
-    minWidth: 200,
-  },
-  randomEffectButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    zIndex: 1,
-  },
-  randomEffectButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 8,
-  },
-  cooldownProgress: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: "#3b82f6",
-    opacity: 0.2,
-    zIndex: 0,
-  },
-  // Scheduler styles
-  daysContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    gap: 4,
-  },
-  dayButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 36,
-  },
-  dayButtonText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  presetInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  presetInputLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    width: 60,
-  },
-  presetInputContainer: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 6,
-    marginHorizontal: 12,
-  },
-  presetInput: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    textAlign: "center",
-  },
-  presetSelectionSubtext: {
-    fontSize: 12,
-    fontStyle: "italic",
-  },
-  currentPresetButton: {
-    width: 90,
-    height: 36,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-  timeContainer: {
-    marginBottom: 20,
-  },
-  timeRowInline: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 16,
-  },
-  timeInputGroup: {
-    flex: 1,
-    alignItems: "center",
-  },
-  timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  timeLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  timeInputContainer: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 80,
-  },
-  timeInput: {
-    fontSize: 16,
-    textAlign: "center",
-    minWidth: 50,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-    gap: 12,
-  },
-  saveButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  resetButton: {
-    backgroundColor: "#ef4444",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
-    minWidth: 100,
-  },
-  resetButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  timerStatusText: {
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "center",
   },
 });
