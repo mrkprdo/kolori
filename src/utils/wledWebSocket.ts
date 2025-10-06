@@ -103,6 +103,12 @@ class WledWebSocketManager {
               dataIndex += 3;
             }
 
+            // Include matrix dimensions in the message for persistence
+            processedData = {
+              type: "liveLedData",
+              data: colors,
+              matrixDimensions: { width, height }
+            };
           } else {
             // Legacy 1D LED strip format (GRB order)
             let bytesPerLed = 3; // Default to RGB
@@ -121,9 +127,8 @@ class WledWebSocketManager {
               });
             }
 
+            processedData = { type: "liveLedData", data: colors };
           }
-
-          processedData = { type: "liveLedData", data: colors };
         } else if (event.data instanceof Blob) {
           const arrayBuffer = await event.data.arrayBuffer();
           const byteArray = new Uint8Array(arrayBuffer);
@@ -149,6 +154,12 @@ class WledWebSocketManager {
               dataIndex += 3;
             }
 
+            // Include matrix dimensions in the message for persistence
+            processedData = {
+              type: "liveLedData",
+              data: colors,
+              matrixDimensions: { width, height }
+            };
           } else {
             // Legacy 1D LED strip format (GRB order)
             let bytesPerLed = 3;
@@ -166,9 +177,8 @@ class WledWebSocketManager {
               });
             }
 
+            processedData = { type: "liveLedData", data: colors };
           }
-
-          processedData = { type: "liveLedData", data: colors };
         } else if (typeof event.data === "string") {
           const jsonData = JSON.parse(event.data);
 

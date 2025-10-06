@@ -9,6 +9,7 @@ interface LEDVisualizationProps {
   containerWidth?: number; // Optional override for container width
   showLedCount?: boolean;
   wledInfo?: any; // WLED device info containing matrix dimensions
+  brightness?: number; // Brightness value 0-255 to apply dimming effect
 }
 
 // Function to detect if WLED supports 2D matrix and extract dimensions + mapping info
@@ -100,8 +101,12 @@ function LEDVisualization({
   liveViewLedSize = 'normal',
   containerWidth,
   showLedCount = true,
-  wledInfo
+  wledInfo,
+  brightness = 255
 }: LEDVisualizationProps) {
+
+  // Calculate brightness opacity (0-255 → 0-1)
+  const brightnessOpacity = useMemo(() => brightness / 255, [brightness]);
 
   // Detect matrix early to override size settings
   const earlyMatrixDetection = detect2DMatrix(wledInfo);
@@ -303,7 +308,8 @@ function LEDVisualization({
               borderRadius: layout.ledSize <= 6 ? 2 : Math.min(layout.ledSize / 3, 4), // Simplified border radius calculation
               backgroundColor: isOff ? '#1e1e1e' : `rgb(${r}, ${g}, ${b})`,
               // Remove expensive shadow effects for performance
-              opacity: isActive ? 1 : 0.8,
+              // Apply brightness-based opacity masking only to active LEDs
+              opacity: isOff ? 0.8 : (isActive ? brightnessOpacity : 0.8 * brightnessOpacity),
             }
           ]}
         >
@@ -318,13 +324,14 @@ function LEDVisualization({
                 height: 2,
                 width: 2,
                 backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                opacity: brightnessOpacity, // Also dim the highlight
               }}
             />
           )}
         </View>
       );
     };
-  }, [layout]);
+  }, [layout, brightnessOpacity]);
   
   // Throttle LED updates to reduce render frequency
   const throttledLedData = useMemo(() => {
@@ -474,6 +481,7 @@ export default React.memo(LEDVisualization, (prevProps, nextProps) => {
       prevProps.subtextColor === nextProps.subtextColor &&
       prevProps.containerWidth === nextProps.containerWidth &&
       prevProps.showLedCount === nextProps.showLedCount &&
+      prevProps.brightness === nextProps.brightness &&
       JSON.stringify(prevProps.wledInfo) === JSON.stringify(nextProps.wledInfo)
       // liveViewLedSize is IGNORED for 2D matrices
     );

@@ -359,7 +359,7 @@ export default function SchedulerModal({
     sectionTitle: {
       fontSize: 14,
       fontWeight: '600',
-      marginBottom: 12,
+      marginBottom: 0,
       color: isDark ? '#f3f4f6' : '#111827',
     },
     daysContainer: {
@@ -510,224 +510,373 @@ export default function SchedulerModal({
         <ScrollView contentContainerStyle={styles.contentContainer}>
           {/* Timer Status Info */}
           <View style={styles.statusCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                <Text style={{ fontSize: 16 }}>
-                  {isLoadingTimerSettings ? '⏳' : schedulerEnabled ? '✅' : '⏱️'}
-                </Text>
-                <Text
-                  style={[
-                    styles.statusTitle,
-                    {
-                      color: isLoadingTimerSettings
-                        ? isDark ? '#fbbf24' : '#f59e0b'
-                        : schedulerEnabled
-                        ? isDark
-                          ? '#10b981'
-                          : '#059669'
-                        : isDark
-                        ? '#9ca3af'
-                        : '#6b7280',
-                    },
-                  ]}
-                >
-                  {isLoadingTimerSettings
-                    ? 'Loading Timer Settings...'
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: schedulerEnabled ? 12 : 0 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: isLoadingTimerSettings
+                    ? isDark ? '#fbbf2420' : '#f59e0b20'
                     : schedulerEnabled
-                    ? 'Schedule Active'
-                    : 'No Schedule Set'}
-                </Text>
+                    ? isDark ? '#10b98120' : '#05966920'
+                    : isDark ? '#4b5563' : '#f3f4f6',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Ionicons
+                    name={isLoadingTimerSettings ? 'hourglass-outline' : schedulerEnabled ? 'checkmark-circle' : 'time-outline'}
+                    size={24}
+                    color={isLoadingTimerSettings
+                      ? isDark ? '#fbbf24' : '#f59e0b'
+                      : schedulerEnabled
+                      ? isDark ? '#10b981' : '#059669'
+                      : isDark ? '#9ca3af' : '#6b7280'}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.statusTitle,
+                      {
+                        color: isLoadingTimerSettings
+                          ? isDark ? '#fbbf24' : '#f59e0b'
+                          : schedulerEnabled
+                          ? isDark ? '#10b981' : '#059669'
+                          : isDark ? '#f3f4f6' : '#111827',
+                        marginBottom: 2,
+                      },
+                    ]}
+                  >
+                    {isLoadingTimerSettings
+                      ? 'Loading...'
+                      : schedulerEnabled
+                      ? 'Schedule Active'
+                      : 'No Schedule Set'}
+                  </Text>
+                  {!isLoadingTimerSettings && (
+                    <Text style={{
+                      fontSize: 12,
+                      color: isDark ? '#9ca3af' : '#6b7280',
+                    }}>
+                      {schedulerEnabled ? 'Timer is configured' : 'Configure your schedule below'}
+                    </Text>
+                  )}
+                </View>
               </View>
               <TouchableOpacity
                 onPress={loadTimerSettings}
-                style={[
-                  styles.activePresetButton,
-                  {
-                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                    borderColor: isDark ? '#6b7280' : '#d1d5db',
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    minWidth: 0,
-                  },
-                ]}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: (!activeDevice?.ip || !activeDevice?.isConnected || isLoadingTimerSettings) ? 0.5 : 1,
+                }}
                 disabled={!activeDevice?.ip || !activeDevice?.isConnected || isLoadingTimerSettings}
               >
                 <Ionicons
                   name="refresh-outline"
-                  size={16}
-                  color={
-                    !activeDevice?.ip || !activeDevice?.isConnected || isLoadingTimerSettings
-                      ? isDark ? '#6b7280' : '#9ca3af'
-                      : isDark ? '#d1d5db' : '#374151'
-                  }
+                  size={18}
+                  color={isDark ? '#d1d5db' : '#374151'}
                 />
               </TouchableOpacity>
             </View>
             {schedulerEnabled && configuredSchedule && (
-              <Text
-                style={[
-                  styles.statusText,
-                  {
-                    color: isDark ? '#d1d5db' : '#4b5563',
-                    textAlign: 'center',
-                    fontSize: 11,
-                    lineHeight: 14,
-                  },
-                ]}
-              >
-                💡 ON {configuredSchedule.onTime} • ⚫ OFF {configuredSchedule.offTime} • 🎨 #{configuredSchedule.presetId}
-              </Text>
+              <View style={{
+                flexDirection: 'row',
+                gap: 8,
+                paddingTop: 12,
+                borderTopWidth: 1,
+                borderTopColor: isDark ? '#374151' : '#e5e7eb',
+              }}>
+                <View style={{
+                  flex: 1,
+                  padding: 8,
+                  borderRadius: 8,
+                  backgroundColor: isDark ? '#10b98110' : '#05966910',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#10b98130' : '#05966930',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <Ionicons name="sunny" size={14} color={isDark ? '#10b981' : '#059669'} />
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#10b981' : '#059669' }}>
+                      Turn ON
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#f3f4f6' : '#111827' }}>
+                    {configuredSchedule.onTime}
+                  </Text>
+                </View>
+                <View style={{
+                  flex: 1,
+                  padding: 8,
+                  borderRadius: 8,
+                  backgroundColor: isDark ? '#6b728010' : '#9ca3af10',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#6b728030' : '#9ca3af30',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <Ionicons name="moon" size={14} color={isDark ? '#9ca3af' : '#6b7280'} />
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                      Turn OFF
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#f3f4f6' : '#111827' }}>
+                    {configuredSchedule.offTime}
+                  </Text>
+                </View>
+                <View style={{
+                  flex: 1,
+                  padding: 8,
+                  borderRadius: 8,
+                  backgroundColor: isDark ? '#3b82f610' : '#3b82f610',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#3b82f630' : '#3b82f630',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <Ionicons name="sparkles" size={14} color="#3b82f6" />
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#3b82f6' }}>
+                      Preset
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#f3f4f6' : '#111827' }}>
+                    #{configuredSchedule.presetId}
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
 
           {/* Days Selection & Settings Card */}
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Select Days</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Select Days</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedDays.size === 7) {
+                    setSelectedDays(new Set());
+                  } else {
+                    setSelectedDays(new Set([0, 1, 2, 3, 4, 5, 6]));
+                  }
+                }}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                  {selectedDays.size === 7 ? 'Clear All' : 'Select All'}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.daysContainer}>
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                <TouchableOpacity
-                  key={day}
-                  onPress={() => {
-                    const newSelectedDays = new Set(selectedDays);
-                    if (selectedDays.has(index)) {
-                      newSelectedDays.delete(index);
-                    } else {
-                      newSelectedDays.add(index);
-                    }
-                    setSelectedDays(newSelectedDays);
-                  }}
-                  style={[
-                    styles.dayButton,
-                    {
-                      backgroundColor: selectedDays.has(index)
-                        ? '#3b82f6'
-                        : isDark
-                        ? '#4b5563'
-                        : '#e5e7eb',
-                      borderColor: isDark ? '#6b7280' : '#d1d5db',
-                    },
-                  ]}
-                >
-                  <Text
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+                const isSelected = selectedDays.has(index);
+                return (
+                  <TouchableOpacity
+                    key={day}
+                    onPress={() => {
+                      const newSelectedDays = new Set(selectedDays);
+                      if (selectedDays.has(index)) {
+                        newSelectedDays.delete(index);
+                      } else {
+                        newSelectedDays.add(index);
+                      }
+                      setSelectedDays(newSelectedDays);
+                    }}
                     style={[
-                      styles.dayButtonText,
+                      styles.dayButton,
                       {
-                        color: selectedDays.has(index)
-                          ? '#ffffff'
+                        backgroundColor: isSelected
+                          ? '#3b82f6'
                           : isDark
-                          ? '#9ca3af'
-                          : '#6b7280',
+                          ? '#374151'
+                          : '#f9fafb',
+                        borderColor: isSelected ? '#3b82f6' : isDark ? '#4b5563' : '#d1d5db',
+                        borderWidth: 2,
+                        transform: [{ scale: isSelected ? 1.05 : 1 }],
                       },
                     ]}
                   >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    {isSelected && (
+                      <View style={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -4,
+                        width: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        backgroundColor: '#10b981',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 2,
+                        borderColor: isDark ? '#1f2937' : '#ffffff',
+                      }}>
+                        <Ionicons name="checkmark" size={10} color="white" />
+                      </View>
+                    )}
+                    <Text
+                      style={[
+                        styles.dayButtonText,
+                        {
+                          color: isSelected
+                            ? '#ffffff'
+                            : isDark
+                            ? '#9ca3af'
+                            : '#6b7280',
+                          fontWeight: isSelected ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* Preset Selection */}
             <Text style={styles.sectionTitle}>Preset to Schedule</Text>
-            <View style={styles.presetRow}>
-              <Text style={styles.label}>Preset ID</Text>
-              <View
-                style={[
-                  styles.presetInputContainer,
-                  {
-                    backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                    borderColor: isDark ? '#6b7280' : '#d1d5db',
-                  },
-                ]}
-              >
-                <TextInput
-                  style={[styles.presetInput, { color: textColor }]}
-                  value={targetPresetId.toString()}
-                  onChangeText={(text) => {
-                    if (text === '') return;
-                    const id = parseInt(text);
-                    if (!isNaN(id) && id >= 1 && id <= 250) {
-                      setTargetPresetId(id);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (targetPresetId < 1 || targetPresetId > 250) {
-                      setTargetPresetId(1);
-                    }
-                  }}
-                  placeholder="1-250"
-                  placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
-                  keyboardType="numeric"
-                  maxLength={3}
-                  selectTextOnFocus={true}
-                />
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.activePresetButton,
-                  {
-                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                    borderColor: isDark ? '#6b7280' : '#d1d5db',
-                  },
-                ]}
-                onPress={async () => {
-                  if (!activeDevice?.ip) return;
-                  try {
-                    const result = await fetchWledCurrentPreset(
-                      activeDevice.ip,
-                      activeDevice.protocol || 'http'
-                    );
-                    if (result.success && result.presetId) {
-                      setTargetPresetId(result.presetId);
-                      logger.log(`📌 Set target preset to current active: ${result.presetId}`);
-                    } else {
-                      Alert.alert('Info', result.message || 'No active preset found');
-                    }
-                  } catch (error: any) {
-                    Alert.alert('Error', 'Failed to fetch current preset');
-                    logger.error('❌ Failed to fetch current preset:', error);
-                  }
-                }}
-                disabled={!activeDevice?.ip || !activeDevice?.isConnected}
-              >
-                <Text
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: isDark ? '#3b82f620' : '#3b82f620',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Ionicons name="sparkles" size={16} color="#3b82f6" />
+                </View>
+                <Text style={[styles.label, { minWidth: 'auto', fontWeight: '600' }]}>Preset ID</Text>
+                <View
                   style={{
-                    fontSize: 12,
-                    fontWeight: '600',
-                    color:
-                      !activeDevice?.ip || !activeDevice?.isConnected
-                        ? isDark
-                          ? '#6b7280'
-                          : '#9ca3af'
-                        : isDark
-                        ? '#d1d5db'
-                        : '#374151',
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
                   }}
                 >
-                  Active Preset
-                </Text>
-              </TouchableOpacity>
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: isDark ? '#4b5563' : '#ffffff',
+                      borderColor: '#3b82f6',
+                      borderWidth: 2,
+                      borderRadius: 8,
+                      height: 38,
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <TextInput
+                      style={[styles.presetInput, { color: textColor, fontSize: 15, fontWeight: '600' }]}
+                      value={targetPresetId.toString()}
+                      onChangeText={(text) => {
+                        if (text === '') return;
+                        const id = parseInt(text);
+                        if (!isNaN(id) && id >= 1 && id <= 250) {
+                          setTargetPresetId(id);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (targetPresetId < 1 || targetPresetId > 250) {
+                          setTargetPresetId(1);
+                        }
+                      }}
+                      placeholder="1-250"
+                      placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                      keyboardType="numeric"
+                      maxLength={3}
+                      selectTextOnFocus={true}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingHorizontal: 12,
+                      height: 38,
+                      borderRadius: 8,
+                      backgroundColor: '#3b82f6',
+                      borderWidth: 1,
+                      borderColor: '#3b82f6',
+                      opacity: (!activeDevice?.ip || !activeDevice?.isConnected) ? 0.5 : 1,
+                    }}
+                    onPress={async () => {
+                      if (!activeDevice?.ip) return;
+                      try {
+                        const result = await fetchWledCurrentPreset(
+                          activeDevice.ip,
+                          activeDevice.protocol || 'http'
+                        );
+                        if (result.success && result.presetId) {
+                          setTargetPresetId(result.presetId);
+                          logger.log(`📌 Set target preset to current active: ${result.presetId}`);
+                        } else {
+                          Alert.alert('Info', result.message || 'No active preset found');
+                        }
+                      } catch (error: any) {
+                        Alert.alert('Error', 'Failed to fetch current preset');
+                        logger.error('❌ Failed to fetch current preset:', error);
+                      }
+                    }}
+                    disabled={!activeDevice?.ip || !activeDevice?.isConnected}
+                  >
+                    <Ionicons name="download-outline" size={14} color="white" />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '600',
+                        color: 'white',
+                      }}
+                    >
+                      Use Active Preset
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <Text style={[styles.subtext, { marginBottom: 0 }]}>
+                Enter preset/playlist ID (1-250) or use currently active preset
+              </Text>
             </View>
-            <Text style={styles.subtext}>
-              Enter the preset/playlist ID (1-250) to schedule
-            </Text>
 
             {/* Time Settings */}
             <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Schedule Times</Text>
             <View style={styles.timeContainer}>
               <View style={styles.timeRow}>
                 <View style={styles.timeGroup}>
-                  <Text style={styles.label}>Turn On</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <View style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: isDark ? '#10b98120' : '#05966920',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Ionicons name="sunny" size={16} color={isDark ? '#10b981' : '#059669'} />
+                    </View>
+                    <Text style={[styles.label, { minWidth: 'auto', fontWeight: '600' }]}>Turn On</Text>
+                  </View>
                   <View
                     style={[
                       styles.timeInputContainer,
                       {
                         backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                        borderColor: isDark ? '#6b7280' : '#d1d5db',
+                        borderColor: isDark ? '#10b981' : '#059669',
+                        borderWidth: 2,
                       },
                     ]}
                   >
                     <TextInput
-                      style={[styles.timeInput, { color: textColor }]}
+                      style={[styles.timeInput, { color: textColor, fontSize: 18, fontWeight: '600' }]}
                       value={turnOnTime}
                       onChangeText={(text) => {
                         handleTimeInput(text, setTurnOnTime);
@@ -741,18 +890,31 @@ export default function SchedulerModal({
                 </View>
 
                 <View style={styles.timeGroup}>
-                  <Text style={styles.label}>Turn Off</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <View style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: isDark ? '#6b728020' : '#9ca3af20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Ionicons name="moon" size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+                    </View>
+                    <Text style={[styles.label, { minWidth: 'auto', fontWeight: '600' }]}>Turn Off</Text>
+                  </View>
                   <View
                     style={[
                       styles.timeInputContainer,
                       {
                         backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                        borderColor: isDark ? '#6b7280' : '#d1d5db',
+                        borderColor: isDark ? '#6b7280' : '#9ca3af',
+                        borderWidth: 2,
                       },
                     ]}
                   >
                     <TextInput
-                      style={[styles.timeInput, { color: textColor }]}
+                      style={[styles.timeInput, { color: textColor, fontSize: 18, fontWeight: '600' }]}
                       value={turnOffTime}
                       onChangeText={(text) => {
                         handleTimeInput(text, setTurnOffTime);
