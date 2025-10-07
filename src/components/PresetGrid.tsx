@@ -1635,7 +1635,7 @@ export default function PresetGrid({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
-        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           const offsetX = e.nativeEvent.contentOffset.x;
           const { width } = Dimensions.get('window');
           const page = Math.round(offsetX / width);
@@ -2157,7 +2157,7 @@ const styles = StyleSheet.create({
   },
   pageIndicatorContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 6,
     zIndex: 5,
   },
   pageIndicators: {

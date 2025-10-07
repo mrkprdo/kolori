@@ -355,6 +355,21 @@ export const liveViewStyles = StyleSheet.create({
     height: 40,
     marginLeft: 12,
   },
+
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+
+  warningText: {
+    fontSize: 12,
+    flex: 1,
+  },
 });
 
 // Export common patterns for reuse

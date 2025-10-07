@@ -91,45 +91,45 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
               ))}
             </View>
           ) : (
-            customEffectsCount === 0 && (
-              <View
+            <View
+              style={{
+                backgroundColor: cardBackground,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: borderColor,
+                padding: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons
+                name="play-outline"
+                size={24}
+                color={subtextColor}
+                style={{ marginBottom: 8 }}
+              />
+              <Text
                 style={{
-                  backgroundColor: cardBackground,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: borderColor,
-                  padding: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  fontSize: 14,
+                  color: textColor,
+                  textAlign: 'center',
                 }}
               >
-                <Ionicons
-                  name="play-outline"
-                  size={24}
-                  color={subtextColor}
-                  style={{ marginBottom: 8 }}
-                />
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: textColor,
-                    textAlign: 'center',
-                  }}
-                >
-                  No playlists saved yet
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: subtextColor,
-                    marginTop: 4,
-                    textAlign: 'center',
-                  }}
-                >
-                  Create custom effects first to build playlists
-                </Text>
-              </View>
-            )
+                No playlists saved yet
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: subtextColor,
+                  marginTop: 4,
+                  textAlign: 'center',
+                }}
+              >
+                {customEffectsCount === 0
+                  ? 'Create custom effects first to build playlists'
+                  : 'Tap + to create a playlist from your custom effects'}
+              </Text>
+            </View>
           )}
         </View>
       )}
