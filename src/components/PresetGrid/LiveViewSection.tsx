@@ -140,23 +140,24 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
           </Text>
         </View>
 
-        {/* Toggle Switch */}
+        {/* Toggle Button */}
         <TouchableOpacity
           onPress={onLiveViewToggle}
           style={[
-            styles.toggleSwitch,
-            { backgroundColor: liveViewEnabled ? '#3b82f6' : borderColor },
+            styles.toggleButton,
+            {
+              backgroundColor: liveViewEnabled ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
+            },
           ]}
         >
-          <View
-            style={[
-              styles.toggleThumb,
-              {
-                backgroundColor: '#ffffff',
-                marginLeft: liveViewEnabled ? 22 : 2,
-              },
-            ]}
+          <Ionicons
+            name={liveViewEnabled ? 'eye' : 'eye-off'}
+            size={18}
+            color={liveViewEnabled ? '#ffffff' : textColor}
           />
+          <Text style={[styles.toggleText, { color: liveViewEnabled ? '#ffffff' : textColor }]}>
+            {liveViewEnabled ? 'Active' : 'Start'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -265,6 +266,16 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
                     : 'Waiting for LED data...'}
                 </Text>
 
+                {/* Performance Warning */}
+                {!liveViewEnabled && isConnected && (
+                  <View style={[styles.warningContainer, { backgroundColor: isDark ? '#422006' : '#fef3c7' }]}>
+                    <Ionicons name="warning" size={14} color={isDark ? '#fbbf24' : '#d97706'} />
+                    <Text style={[styles.warningText, { color: isDark ? '#fbbf24' : '#92400e' }]}>
+                      Activating live view may affect WLED performance
+                    </Text>
+                  </View>
+                )}
+
                 {/* LED Info */}
                 {isConnected && ledCount && (
                   <View style={styles.ledInfoContainer}>
@@ -293,4 +304,18 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   );
 };
 
-export default LiveViewSection;
+export default React.memo(LiveViewSection, (prevProps, nextProps) => {
+  // Only re-render if relevant props change (prevent re-renders from liveLedData updates when not enabled)
+  if (!nextProps.liveViewEnabled && !prevProps.liveViewEnabled) {
+    // When disabled, ignore liveLedData changes
+    return (
+      prevProps.activeDevice?.ip === nextProps.activeDevice?.ip &&
+      prevProps.liveViewEnabled === nextProps.liveViewEnabled &&
+      prevProps.sliderBrightness === nextProps.sliderBrightness &&
+      prevProps.isDark === nextProps.isDark
+    );
+  }
+
+  // When enabled, use default shallow comparison
+  return false;
+});

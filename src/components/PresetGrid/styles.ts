@@ -140,9 +140,15 @@ export const deviceSelectionStyles = StyleSheet.create({
 
   dropdownButton: {
     flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
 
-  dropdownContent: FLEX_ROW_CENTER,
+  dropdownContent: {
+    ...FLEX_ROW_CENTER,
+    minHeight: 44, // Better touch target
+  },
 
   statusDot: {
     width: 8,
@@ -196,9 +202,10 @@ export const deviceSelectionStyles = StyleSheet.create({
 
   deviceOption: {
     ...FLEX_ROW_CENTER,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
+    minHeight: 64, // Better touch target
   },
 
   deviceInfo: {
@@ -225,17 +232,18 @@ export const deviceSelectionStyles = StyleSheet.create({
 
 // LiveViewSection specific styles
 export const liveViewStyles = StyleSheet.create({
-  toggleSwitch: {
-    width: 48,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    gap: 6,
   },
 
-  toggleThumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   innerCard: {

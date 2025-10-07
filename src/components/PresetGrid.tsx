@@ -18,6 +18,9 @@ import {
   BackHandler,
   ToastAndroid,
   Platform,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { logger } from "../utils/logger";
@@ -51,10 +54,12 @@ import LiveViewSection from "./PresetGrid/LiveViewSection";
 import SeasonalPresetsSection from "./PresetGrid/SeasonalPresetsSection";
 import CustomEffectsSection from "./PresetGrid/CustomEffectsSection";
 import PlaylistsSection from "./PresetGrid/PlaylistsSection";
+import AudioReactiveSection from "./PresetGrid/AudioReactiveSection";
 import PresetCard from "./PresetGrid/PresetCard";
 import MemoizedPresetCard from "./PresetGrid/MemoizedPresetCard";
 import { fabStyles } from "./PresetGrid/FABStyles";
 import { deleteModeStyles } from "./PresetGrid/DeleteModeStyles";
+import { sharedStyles } from "./PresetGrid/styles";
 
 interface PresetGridProps {
   activePreset: string | number | null;
@@ -150,6 +155,7 @@ export default function PresetGrid({
   updateChildModalState,
   onDeviceUpdate,
 }: PresetGridProps) {
+  const [currentPage, setCurrentPage] = useState(0); // 0 = Presets, 1 = Audio Reactive
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] =
     useState(true);
@@ -200,6 +206,9 @@ export default function PresetGrid({
   );
   const [isFetchingBrightness, setIsFetchingBrightness] = useState(false);
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(0);
+
+  // Ref for horizontal scroll view
+  const horizontalScrollRef = useRef<ScrollView>(null);
 
   // Function to fetch brightness from device
   const fetchDeviceBrightness = useCallback(async () => {
@@ -1574,22 +1583,82 @@ export default function PresetGrid({
         />
       </View>
 
-      {/* Scrollable Content */}
+      {/* Page Indicators */}
+      <View style={styles.pageIndicatorContainer}>
+        <View style={styles.pageIndicators}>
+          <TouchableOpacity
+            onPress={() => {
+              // Scroll to presets page
+              const scrollView = horizontalScrollRef.current;
+              if (scrollView) {
+                scrollView.scrollTo({ x: 0, animated: true });
+              }
+            }}
+            style={styles.pageIndicatorButton}
+          >
+            <View style={[
+              styles.pageIndicatorDot,
+              currentPage === 0 && styles.pageIndicatorDotActive,
+              { backgroundColor: currentPage === 0 ? '#3b82f6' : (isDark ? '#6b7280' : '#d1d5db') }
+            ]} />
+            <Text style={[styles.pageIndicatorLabel, { color: currentPage === 0 ? textColor : subtextColor }]}>
+              Presets
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              // Scroll to audio reactive page
+              const scrollView = horizontalScrollRef.current;
+              if (scrollView) {
+                const { width } = Dimensions.get('window');
+                scrollView.scrollTo({ x: width, animated: true });
+              }
+            }}
+            style={styles.pageIndicatorButton}
+          >
+            <View style={[
+              styles.pageIndicatorDot,
+              currentPage === 1 && styles.pageIndicatorDotActive,
+              { backgroundColor: currentPage === 1 ? '#3b82f6' : (isDark ? '#6b7280' : '#d1d5db') }
+            ]} />
+            <Text style={[styles.pageIndicatorLabel, { color: currentPage === 1 ? textColor : subtextColor }]}>
+              Audio
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Horizontal Scrollable Pages */}
       <ScrollView
-        style={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={textColor}
-            colors={["#3b82f6"]}
-            progressBackgroundColor={cardBackground}
-          />
-        }
+        ref={horizontalScrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+          const offsetX = e.nativeEvent.contentOffset.x;
+          const { width } = Dimensions.get('window');
+          const page = Math.round(offsetX / width);
+          setCurrentPage(page);
+        }}
+        style={styles.horizontalScrollView}
       >
+        {/* Page 1: Presets */}
+        <ScrollView
+          style={[styles.scrollContainer, { width: Dimensions.get('window').width }]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={textColor}
+              colors={["#3b82f6"]}
+              progressBackgroundColor={cardBackground}
+            />
+          }
+        >
         {/* Seasonal Presets */}
         <SeasonalPresetsSection
           seasonalPresets={seasonalPresets}
@@ -1646,6 +1715,25 @@ export default function PresetGrid({
           onPlaylistSelect={onPlaylistSelect}
           onToggleSelection={toggleCardSelection}
         />
+        </ScrollView>
+
+        {/* Page 2: Audio Reactive */}
+        <ScrollView
+          style={[styles.scrollContainer, { width: Dimensions.get('window').width }]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <AudioReactiveSection
+            isDark={isDark}
+            cardBackground={cardBackground}
+            borderColor={borderColor}
+            textColor={textColor}
+            subtextColor={subtextColor}
+            onBrightnessChange={onBrightnessChange}
+            activeDeviceIp={activeDevice?.ip}
+          />
+        </ScrollView>
 
       </ScrollView>
 
@@ -2066,6 +2154,41 @@ const styles = StyleSheet.create({
     elevation: 4,
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  pageIndicatorContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 5,
+  },
+  pageIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 24,
+  },
+  pageIndicatorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  pageIndicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  pageIndicatorDotActive: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  pageIndicatorLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  horizontalScrollView: {
+    flex: 1,
   },
   scrollContainer: {
     flex: 1,
