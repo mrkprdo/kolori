@@ -421,15 +421,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
           <View style={styles.infoContainer}>
             <Ionicons name="information-circle" size={20} color={subtextColor} />
             <Text style={[styles.infoText, { color: subtextColor }]}>
-              Tap "Start" to enable audio reactive effects.{'\n'}
-              Your microphone will analyze music in real-time and control your LEDs directly.{'\n\n'}
-              <Text style={{ fontWeight: '600' }}>How it works:{'\n'}</Text>
-              • Audio is analyzed on your phone{'\n'}
-              • LED colors are sent via UDP Realtime{'\n'}
-              • Effect runs independently of WLED presets{'\n\n'}
-              <Text style={{ fontWeight: '600', color: activeDeviceIp ? '#10b981' : '#ef4444' }}>
-                Device: {activeDeviceIp || 'Not connected'}
-              </Text>
+              Analyze audio in real-time and control LEDs directly via UDP.
             </Text>
           </View>
         )}
