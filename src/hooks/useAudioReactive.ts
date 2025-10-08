@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform, PermissionsAndroid } from 'react-native';
-import LiveAudioStream from 'react-native-live-audio-fft';
 import {
   createMelFilterbank,
   applyMelFilterbank,
@@ -11,6 +10,16 @@ import {
 } from '../utils/audioProcessing';
 import { decodePCM, applyHannWindow, fft as performFFT } from '../utils/fft';
 import { logger } from '../utils/logger';
+
+// Try to import LiveAudioStream, but don't crash if it's not available
+let LiveAudioStream: any = null;
+try {
+  LiveAudioStream = require('react-native-live-audio-fft').default;
+  logger.log('✅ LiveAudioStream module loaded successfully');
+} catch (err) {
+  logger.warn('⚠️ LiveAudioStream module not available');
+  logger.warn('   Audio reactive features will show a warning message');
+}
 
 export interface AudioReactiveConfig {
   numMelBands: number;       // Number of mel frequency bands (e.g., 16, 32)
@@ -47,6 +56,8 @@ const DEFAULT_CONFIG: AudioReactiveConfig = {
  * Hook for audio reactive LED control using FFT and mel filterbank
  *
  * Based on LedFx's audio processing algorithm
+ *
+ * Automatically falls back to Expo Audio if native module is unavailable
  */
 export function useAudioReactive(
   initialConfig: Partial<AudioReactiveConfig> = {}
@@ -185,6 +196,15 @@ export function useAudioReactive(
   // Start audio capture
   const startAudioCapture = useCallback(async (): Promise<boolean> => {
     try {
+      // Check if LiveAudioStream module is available
+      if (!LiveAudioStream || typeof LiveAudioStream.init !== 'function') {
+        const errorMsg = 'Native audio module not available.\n\nTo enable real microphone input:\n1. Run: npx expo prebuild\n2. Run: npx expo run:ios\n\nThis will eject from Expo managed workflow and enable the native audio module.';
+        logger.error('🎵 ' + errorMsg);
+        setError(errorMsg);
+        setIsRecording(false);
+        return false;
+      }
+
       logger.log('🎤 Requesting audio permissions...');
       const permissionStart = Date.now();
 
@@ -209,15 +229,20 @@ export function useAudioReactive(
       logger.log('🔄 Initializing audio stream...');
       const initStart = Date.now();
 
-      // Initialize audio stream
-      LiveAudioStream.init({
-        sampleRate: config.sampleRate,
-        bufferSize: config.fftSize,
-        channels: 1,
-        bitsPerSample: 16,
-        audioSource: 1, // MIC (1) for music - better frequency response than VOICE_RECOGNITION (6)
-        wavFile: '', // No file recording
-      });
+      // Initialize audio stream with error handling
+      try {
+        LiveAudioStream.init({
+          sampleRate: config.sampleRate,
+          bufferSize: config.fftSize,
+          channels: 1,
+          bitsPerSample: 16,
+          audioSource: 1, // MIC (1) for music - better frequency response than VOICE_RECOGNITION (6)
+          wavFile: '', // No file recording
+        });
+      } catch (initError) {
+        logger.error('🎵 LiveAudioStream.init failed:', initError);
+        throw new Error(`Audio initialization failed: ${initError instanceof Error ? initError.message : 'Unknown error'}`);
+      }
 
       logger.log(`✅ Audio init took ${Date.now() - initStart}ms`);
 
@@ -239,7 +264,8 @@ export function useAudioReactive(
       return true;
     } catch (err) {
       logger.error('🎵 Error starting audio capture:', err);
-      setError('Failed to start audio capture');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start audio capture';
+      setError(errorMessage);
       setIsRecording(false);
       return false;
     }

@@ -39,7 +39,6 @@ function getRealtimeSocket() {
       socketReady = false;
 
       realtimeSocket.bind(0, () => {
-        logger.log('🎨 UDP realtime socket bound and ready');
         socketReady = true;
       });
 
@@ -218,6 +217,8 @@ export function sendRealtimeToWLED(
   try {
     const socket = getRealtimeSocket();
     if (!socket) {
+      logger.error('Failed to get realtime socket');
+      packetsDropped++;
       return;
     }
 
@@ -276,6 +277,7 @@ export function sendRealtimeToWLED(
       (err: any) => {
         if (err) {
           packetsDropped++;
+          logger.error(`❌ UDP send failed to ${deviceIp}:${WLED_REALTIME_PORT}:`, err);
         } else {
           packetsSent++;
         }
@@ -290,7 +292,11 @@ export function sendRealtimeToWLED(
  * Get packet statistics
  */
 export function getRealtimePacketStats(): { sent: number; dropped: number } {
-  return { sent: packetsSent, dropped: packetsDropped };
+  // Return a deep copy of primitive values to prevent reference issues
+  return {
+    sent: Number(packetsSent),
+    dropped: Number(packetsDropped)
+  };
 }
 
 /**
@@ -306,7 +312,6 @@ export function resetRealtimePacketStats(): void {
  */
 export function resetRealtimeState(): void {
   previousLedColors = [];
-  logger.log('🔄 LED smoothing state reset');
 }
 
 /**
@@ -314,11 +319,6 @@ export function resetRealtimeState(): void {
  */
 export function setTestMode(enabled: boolean): void {
   testMode = enabled;
-  if (enabled) {
-    logger.log('🧪 Test pattern mode enabled (16 LEDs: 0-3 Red, 4-7 Blue, 8-11 Green, 12-15 Pink)');
-  } else {
-    logger.log('🎵 Test pattern mode disabled');
-  }
 }
 
 /**
@@ -333,27 +333,21 @@ export function sendTestPatternOnce(deviceIp: string, numLeds: number): void {
       mid: 0.6,
       treble: 0.4,
       volume: 0.6,
+      beat: 0,
+      energy: 0.6,
+      spectrum: []
     };
 
     // Create fake mel spectrum with gradient (simulates full spectrum)
     const testMelSpectrum: number[] = [];
     for (let i = 0; i < 32; i++) {
-      // Gradient from 0.8 (bass) to 0.3 (treble)
       testMelSpectrum.push(0.8 - (i / 32) * 0.5);
     }
 
-    logger.log('🧪 Test: Sending spectrum gradient pattern (bass=red→orange, mid=green, treble=blue)');
-
     // Use the SAME function as audio reactive
-    sendRealtimeToWLED(
-      deviceIp,
-      testAudioFeatures,
-      testMelSpectrum,
-      numLeds,
-      'spectrum' // Use spectrum effect to show full gradient
-    );
+    sendRealtimeToWLED(deviceIp, testAudioFeatures, testMelSpectrum, numLeds, 'spectrum');
   } catch (error) {
-    logger.error('Error sending test:', error);
+    logger.error('Error sending test pattern:', error);
   }
 }
 
@@ -363,10 +357,7 @@ export function sendTestPatternOnce(deviceIp: string, numLeds: number): void {
 export function turnOffAllLEDs(deviceIp: string, numLeds: number): void {
   try {
     const socket = getRealtimeSocket();
-    if (!socket || !isSocketReady()) {
-      logger.warn('Socket not ready to send turn-off packet');
-      return;
-    }
+    if (!socket || !isSocketReady()) return;
 
     // Build DRGB packet with all LEDs = black
     const packetSize = 2 + (numLeds * 3);
@@ -395,8 +386,6 @@ export function turnOffAllLEDs(deviceIp: string, numLeds: number): void {
       (err: any) => {
         if (err) {
           logger.error('Failed to send turn-off packet:', err);
-        } else {
-          logger.log('✅ All LEDs turned off');
         }
       }
     );
@@ -416,7 +405,8 @@ export function closeRealtimeSocket(): void {
       socketReady = false;
       previousLedColors = []; // Reset smoothing on close
       logger.log(`🎨 UDP realtime socket closed (Sent: ${packetsSent}, Dropped: ${packetsDropped})`);
-      resetRealtimePacketStats();
+      // Don't reset stats here - let them persist for UI to display
+      // Stats will be reset when starting a new session
     } catch (error) {
       logger.error('Error closing realtime socket:', error);
     }

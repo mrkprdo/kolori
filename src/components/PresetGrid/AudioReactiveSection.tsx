@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sharedStyles } from './styles';
 import { useAudioReactive } from '../../hooks/useAudioReactive';
 import AudioVisualizer from '../AudioVisualizer';
-import { audioToBrightness } from '../../utils/audioProcessing';
-import { sendRealtimeToWLED, closeRealtimeSocket, getRealtimePacketStats, resetRealtimeState, sendTestPatternOnce, turnOffAllLEDs } from '../../utils/wledUdpRealtime';
+import { sendRealtimeToWLED, closeRealtimeSocket, getRealtimePacketStats, resetRealtimePacketStats, resetRealtimeState, sendTestPatternOnce, turnOffAllLEDs } from '../../utils/wledUdpRealtime';
 import { checkWLEDAudioReactiveConfig, WLEDConfigStatus, setWLEDUdpRealtime, rebootWLED } from '../../utils/wledConfigChecker';
 
 interface AudioReactiveSectionProps {
@@ -64,7 +62,11 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   const [enablingUdp, setEnablingUdp] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [effectType, setEffectType] = useState<'spectrum' | 'volume' | 'waves'>('spectrum');
+
+  // Refs for intervals and stats tracking
   const testIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const previousSentRef = React.useRef(0);
+  const lastStatsUpdateRef = React.useRef(0);
 
   // Detect LED count from WLED device
   useEffect(() => {
@@ -102,6 +104,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       setTestMode(false);
       setConfigStatus(null);
       resetRealtimeState();
+      resetRealtimePacketStats(); // Reset stats for new session
 
       // Start audio in background
       startAudioCapture().then((success) => {
@@ -176,23 +179,18 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   };
 
   const handleTestUDP = () => {
-    if (!activeDeviceIp) return;
-
-    const newTestMode = !testMode;
-    setTestMode(newTestMode);
-
-    if (newTestMode) {
-      // Send test pattern once
-      sendTestPatternOnce(activeDeviceIp, numLeds);
+    if (!activeDeviceIp) {
+      alert('No device connected! Please connect to a WLED device first.');
+      return;
     }
+
+    setTestMode(!testMode);
   };
 
   const handleReset = () => {
-    // Turn off all LEDs before resetting
     if (activeDeviceIp) {
       turnOffAllLEDs(activeDeviceIp, numLeds);
     }
-
     setTestMode(false);
     setConfigStatus(null);
     if (isRecording) {
@@ -202,56 +200,59 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
     }
   };
 
-  // Send test pattern when test mode is active
-
-  // Send LED colors to WLED via UDP Realtime
+  // Send LED colors to WLED via UDP Realtime (runs on every audio frame ~15-60fps)
   React.useEffect(() => {
-    if (audioReactiveEnabled && isRecording && audioFeatures && melSpectrum.length > 0 && activeDeviceIp) {
-      sendRealtimeToWLED(
-        activeDeviceIp,
-        audioFeatures,
-        melSpectrum,
-        numLeds,
-        effectType
-      );
+    if (!audioReactiveEnabled || !isRecording || !audioFeatures || melSpectrum.length === 0 || !activeDeviceIp) {
+      return;
     }
-  }, [audioFeatures, melSpectrum, audioReactiveEnabled, isRecording, activeDeviceIp, effectType]);
 
-  // Update packet stats and calculate packets/s
-  React.useEffect(() => {
-    if (!isRecording) return;
+    // Send UDP packet with LED colors
+    sendRealtimeToWLED(activeDeviceIp, audioFeatures, melSpectrum, numLeds, effectType);
 
-    let previousSent = 0;
-    const interval = setInterval(() => {
+    // Update stats every second (throttled to avoid excessive state updates)
+    const now = Date.now();
+    if (now - lastStatsUpdateRef.current >= 1000) {
       const stats = getRealtimePacketStats();
+      const pps = stats.sent - previousSentRef.current;
       setPacketStats(stats);
-
-      // Calculate packets per second
-      const pps = stats.sent - previousSent;
       setPacketsPerSecond(pps);
-      previousSent = stats.sent;
-    }, 1000); // Update every second
+      previousSentRef.current = stats.sent;
+      lastStatsUpdateRef.current = now;
+    }
+  }, [audioFeatures, melSpectrum, audioReactiveEnabled, isRecording, activeDeviceIp, effectType, numLeds]);
 
-    return () => clearInterval(interval);
-  }, [isRecording]);
+  // Update packet stats for test mode (audio mode updates inline above)
+  React.useEffect(() => {
+    if (!testMode) return;
+
+    const intervalId = setInterval(() => {
+      const stats = getRealtimePacketStats();
+      const pps = stats.sent - previousSentRef.current;
+      setPacketStats(stats);
+      setPacketsPerSecond(pps);
+      previousSentRef.current = stats.sent;
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [testMode]);
 
   // Send test pattern repeatedly when test mode is active
   React.useEffect(() => {
-    if (testMode && activeDeviceIp) {
-      // Send immediately
-      sendTestPatternOnce(activeDeviceIp, numLeds);
-
-      // Then send every 2000ms (slower to avoid interference)
-      testIntervalRef.current = setInterval(() => {
-        sendTestPatternOnce(activeDeviceIp, numLeds);
-      }, 2000);
-    } else {
-      // Clear interval when test mode is off
+    if (!testMode || !activeDeviceIp) {
       if (testIntervalRef.current) {
         clearInterval(testIntervalRef.current);
         testIntervalRef.current = null;
       }
+      return;
     }
+
+    // Send immediately
+    sendTestPatternOnce(activeDeviceIp, numLeds);
+
+    // Then send every 2 seconds
+    testIntervalRef.current = setInterval(() => {
+      sendTestPatternOnce(activeDeviceIp, numLeds);
+    }, 2000);
 
     return () => {
       if (testIntervalRef.current) {
@@ -425,7 +426,10 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
               <Text style={{ fontWeight: '600' }}>How it works:{'\n'}</Text>
               • Audio is analyzed on your phone{'\n'}
               • LED colors are sent via UDP Realtime{'\n'}
-              • Effect runs independently of WLED presets
+              • Effect runs independently of WLED presets{'\n\n'}
+              <Text style={{ fontWeight: '600', color: activeDeviceIp ? '#10b981' : '#ef4444' }}>
+                Device: {activeDeviceIp || 'Not connected'}
+              </Text>
             </Text>
           </View>
         )}
