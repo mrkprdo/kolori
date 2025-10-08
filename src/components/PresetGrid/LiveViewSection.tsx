@@ -61,7 +61,6 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   // Clear interaction flag when refresh happens (timestamp changes)
   useEffect(() => {
     if (lastRefreshTimestamp > 0) {
-      console.log(`🔄 Refresh detected, clearing interaction flags`);
       setIsUserInteracting(false);
       setIsAdjustingBrightness(false);
     }
@@ -69,12 +68,8 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
 
   // Update local brightness when slider brightness changes (only when user is NOT interacting)
   useEffect(() => {
-    console.log(`🔍 Effect triggered - sliderBrightness: ${sliderBrightness}, localBrightness: ${localBrightness}, adjusting: ${isAdjustingBrightness}, interacting: ${isUserInteracting}, timestamp: ${lastRefreshTimestamp}`);
     if (!isAdjustingBrightness && !isUserInteracting) {
-      console.log(`🔄 Updating local brightness to: ${sliderBrightness} (was: ${localBrightness})`);
       setLocalBrightness(sliderBrightness);
-    } else {
-      console.log(`🚫 Blocked brightness update: adjusting=${isAdjustingBrightness}, interacting=${isUserInteracting}`);
     }
   }, [sliderBrightness, isAdjustingBrightness, isUserInteracting, lastRefreshTimestamp, localBrightness]);
 
@@ -140,27 +135,6 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
           </Text>
         </View>
 
-        {/* Toggle Switch */}
-        <TouchableOpacity
-          onPress={onLiveViewToggle}
-          style={[
-            styles.toggleSwitch,
-            { backgroundColor: liveViewEnabled ? '#3b82f6' : borderColor },
-          ]}
-        >
-          <View
-            style={[
-              styles.toggleThumb,
-              {
-                backgroundColor: '#ffffff',
-                marginLeft: liveViewEnabled ? 22 : 2,
-              },
-            ]}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={sharedStyles.sectionContent}>
         {/* Active Preset Badge */}
         {activePresetData && isConnected && (
           <View
@@ -179,27 +153,59 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
           </View>
         )}
 
+        {/* Toggle Button */}
+        <TouchableOpacity
+          onPress={onLiveViewToggle}
+          style={[
+            styles.toggleButton,
+            {
+              backgroundColor: liveViewEnabled ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
+            },
+          ]}
+        >
+          <Ionicons
+            name={liveViewEnabled ? 'eye' : 'eye-off'}
+            size={18}
+            color={liveViewEnabled ? '#ffffff' : textColor}
+          />
+          <Text style={[styles.toggleText, { color: liveViewEnabled ? '#ffffff' : textColor }]}>
+            {liveViewEnabled ? 'Active' : 'Start'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={sharedStyles.sectionContent}>
         {/* Main Content Card */}
         <View
           style={[
             styles.innerCard,
+            !liveViewEnabled && isConnected && styles.innerCardCompact,
             {
               backgroundColor: isDark ? '#374151' : '#f9fafb',
               borderColor: isDark ? '#4b5563' : '#e5e7eb',
             },
           ]}
         >
-          {/* Brightness Slider - Moved to top */}
+          {/* Brightness Slider - Compact inline */}
           {isConnected && (
             <View style={styles.brightnessContainer}>
-              <View style={styles.brightnessHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="sunny" size={16} color={textColor} />
-                  <Text style={[styles.brightnessLabel, { color: textColor }]}>
-                    Brightness
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={styles.brightnessInlineRow}>
+                <Ionicons name="sunny" size={16} color={textColor} />
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={255}
+                  step={1}
+                  value={localBrightness}
+                  onSlidingStart={handleBrightnessSlidingStart}
+                  onValueChange={handleBrightnessValueChange}
+                  onSlidingComplete={handleBrightnessSlidingComplete}
+                  minimumTrackTintColor="#3b82f6"
+                  maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
+                  thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
+                  disabled={isFetchingBrightness || isAdjustingBrightness}
+                />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Text style={[styles.brightnessValue, { color: isDark ? '#93c5fd' : '#3b82f6' }]}>
                     {localBrightness}
                   </Text>
@@ -208,20 +214,6 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
                   )}
                 </View>
               </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={0}
-                maximumValue={255}
-                step={1}
-                value={localBrightness}
-                onSlidingStart={handleBrightnessSlidingStart}
-                onValueChange={handleBrightnessValueChange}
-                onSlidingComplete={handleBrightnessSlidingComplete}
-                minimumTrackTintColor="#3b82f6"
-                maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
-                thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
-                disabled={isFetchingBrightness || isAdjustingBrightness}
-              />
             </View>
           )}
 
@@ -229,6 +221,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
           <Animated.View
             style={[
               styles.cardContent,
+              !liveViewEnabled && isConnected && styles.cardContentCompact,
               {
                 opacity: fadeAnim,
                 transform: [{ scale: scaleAnim }],
@@ -245,44 +238,84 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
                 brightness={localBrightness}
               />
             ) : (
-              <View style={styles.statusContainer}>
-                <Ionicons
-                  name={!isConnected ? 'cloud-offline' : liveViewEnabled ? 'eye-off' : 'eye-off-outline'}
-                  size={32}
-                  color={!isConnected ? '#ef4444' : subtextColor}
-                  style={{ marginBottom: 8 }}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: !isConnected ? '#ef4444' : textColor },
-                  ]}
-                >
-                  {!isConnected
-                    ? 'Device Offline'
-                    : !liveViewEnabled
-                    ? 'Live View Disabled'
-                    : 'Waiting for LED data...'}
-                </Text>
-
-                {/* LED Info */}
-                {isConnected && ledCount && (
-                  <View style={styles.ledInfoContainer}>
-                    <View style={styles.ledInfoRow}>
-                      <Ionicons name="bulb" size={14} color={subtextColor} />
-                      <Text style={[styles.ledInfoText, { color: subtextColor }]}>
-                        {ledCount} LED{ledCount !== 1 ? 's' : ''}
+              <View style={[
+                styles.statusContainer,
+                !liveViewEnabled && isConnected && styles.statusContainerCompact
+              ]}>
+                {!liveViewEnabled && isConnected ? (
+                  // Compact single-line view when disabled
+                  <>
+                    <View style={styles.compactStatusRow}>
+                      <Ionicons name="eye-off-outline" size={16} color={subtextColor} />
+                      <Text style={[styles.compactStatusText, { color: textColor }]}>
+                        Live View Disabled
+                      </Text>
+                      {ledCount && (
+                        <>
+                          <View style={styles.compactDivider} />
+                          <Ionicons name="bulb" size={14} color={subtextColor} />
+                          <Text style={[styles.compactStatusInfo, { color: subtextColor }]}>
+                            {ledCount} LED{ledCount !== 1 ? 's' : ''}
+                          </Text>
+                          {isRgbw && (
+                            <>
+                              <Ionicons name="color-palette" size={14} color={subtextColor} />
+                              <Text style={[styles.compactStatusInfo, { color: subtextColor }]}>
+                                RGBW
+                              </Text>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </View>
+                    {/* Performance Warning */}
+                    <View style={[styles.warningContainer, styles.warningContainerCompact, { backgroundColor: isDark ? '#422006' : '#fef3c7' }]}>
+                      <Ionicons name="warning" size={12} color={isDark ? '#fbbf24' : '#d97706'} />
+                      <Text style={[styles.warningText, styles.warningTextCompact, { color: isDark ? '#fbbf24' : '#92400e' }]}>
+                        Activating live view may affect WLED performance
                       </Text>
                     </View>
-                    {isRgbw && (
-                      <View style={[styles.ledInfoRow, { marginTop: 4 }]}>
-                        <Ionicons name="color-palette" size={14} color={subtextColor} />
-                        <Text style={[styles.ledInfoText, { color: subtextColor }]}>
-                          RGBW Support
-                        </Text>
+                  </>
+                ) : (
+                  // Full view for offline or waiting states
+                  <>
+                    <Ionicons
+                      name={!isConnected ? 'cloud-offline' : 'eye-off-outline'}
+                      size={32}
+                      color={!isConnected ? '#ef4444' : subtextColor}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Text
+                      style={[
+                        styles.statusText,
+                        { color: !isConnected ? '#ef4444' : textColor },
+                      ]}
+                    >
+                      {!isConnected
+                        ? 'Device Offline'
+                        : 'Waiting for LED data...'}
+                    </Text>
+
+                    {/* LED Info */}
+                    {isConnected && ledCount && (
+                      <View style={styles.ledInfoContainer}>
+                        <View style={styles.ledInfoRow}>
+                          <Ionicons name="bulb" size={14} color={subtextColor} />
+                          <Text style={[styles.ledInfoText, { color: subtextColor }]}>
+                            {ledCount} LED{ledCount !== 1 ? 's' : ''}
+                          </Text>
+                        </View>
+                        {isRgbw && (
+                          <View style={[styles.ledInfoRow, { marginTop: 4 }]}>
+                            <Ionicons name="color-palette" size={14} color={subtextColor} />
+                            <Text style={[styles.ledInfoText, { color: subtextColor }]}>
+                              RGBW Support
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     )}
-                  </View>
+                  </>
                 )}
               </View>
             )}
@@ -293,4 +326,23 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   );
 };
 
-export default LiveViewSection;
+export default React.memo(LiveViewSection, (prevProps, nextProps) => {
+  // React.memo returns true to SKIP re-render, false to re-render
+
+  // Only re-render if relevant props change (prevent re-renders from liveLedData updates when not enabled)
+  if (!nextProps.liveViewEnabled && !prevProps.liveViewEnabled) {
+    // When disabled, check if these specific props changed
+    const shouldSkipRender = (
+      prevProps.activeDevice?.ip === nextProps.activeDevice?.ip &&
+      prevProps.activeDevice?.isConnected === nextProps.activeDevice?.isConnected &&
+      prevProps.liveViewEnabled === nextProps.liveViewEnabled &&
+      prevProps.sliderBrightness === nextProps.sliderBrightness &&
+      prevProps.activePresetData?.name === nextProps.activePresetData?.name &&
+      prevProps.isDark === nextProps.isDark
+    );
+    return shouldSkipRender;
+  }
+
+  // When enabled, use default shallow comparison (always re-render)
+  return false;
+});

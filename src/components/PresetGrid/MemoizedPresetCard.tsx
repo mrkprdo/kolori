@@ -34,13 +34,11 @@ const MemoizedPresetCard = React.memo(
 
         // Direct match by id
         if (activePreset.toString() === preset.id.toString()) {
-          console.log('✅ Active match (by id):', preset.name, activePreset, '===', preset.id);
           return true;
         }
 
         // Match by presetId if available
         if (preset.presetId && activePreset.toString() === preset.presetId.toString()) {
-          console.log('✅ Active match (by presetId):', preset.name, activePreset, '===', preset.presetId);
           return true;
         }
 
@@ -48,7 +46,6 @@ const MemoizedPresetCard = React.memo(
         if (typeof preset.id === 'string' && preset.id.startsWith('wled_')) {
           const numericId = parseInt(preset.id.replace('wled_', ''));
           if (activePreset.toString() === numericId.toString()) {
-            console.log('✅ Active match (by wled_ numeric):', preset.name, activePreset, '===', numericId);
             return true;
           }
         }
@@ -78,13 +75,29 @@ const MemoizedPresetCard = React.memo(
     );
   },
   (prevProps, nextProps) => {
+    // Helper to check if this card is active
+    const isCardActive = (activePreset: string | number | null, preset: any) => {
+      if (!activePreset) return false;
+      if (activePreset.toString() === preset.id.toString()) return true;
+      if (preset.presetId && activePreset.toString() === preset.presetId.toString()) return true;
+      if (typeof preset.id === 'string' && preset.id.startsWith('wled_')) {
+        const numericId = parseInt(preset.id.replace('wled_', ''));
+        if (activePreset.toString() === numericId.toString()) return true;
+      }
+      return false;
+    };
+
+    // Only check if this card's active state changed, not all activePreset changes
+    const wasActive = isCardActive(prevProps.activePreset, prevProps.preset);
+    const isActive = isCardActive(nextProps.activePreset, nextProps.preset);
+
     return (
       prevProps.preset.id === nextProps.preset.id &&
       prevProps.preset.name === nextProps.preset.name &&
       prevProps.preset.presetId === nextProps.preset.presetId &&
       prevProps.preset.effectName === nextProps.preset.effectName &&
       prevProps.index === nextProps.index &&
-      prevProps.activePreset === nextProps.activePreset &&
+      wasActive === isActive && // Only re-render if THIS card's active state changed
       prevProps.isDark === nextProps.isDark &&
       prevProps.isDeleteMode === nextProps.isDeleteMode &&
       prevProps.isSelected === nextProps.isSelected &&

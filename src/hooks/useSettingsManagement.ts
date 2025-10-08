@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { Settings, Device } from '../types';
 import { loadSettings, saveSettings, loadDeviceSeasonalPresets } from '../utils/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaults';
+import { logger } from '../utils/logger';
 
 export interface UseSettingsManagementReturn {
   settings: Settings | null;
@@ -18,13 +19,23 @@ export function useSettingsManagement(): UseSettingsManagementReturn {
   const systemColorScheme = useColorScheme();
   const [settings, setSettings] = useState<Settings | null>(null);
 
+  // Log system color scheme changes
+  useEffect(() => {
+    logger.log(`🎨 System color scheme: ${systemColorScheme}`);
+  }, [systemColorScheme]);
+
   /**
    * Determine if the current theme is dark
    */
   const isDark = (() => {
-    if (!settings) return false;
-    if (settings.theme === 'system') {
+    if (!settings) {
+      // Default to system theme before settings load
       return systemColorScheme === 'dark';
+    }
+    if (settings.theme === 'system') {
+      const result = systemColorScheme === 'dark';
+      logger.log(`🎨 Theme mode: system, isDark: ${result}, systemColorScheme: ${systemColorScheme}`);
+      return result;
     }
     return settings.theme === 'dark';
   })();
