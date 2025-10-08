@@ -314,7 +314,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
               maximumValue={2.0}
               step={0.1}
               value={config.sensitivity}
-              onValueChange={(value) => updateConfig({ sensitivity: value })}
+              onSlidingComplete={(value) => updateConfig({ sensitivity: value })}
               minimumTrackTintColor="#3b82f6"
               maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
               thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}

@@ -252,9 +252,7 @@ function KoloriApp({
   const isConnected = useMemo(() => activeDevice?.isConnected || false, [activeDevice?.isConnected]);
   const deviceName = useMemo(() => activeDevice?.name || 'No Device', [activeDevice?.name]);
   const activePreset = useMemo(() => {
-    const preset = activeDevice?.activePreset || null;
-    logger.log('📌 Active preset from device:', preset, 'Type:', typeof preset);
-    return preset;
+    return activeDevice?.activePreset || null;
   }, [activeDevice?.activePreset]);
   const isDark = useMemo(() => {
     if (settings.theme === 'system') {

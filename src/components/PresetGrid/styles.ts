@@ -252,20 +252,26 @@ export const liveViewStyles = StyleSheet.create({
     borderWidth: 1,
   },
 
+  innerCardCompact: {
+    padding: 8,
+  },
+
   cardContent: {
     ...FLEX_CENTER,
     minHeight: 100,
   },
 
+  cardContentCompact: {
+    minHeight: 60,
+  },
+
   activePresetBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 10,
     gap: 6,
   },
 
@@ -280,15 +286,51 @@ export const liveViewStyles = StyleSheet.create({
     gap: 4,
   },
 
+  statusContainerCompact: {
+    paddingVertical: 4,
+  },
+
+  compactStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+
+  compactStatusText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  compactStatusInfo: {
+    fontSize: 11,
+  },
+
+  compactDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#9ca3af',
+    opacity: 0.3,
+    marginHorizontal: 6,
+  },
+
   statusText: {
     fontSize: 15,
     fontWeight: '500',
     textAlign: 'center',
   },
 
+  statusTextCompact: {
+    fontSize: 13,
+  },
+
   ledInfoContainer: {
     marginTop: 12,
     alignItems: 'center',
+  },
+
+  ledInfoContainerCompact: {
+    marginTop: 6,
   },
 
   ledInfoRow: {
@@ -299,6 +341,10 @@ export const liveViewStyles = StyleSheet.create({
 
   ledInfoText: {
     fontSize: 13,
+  },
+
+  ledInfoTextCompact: {
+    fontSize: 11,
   },
 
   disabledContainer: {
@@ -317,43 +363,29 @@ export const liveViewStyles = StyleSheet.create({
   },
 
   brightnessContainer: {
-    marginBottom: 16,
-    paddingBottom: 12,
+    marginBottom: 2,
+    paddingBottom: 2,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(156, 163, 175, 0.2)',
   },
 
-  brightnessHeader: {
+  brightnessInlineRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 8,
     paddingHorizontal: 4,
   },
 
-  brightnessLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-
   brightnessValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    minWidth: 32,
+    minWidth: 28,
     textAlign: 'right',
-  },
-
-  sliderContainer: {
-    ...FLEX_ROW_CENTER,
-    marginTop: 12,
-    paddingHorizontal: 8,
   },
 
   slider: {
     flex: 1,
     height: 40,
-    marginLeft: 12,
   },
 
   warningContainer: {
@@ -366,9 +398,20 @@ export const liveViewStyles = StyleSheet.create({
     borderRadius: 8,
   },
 
+  warningContainerCompact: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
+  },
+
   warningText: {
     fontSize: 12,
     flex: 1,
+  },
+
+  warningTextCompact: {
+    fontSize: 11,
   },
 });
 

@@ -221,6 +221,15 @@ export function usePresetManager(): UsePresetManagerReturn {
         return;
       }
 
+      // Optimistically update UI immediately for instant feedback
+      onDeviceUpdate(device.id, { activePreset: presetId as any });
+
+      // Clear any active playlist when a preset is selected
+      setSavedPlaylists(prev => prev.map(playlist => ({
+        ...playlist,
+        isActive: false
+      })));
+
       let result;
 
       if ('isWledPreset' in preset && preset.isWledPreset) {
@@ -255,17 +264,10 @@ export function usePresetManager(): UsePresetManagerReturn {
       }
 
       if (result.success) {
-        // Update the active device's active preset
-        onDeviceUpdate(device.id, { activePreset: presetId as any });
-
-        // Clear any active playlist when a preset is selected
-        setSavedPlaylists(prev => prev.map(playlist => ({
-          ...playlist,
-          isActive: false
-        })));
-
         logger.log('✅ Successfully activated preset:', preset.name);
       } else {
+        // Revert optimistic update on failure
+        onDeviceUpdate(device.id, { activePreset: device.activePreset });
         throw new Error(result.message || 'Failed to activate preset');
       }
     } catch (error: any) {

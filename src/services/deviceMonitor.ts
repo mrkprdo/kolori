@@ -118,7 +118,6 @@ class DeviceMonitorService {
       return;
     }
 
-    logger.log('🔍 Checking', this.devices.length, 'devices...');
     const startTime = Date.now();
 
     // Create promises for all device checks
@@ -155,9 +154,12 @@ class DeviceMonitorService {
       // Notify all callbacks
       this.notifyCallbacks(statuses);
 
-      const totalTime = Date.now() - startTime;
+      // Only log if there are offline devices or errors
       const onlineCount = statuses.filter(s => s.isOnline).length;
-      logger.log(`✅ Device check complete: ${onlineCount}/${statuses.length} online (${totalTime}ms)`);
+      if (onlineCount < statuses.length) {
+        const totalTime = Date.now() - startTime;
+        logger.log(`⚠️ Device check: ${onlineCount}/${statuses.length} online (${totalTime}ms)`);
+      }
 
     } catch (error) {
       logger.error('Device monitoring error:', error);
