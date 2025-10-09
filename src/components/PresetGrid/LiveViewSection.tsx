@@ -75,7 +75,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
     }
 
     return baseInfo;
-  }, [activeDevice?.wledInfo, matrixDimensions]);
+  }, [activeDevice?.wledInfo, matrixDimensions?.width, matrixDimensions?.height]);
 
   // Clear interaction flag when refresh happens (timestamp changes)
   useEffect(() => {

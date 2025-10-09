@@ -1751,7 +1751,7 @@ export default function PresetGrid({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.7)',
                 justifyContent: 'center',
                 alignItems: 'center',
                 zIndex: 1000,

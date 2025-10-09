@@ -78,6 +78,9 @@ const detect2DMatrix = (wledInfo: any) => {
   return { is2D: false, width: 0, height: 0, serpentine: false, transpose: false, vertical: false };
 };
 
+// Cache for 2D matrix layouts to prevent recalculation - MUST be outside component
+const static2DLayoutCache = new Map();
+
 // Memoized LED component - defined OUTSIDE to prevent recreation
 const LED = React.memo<{ color: LEDColor; index: number; ledSize: number; spacing: number }>(
   ({ color, ledSize, spacing }) => {
@@ -224,11 +227,7 @@ function LEDVisualization({
       case 'extra-large': return 1.8;
       default: return 1.0;
     }
-  }, [matrixInfo.is2D ? 'fixed' : effectiveLedSize, matrixInfo.is2D]);
-
-
-  // Cache for 2D matrix layouts to prevent recalculation
-  const static2DLayoutCache = useMemo(() => new Map(), []);
+  }, [matrixInfo.is2D, effectiveLedSize]);
 
   // Calculate optimal LED size and layout based on count, size setting, and 2D matrix info
   const getOptimalLayout = (count: number) => {
@@ -332,10 +331,7 @@ function LEDVisualization({
   
   const layout = useMemo(() => {
     return getOptimalLayout(ledCount);
-  }, matrixInfo.is2D
-    ? [screenWidth, matrixInfo.width, matrixInfo.height, static2DLayoutCache] // 2D: Only screen and matrix dimensions
-    : [ledCount, screenWidth, matrixInfo.is2D, sizeMultiplier] // 1D: Include size multiplier
-  );
+  }, [ledCount, screenWidth, matrixInfo.is2D, matrixInfo.width, matrixInfo.height, sizeMultiplier]);
 
   // Function to render LEDs based on layout type
   const renderLEDs = useMemo(() => {
