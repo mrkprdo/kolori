@@ -239,6 +239,7 @@ export const liveViewStyles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 16,
     gap: 6,
+    minWidth: 90,
   },
 
   toggleText: {
@@ -253,7 +254,7 @@ export const liveViewStyles = StyleSheet.create({
   },
 
   innerCardCompact: {
-    padding: 8,
+    // Keep same padding as normal to prevent slider layout shift
   },
 
   cardContent: {

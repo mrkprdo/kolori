@@ -5,7 +5,7 @@ import Slider from '@react-native-community/slider';
 import { Device as WledDevice, LEDColor } from '../../types';
 import LEDVisualization from '../LEDVisualization';
 import { logger } from '../../utils/logger';
-import { setWledBrightness } from '../../config/wledApi';
+import { useWledDevice } from '../../contexts/WledDeviceContext';
 import { sharedStyles, liveViewStyles as styles } from './styles';
 
 interface LiveViewSectionProps {
@@ -25,7 +25,7 @@ interface LiveViewSectionProps {
   textColor: string;
   subtextColor: string;
   onLiveViewToggle: () => void;
-  onSetSliderBrightness: (value: number) => void;
+  onSetSliderBrightness?: (value: number) => void;
   onBrightnessChange?: (value: number) => void;
 }
 
@@ -49,6 +49,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   onSetSliderBrightness,
   onBrightnessChange,
 }) => {
+  const { setBrightness: setBrightnessWS, matrixDimensions } = useWledDevice();
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
   const [localBrightness, setLocalBrightness] = useState(sliderBrightness);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -57,6 +58,24 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
   const ledCount = activeDevice?.wledInfo?.leds?.count;
   const isRgbw = activeDevice?.wledInfo?.leds?.rgbw;
   const canShowLiveView = liveViewEnabled && isConnected && liveLedData.length > 0;
+
+  // Merge WebSocket matrix dimensions into wledInfo to ensure LEDVisualization has matrix data immediately
+  const enhancedWledInfo = React.useMemo(() => {
+    const baseInfo = activeDevice?.wledInfo;
+
+    // If WebSocket has matrix dimensions, always use them (they're the most up-to-date)
+    if (matrixDimensions && matrixDimensions.width > 0 && matrixDimensions.height > 0) {
+      return {
+        ...baseInfo,
+        ledMatrix: {
+          w: matrixDimensions.width,
+          h: matrixDimensions.height,
+        },
+      };
+    }
+
+    return baseInfo;
+  }, [activeDevice?.wledInfo, matrixDimensions?.width, matrixDimensions?.height]);
 
   // Clear interaction flag when refresh happens (timestamp changes)
   useEffect(() => {
@@ -89,29 +108,15 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
     const finalValue = Math.round(value);
     setIsAdjustingBrightness(true);
 
-    // Update parent state
-    onSetSliderBrightness(finalValue);
+    // Update parent state (optional - brightness auto-syncs via WebSocket)
+    onSetSliderBrightness?.(finalValue);
 
     if (activeDevice?.ip) {
       try {
-        const result = await setWledBrightness(
-          activeDevice.ip,
-          finalValue,
-          activeDevice.protocol || 'http'
-        );
-        if (result.success) {
-          logger.log(`💡 Brightness set to ${finalValue}`);
-        } else {
-          logger.error('Failed to set brightness:', result.message);
-          // Revert on failure
-          setLocalBrightness(activeDevice?.wledInfo?.bri || 0);
-          onSetSliderBrightness(activeDevice?.wledInfo?.bri || 0);
-        }
+        setBrightnessWS(finalValue);
+        logger.log(`💡 Brightness command sent: ${finalValue}`);
       } catch (error) {
         logger.error('Error setting brightness:', error);
-        // Revert on error
-        setLocalBrightness(activeDevice?.wledInfo?.bri || 0);
-        onSetSliderBrightness(activeDevice?.wledInfo?.bri || 0);
       }
     }
 
@@ -147,8 +152,8 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
             ]}
           >
             <Ionicons name="radio-button-on" size={12} color="#3b82f6" />
-            <Text style={[styles.activePresetText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
-              {activePresetData.name}
+            <Text style={[styles.activePresetText, { color: isDark ? '#93c5fd' : '#1e40af' }]} numberOfLines={1}>
+              {activePresetData.name.length > 12 ? `${activePresetData.name.substring(0, 11)}...` : activePresetData.name}
             </Text>
           </View>
         )}
@@ -223,7 +228,6 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
               styles.cardContent,
               !liveViewEnabled && isConnected && styles.cardContentCompact,
               {
-                opacity: fadeAnim,
                 transform: [{ scale: scaleAnim }],
               },
             ]}
@@ -234,7 +238,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
                 subtextColor={subtextColor}
                 liveViewLedSize={liveViewLedSize}
                 showLedCount={true}
-                wledInfo={activeDevice?.wledInfo}
+                wledInfo={enhancedWledInfo}
                 brightness={localBrightness}
               />
             ) : (

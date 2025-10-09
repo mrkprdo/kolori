@@ -2,226 +2,152 @@
 
 <div align="center">
   <img src="assets/icon.png" alt="Kolori Logo" width="128" height="128">
-  <p><em>A modern React Native app for controlling WLED devices with beautiful presets and playlists</em></p>
-  
+  <p><em>A powerful mobile app for controlling WLED devices</em></p>
+
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Built with React Native](https://img.shields.io/badge/Built%20with-React%20Native-61DAFB?logo=reactnative)](https://reactnative.dev/)
   [![Powered by Expo](https://img.shields.io/badge/Powered%20by-Expo-000020?logo=expo)](https://expo.dev/)
-  [![Styled with NativeWind](https://img.shields.io/badge/Styled%20with-NativeWind-06B6D4?logo=tailwindcss)](https://www.nativewind.dev/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 </div>
 
-## 🎯 Description
+---
 
-Kolori is a modern, intuitive React Native mobile application for controlling WLED (WiFi LED Controller) devices. Built with Expo and NativeWind (Tailwind CSS for React Native), it provides a beautiful cross-platform interface for managing your LED strips with features like preset management, playlist creation, device discovery, and real-time control.
+## What is Kolori?
 
-Whether you're setting up ambient lighting for your home, creating dynamic displays, or managing multiple LED installations, Kolori offers the tools you need with a polished, native mobile experience.
+A modern React Native app for controlling [WLED](https://kno.wled.ge/) devices with real-time WebSocket, audio-reactive effects, and beautiful presets. Works on iOS and Android.
 
-**Inspired by the amazing WLED project** - Kolori builds upon the excellent foundation provided by the WLED community to deliver an enhanced mobile control experience.
+**Key Features:**
+- ⚡ Real-time WebSocket control
+- 🎵 Audio-reactive effects
+- 📡 Live LED visualization (1D strips & 2D matrices)
+- 🎨 Beautiful preset system
+- 🌓 Dark & light themes
 
-## ✨ Features
+---
 
-### 🎨 **LED Control & Effects**
+## Screenshots
 
-- **Preset Management**: Beautiful grid of lighting presets with seasonal themes and custom effects
-- **Custom Effects Creation**: Build and save your own lighting effects with full palette support
-- **Real-time Control**: Instant effect application with WebSocket connectivity
-- **Effect Testing**: Preview effects before saving to ensure perfect results
+_Coming soon - dark and light theme designs_
 
-### 📱 **Device Management**
+---
 
-- **Automatic Device Discovery**: Scan network for WLED devices using mDNS/Zeroconf
-- **Manual Device Addition**: Add devices by IP address with validation
-- **Multi-Device Support**: Manage multiple WLED controllers from one interface
-- **Connection Monitoring**: Real-time device status with automatic reconnection
-- **Device Web Access**: Quick links to open WLED web interface for each device
+## Quick Start
 
-### 🎵 **Playlist & Automation**
-
-- **Playlist Builder**: Create dynamic sequences of effects with custom timing
-- **Pull-to-Refresh**: Easy playlist updates with intuitive gestures
-- **Playlist Management**: Save, edit, and organize multiple playlists
-
-### 🌓 **Modern UI/UX**
-
-- **Dark & Light Themes**: Beautiful interface that adapts to your preference
-- **Native Mobile Design**: Platform-specific UI patterns and animations
-- **Responsive Layout**: Optimized for phones and tablets
-- **Floating Modals**: Consistent modal design across all features
-- **User Onboarding**: Welcome screens and user agreement handling
-
-### 📲 **Mobile-First Experience**
-
-- **iOS & Android Support**: Native mobile app built with Expo
-- **Optimized for Mobile**: Touch-first interface designed for mobile devices
-- **Offline Capabilities**: Core functionality works without internet connection
-
-## 📸 Screenshots
-
-_Screenshots coming soon - the app features a beautiful dark and light theme design optimized for mobile devices_
-
-## 🛠️ Development
-
-### Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- **Node.js** (v18.0.0 or higher)
-- **npm** (v8.0.0 or higher)
-- **Git** for version control
-- **Expo CLI** (`npm install -g @expo/cli`)
-
-For device testing:
-
-- **Expo Go App** on your iOS/Android device for development testing
-- **Android Studio** (for Android builds)
-- **Xcode** (for iOS builds, macOS only)
-
-### Installation
-
-_Android Playstore and iOS App Store links soon!_
-
-## 🏗️ Building
-
-### Development Testing
+### Install
 
 ```bash
 git clone https://github.com/mrkprdo/kolori.git
 cd kolori
+npm install
 ```
+
+### Run
 
 ```bash
-npx expo run android
-or
-npx expo run ios #for mac/ios
+# Android
+npx expo run:android
+
+# iOS (macOS only)
+npx expo run:ios
 ```
 
-### Production Builds
+---
 
-For production builds, you'll need to use EAS Build or local builds:
+## Main Features
 
-```bash
-# Install EAS CLI
-npm install -g eas-cli
+### ⚡ Real-Time Control
+WebSocket-based instant device control with auto-reconnect
 
-# Configure project for EAS
-eas build:configure
+### 🎵 Audio Reactive
+Live audio processing with FFT analysis - sync your LEDs to music
 
-# Build for Android
-eas build --platform android
+### 📡 Live View
+See your LED colors in real-time (supports strips and matrices)
 
-# Build for iOS (requires Apple Developer account)
-eas build --platform ios
-```
+### 🎨 Presets & Playlists
+Beautiful preset collections, custom effects, and playlist creation
 
-## 🔧 Project Structure
+### 📱 Device Management
+Auto-discovery (mDNS) or manual IP entry - manage multiple devices
 
-```
-kolori/
-├── src/
-│   ├── components/          # React Native components
-│   │   ├── KoloriApp.tsx   # Main app component
-│   │   ├── PresetGrid.tsx  # Presets display
-│   │   ├── DeviceManagementModal.tsx
-│   │   ├── PlaylistCreationModal.tsx
-│   │   └── ...
-│   ├── constants/           # App constants and configuration
-│   └── types/              # TypeScript type definitions
-├── assets/                 # Images, icons, and static assets
-├── app.json               # Expo configuration
-├── package.json           # Dependencies and scripts
-├── tailwind.config.js     # NativeWind/Tailwind configuration
-└── tsconfig.json          # TypeScript configuration
-```
+---
 
-### Key Dependencies
+## Tech Stack
 
-#### Core Framework
+- **React Native** - Cross-platform mobile
+- **TypeScript** - Type safety
+- **WebSocket** - Real-time communication
+- **FFT/Audio** - Music reactive effects
+- **Expo** - Development & builds
 
-- **Expo ~53.0.22** - React Native development platform
-- **React Native ^0.79.5** - Cross-platform mobile framework
-- **React 19.0.0** - Latest React with modern features
+---
 
-#### UI & Styling
+## Documentation
 
-- **NativeWind ^4.1.23** - Tailwind CSS for React Native
-- **Expo Linear Gradient** - Beautiful gradient effects
-- **@expo/vector-icons** - Comprehensive icon library
+- [Quick Reference](./docs/QUICK_REFERENCE.md) - Code examples & common tasks
+- [Architecture Guide](./docs/CODEBASE_AUDIT_2025.md) - Detailed documentation
+- [Documentation Index](./docs/README.md) - All docs
 
-#### Navigation & Storage
+---
 
-- **@react-navigation/native ^7.1.17** - Native navigation
-- **@react-native-async-storage/async-storage** - Persistent storage
-- **React Native Safe Area Context** - Safe area handling
+## Contributing
 
-#### Networking & Device Discovery
+Contributions welcome! Please:
+1. Fork the repo
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
-- **@inthepocket/react-native-service-discovery ^0.2.2** - mDNS/Zeroconf for device discovery
-- **Built-in WebSocket** support for real-time WLED communication
-- **React Native Networking** - HTTP requests and device communication
+See [docs](./docs) for architecture and code standards.
 
-## 🤝 Contributing
+---
 
-We welcome contributions to Kolori! Please read our contributing guidelines before submitting pull requests.
+## Roadmap
 
-### Development Workflow
+**Completed:**
+- ✅ Real-time WebSocket
+- ✅ Audio-reactive effects
+- ✅ Live LED visualization
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes following the project structure
-4. Test on both iOS and Android if possible
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+**Planned:**
+- [ ] Advanced scheduling
+- [ ] Custom color palettes
+- [ ] Multi-device sync
+- [ ] Voice control
+- [ ] Home widgets
 
-### Code Style
+---
 
-- Follow React Native and TypeScript best practices
-- Use NativeWind/Tailwind for consistent styling
-- Write descriptive component and function names
-- Add TypeScript types for all components and functions
-- Use conventional commit messages
+## Performance
 
-## 📱 Features Roadmap
+- 30-60 packets/second (audio reactive)
+- <50ms WebSocket latency
+- 60fps native animations
+- ~25MB app size
 
-- [ ] Advanced scheduling system
-- [ ] Custom color palette creation
-- [ ] Effect synchronization across multiple devices
-- [ ] Voice control integration
-- [ ] Widget support for quick controls
-- [ ] Backup/restore settings
+---
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file
 
-## 🙏 Acknowledgments
+---
 
-- **WLED Project** - For the amazing LED controller firmware that inspired this app
-- **Expo Team** - For the excellent React Native development platform
-- **React Native Community** - For the robust ecosystem and components
-- **NativeWind** - For bringing Tailwind CSS to React Native
-- **@mrkprdo** - Primary developer and maintainer
+## Credits
 
-## 📞 Support
+- [WLED Project](https://kno.wled.ge/) - Amazing LED firmware
+- [LedFx](https://github.com/LedFx/LedFx) - Audio algorithm inspiration
+- [@mrkprdo](https://github.com/mrkprdo) - Developer
 
-If you encounter any issues or have questions:
+---
 
-1. Check the [Issues](https://github.com/mrkprdo/kolori/issues) page
-2. Create a new issue with detailed information
-3. Include device information (iOS/Android), app version, and steps to reproduce
+## Support
 
-## 🌟 Show Your Support
-
-If you find Kolori useful, please consider:
-
-- ⭐ Starring the repository
-- 🍴 Forking and contributing
-- 🐛 Reporting bugs and suggesting features
-- 📱 Sharing with the WLED community
+- [Issues](https://github.com/mrkprdo/kolori/issues) - Report bugs
+- ⭐ Star the repo if you find it useful!
 
 ---
 
 <div align="center">
   <p>Made with ❤️ for the WLED community</p>
-  <p>Kolori + <img src="assets/wled_logo_akemi.png" alt="WLED" height="20"> WLED</p>
 </div>

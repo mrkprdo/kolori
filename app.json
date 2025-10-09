@@ -2,14 +2,12 @@
   "expo": {
     "name": "Kolori",
     "slug": "Kolori",
-    "version": "0.2.7",
+    "version": "0.2.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "plugins": [
-      "expo-audio"
-    ],
+    "plugins": ["expo-audio"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -23,10 +21,7 @@
       },
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "This app uses the local network to discover and connect to WLED-enabled devices on your network.",
-        "NSBonjourServices": [
-          "_http._tcp",
-          "_http._tcp.local"
-        ]
+        "NSBonjourServices": ["_http._tcp", "_http._tcp.local"]
       }
     },
     "android": {
@@ -38,8 +33,8 @@
       "package": "dev.mrkprdo.kolori",
       "usesCleartextTraffic": true,
       "networkSecurityConfig": "@xml/network_security_config",
-      "versionCode": 13,
-      "versionName": "0.2.7"
+      "versionCode": 14,
+      "versionName": "0.2.8"
     },
     "web": {
       "favicon": "./assets/kolori.png"

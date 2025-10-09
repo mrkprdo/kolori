@@ -40,6 +40,7 @@ export interface UseAudioReactiveReturn {
   config: AudioReactiveConfig;
   updateConfig: (newConfig: Partial<AudioReactiveConfig>) => void;
   error: string | null;
+  setAudioCallback: (callback: ((features: AudioFeatures, spectrum: number[]) => void) | null) => void;
 }
 
 const DEFAULT_CONFIG: AudioReactiveConfig = {
@@ -76,6 +77,11 @@ export function useAudioReactive(
   const audioStreamRef = useRef<any>(null);
   const audioLevelRef = useRef<number>(0.5); // For AGC (Automatic Gain Control)
   const peakHoldRef = useRef<number>(0); // For peak detection
+  const audioCallbackRef = useRef<((features: AudioFeatures, spectrum: number[]) => void) | null>(null);
+
+  // Throttle state updates to reduce re-renders (update UI less frequently)
+  const lastStateUpdateRef = useRef<number>(0);
+  const stateUpdateIntervalMs = 100; // Update React state max 10 times per second
 
   // Initialize mel filterbank when config changes
   useEffect(() => {
@@ -184,9 +190,19 @@ export function useAudioReactive(
       // Extract audio features
       const features = extractAudioFeatures(normalizedMelSpec);
 
-      // Update state
-      setAudioFeatures(features);
-      setMelSpectrum(normalizedMelSpec);
+      // Call direct callback immediately (for UDP sending - no React re-render)
+      if (audioCallbackRef.current) {
+        audioCallbackRef.current(features, normalizedMelSpec);
+      }
+
+      // Throttle React state updates to reduce re-renders (for UI only)
+      const now = Date.now();
+      if (now - lastStateUpdateRef.current >= stateUpdateIntervalMs) {
+        setAudioFeatures(features);
+        setMelSpectrum(normalizedMelSpec);
+        lastStateUpdateRef.current = now;
+      }
+
       previousMelSpectrumRef.current = normalizedMelSpec;
     } catch (err) {
       logger.error('🎵 Error processing audio data:', err);
@@ -302,6 +318,11 @@ export function useAudioReactive(
     };
   }, [stopAudioCapture]);
 
+  // Set audio callback function
+  const setAudioCallback = useCallback((callback: ((features: AudioFeatures, spectrum: number[]) => void) | null) => {
+    audioCallbackRef.current = callback;
+  }, []);
+
   return {
     isRecording,
     audioFeatures,
@@ -311,5 +332,6 @@ export function useAudioReactive(
     config,
     updateConfig,
     error,
+    setAudioCallback,
   };
 }

@@ -25,6 +25,9 @@ import { useSettingsManagement } from './src/hooks/useSettingsManagement';
 import { useModalManager } from './src/hooks/useModalManager';
 import { useAppInitialization } from './src/hooks/useAppInitialization';
 
+// Contexts
+import { WledDeviceProvider } from './src/contexts/WledDeviceContext';
+
 // Types
 import { MdnsWledDevice } from './src/utils/wledMdnsDiscovery';
 
@@ -95,9 +98,10 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ActionSheetProvider>
           <SheetProvider>
-            <SafeAreaProvider>
-              <NavigationContainer ref={navigationRef}>
-                <StatusBar style={isDark ? "light" : "dark"} />
+            <WledDeviceProvider>
+              <SafeAreaProvider>
+                <NavigationContainer ref={navigationRef}>
+                  <StatusBar style={isDark ? "light" : "dark"} />
                 <Stack.Navigator
                   screenOptions={{
                     headerShown: false,
@@ -176,6 +180,7 @@ export default function App() {
                 </Stack.Navigator>
               </NavigationContainer>
             </SafeAreaProvider>
+          </WledDeviceProvider>
           </SheetProvider>
         </ActionSheetProvider>
       </GestureHandlerRootView>

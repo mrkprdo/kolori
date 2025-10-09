@@ -2,14 +2,12 @@ import { useState, useCallback, useRef } from 'react';
 import { Device as WledDevice, CustomEffect, SavedPlaylist, Settings } from '../types';
 import {
   getWledPresets,
-  activateWledEffect,
-  activateWledPresetById,
-  setWledBrightness,
   getWledState
 } from '../config/wledApi';
 import { getDeviceAddress, filterSeasonalPresets } from '../utils/deviceUtils';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import { logger } from '../utils/logger';
+import { wledWebSocketService } from '../services/wled';
 
 export interface UsePresetManagerReturn {
   customEffects: CustomEffect[];
@@ -27,7 +25,20 @@ export interface UsePresetManagerReturn {
 }
 
 /**
- * Custom hook to manage WLED presets, playlists, and device control operations
+ * usePresetManager Hook
+ *
+ * Manages WLED presets, playlists, and device control operations.
+ *
+ * Architecture:
+ * - Uses HTTP for preset CRUD operations (getWledPresets, getWledState)
+ * - Uses WebSocket for real-time control (brightness, preset activation)
+ * - Hybrid approach for best performance and reliability
+ *
+ * Key Operations:
+ * - Load presets and playlists from device
+ * - Activate presets (via WebSocket for instant response)
+ * - Change brightness (via WebSocket for real-time sync)
+ * - Refresh device state (HTTP for reliability)
  */
 export function usePresetManager(): UsePresetManagerReturn {
   const [customEffects, setCustomEffects] = useState<CustomEffect[]>([]);
@@ -230,46 +241,30 @@ export function usePresetManager(): UsePresetManagerReturn {
         isActive: false
       })));
 
-      let result;
-
       if ('isWledPreset' in preset && preset.isWledPreset) {
         // For device presets, use the original WLED preset ID
         const wledPresetId = parseInt(preset.id.toString().replace('wled_', ''));
         logger.log('🎯 Activating WLED preset ID:', wledPresetId);
 
-        result = await activateWledPresetById(
-          getDeviceAddress(device)!,
-          wledPresetId,
-          device.protocol || 'http'
-        );
+        wledWebSocketService.sendCommand({ ps: wledPresetId });
       } else if ('presetId' in preset) {
         // For seasonal presets, use the configured presetId
         logger.log('🎯 Activating seasonal preset:', preset.name, 'with ID:', preset.presetId);
 
-        result = await activateWledPresetById(
-          getDeviceAddress(device)!,
-          preset.presetId,
-          device.protocol || 'http'
-        );
+        wledWebSocketService.sendCommand({ ps: preset.presetId });
       } else {
         // For custom effects, use the effectId and paletteId
         logger.log('🎯 Activating custom effect:', preset.name, 'FX:', preset.effectId, 'Palette:', preset.paletteId);
 
-        result = await activateWledEffect(
-          getDeviceAddress(device)!,
-          preset.effectId,
-          preset.paletteId,
-          device.protocol || 'http'
-        );
+        wledWebSocketService.sendCommand({
+          seg: [{
+            fx: preset.effectId,
+            pal: preset.paletteId
+          }]
+        });
       }
 
-      if (result.success) {
-        logger.log('✅ Successfully activated preset:', preset.name);
-      } else {
-        // Revert optimistic update on failure
-        onDeviceUpdate(device.id, { activePreset: device.activePreset });
-        throw new Error(result.message || 'Failed to activate preset');
-      }
+      logger.log('✅ Preset activation command sent:', preset.name);
     } catch (error: any) {
       logger.error('❌ Failed to activate preset:', error.message.toString());
     }
@@ -287,17 +282,8 @@ export function usePresetManager(): UsePresetManagerReturn {
     }
 
     try {
-      const result = await setWledBrightness(
-        getDeviceAddress(device)!,
-        brightness,
-        device.protocol || 'http'
-      );
-
-      if (result.success) {
-        logger.log(`✅ Brightness set to ${brightness} on ${device.name}`);
-      } else {
-        throw new Error(result.message || 'Failed to set brightness');
-      }
+      wledWebSocketService.sendCommand({ bri: brightness });
+      logger.log(`✅ Brightness command sent: ${brightness} on ${device.name}`);
     } catch (error: any) {
       logger.error('❌ Failed to set brightness:', error.message);
     }
