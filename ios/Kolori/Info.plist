@@ -19,7 +19,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2.7</string>
+    <string>0.2.8</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -53,7 +53,8 @@
     <string>This app uses the local network to discover and connect to WLED-enabled devices on your
       network.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Kolori needs microphone access for audio-reactive LED effects that respond to music and sound.</string>
+    <string>Kolori needs microphone access for audio-reactive LED effects that respond to music and
+      sound.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
