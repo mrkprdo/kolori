@@ -19,6 +19,7 @@ import CustomDropdown from './CustomDropdown';
 import { WLED_EFFECTS } from '../data/wledEffects';
 import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, PaletteColor } from '../constants/palettes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { wledWebSocketService } from '../services/wled';
 
 // Cache for gradient colors to avoid recalculating
 const paletteGradientCache = new Map<string, [string, string, ...string[]]>();
@@ -783,32 +784,21 @@ export default function CustomEffectsModal({
     try {
       const currentEffect = effects.find(e => e.id === effectId);
 
-      // Build the request body - only include palette if the effect supports it
-      const requestBody: any = {
-        seg: {
+      // Build the command - only include palette if the effect supports it
+      const command: any = {
+        seg: [{
           fx: effectId,
-        },
+        }],
       };
 
       if (currentEffect?.supportsPalette && paletteId !== null) {
-        requestBody.seg.pal = paletteId;
+        command.seg[0].pal = paletteId;
       }
 
       console.log(`🎨 Applying effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
 
-      const response = await fetch(`http://${device.ip}/json/state`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        console.error(`Failed to apply effect: HTTP ${response.status}`);
-      } else {
-        console.log(`✅ Applied effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
-      }
+      wledWebSocketService.sendCommand(command);
+      console.log(`✅ Effect command sent: ${effectId} with palette ${paletteId}`);
     } catch (error) {
       console.error('Error applying effect:', error);
     }

@@ -22,8 +22,7 @@ export type { UseDeviceCacheReturn } from './useDeviceCache';
 export { usePresetManager } from './usePresetManager';
 export type { UsePresetManagerReturn } from './usePresetManager';
 
-export { useWebSocketManager } from './useWebSocketManager';
-export type { UseWebSocketManagerReturn } from './useWebSocketManager';
+// useWebSocketManager - REMOVED (replaced by WledDeviceContext)
 
 export { useDeviceMonitor } from './useDeviceMonitor';
 export type { UseDeviceMonitorReturn } from './useDeviceMonitor';

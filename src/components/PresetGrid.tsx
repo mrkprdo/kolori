@@ -1,3 +1,25 @@
+/**
+ * PresetGrid Component
+ *
+ * Main preset selection and device control interface for WLED devices.
+ *
+ * Features:
+ * - Device selection and management
+ * - Brightness control (via WebSocket)
+ * - Live View LED visualization
+ * - Seasonal presets
+ * - Custom effects
+ * - Playlists
+ * - Audio reactive controls (page 2)
+ * - FAB (Floating Action Button) for actions
+ *
+ * Architecture:
+ * - Uses WledDeviceContext for WebSocket state management
+ * - Brightness automatically syncs via WebSocket (no local state)
+ * - Live View toggle sends WebSocket command immediately
+ * - Audio Reactive overlay disables presets when active
+ */
+
 import React, {
   useState,
   useEffect,
@@ -32,6 +54,7 @@ import {
   LEDColor,
 } from "../types";
 import { storage, STORAGE_KEYS } from "../utils/storage";
+import { useWledDevice } from "../contexts/WledDeviceContext";
 import {
   deleteWledPreset,
   deleteWledPlaylistViaWebSocket,
@@ -155,8 +178,22 @@ export default function PresetGrid({
   updateChildModalState,
   onDeviceUpdate,
 }: PresetGridProps) {
+  // New WebSocket system
+  const {
+    state: wledState,
+    setBrightness: setWledBrightnessWS,
+    activatePreset: activatePresetWS,
+    togglePower: togglePowerWS,
+    toggleLiveView: toggleLiveViewWS,
+    isConnected: wsConnected,
+    liveViewEnabled: liveViewEnabledWS,
+    liveLedData: liveLedDataWS
+  } = useWledDevice();
+
   const [currentPage, setCurrentPage] = useState(0); // 0 = Presets, 1 = Audio Reactive
+  const [isAudioReactiveActive, setIsAudioReactiveActive] = useState(false);
   const [isSeasonalCollapsed, setIsSeasonalCollapsed] = useState(true);
+
   const [isCustomEffectsCollapsed, setIsCustomEffectsCollapsed] =
     useState(true);
   const [isPlaylistsCollapsed, setIsPlaylistsCollapsed] = useState(false);
@@ -200,10 +237,14 @@ export default function PresetGrid({
     total: 0,
     currentItem: "",
   });
-  // Simple brightness state
-  const [sliderBrightness, setSliderBrightness] = useState<number>(
-    activeDevice?.wledInfo?.bri || 0
-  );
+  // Brightness from WebSocket state (automatic sync!)
+  const sliderBrightness = wledState.brightness || activeDevice?.wledInfo?.bri || 0;
+
+  // Debug logging for brightness
+  useEffect(() => {
+    logger.log('💡 Brightness state - wledState.brightness:', wledState.brightness, 'device.bri:', activeDevice?.wledInfo?.bri, 'final:', sliderBrightness);
+  }, [wledState.brightness, activeDevice?.wledInfo?.bri, sliderBrightness]);
+
   const [isFetchingBrightness, setIsFetchingBrightness] = useState(false);
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(0);
 
@@ -221,7 +262,7 @@ export default function PresetGrid({
         activeDevice.protocol || "http"
       );
       if (result.success && result.brightness !== undefined) {
-        setSliderBrightness(result.brightness);
+        // Brightness is now automatically synced via WebSocket state
         setLastRefreshTimestamp(Date.now()); // Mark that we just refreshed
         logger.log(`💡 Fetched brightness from device: ${result.brightness}`);
       }
@@ -442,7 +483,7 @@ export default function PresetGrid({
   const backHandlerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Animation values
-  const fadeAnim = useRef(new Animated.Value(liveViewEnabled ? 1 : 1)).current;
+  const fadeAnim = useRef(new Animated.Value(liveViewEnabledWS ? 1 : 1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fabRotateAnim = useRef(new Animated.Value(0)).current;
   const fabScaleAnim1 = useRef(new Animated.Value(0)).current;
@@ -629,9 +670,8 @@ export default function PresetGrid({
     if (prevDeviceId.current !== currentDeviceId) {
       prevDeviceId.current = currentDeviceId;
 
-      if (activeDevice?.wledInfo?.bri !== undefined) {
-        setSliderBrightness(Math.round(activeDevice.wledInfo.bri));
-      } else if (activeDevice?.isConnected) {
+      // Brightness is now automatically synced via WebSocket state
+      if (!activeDevice?.wledInfo?.bri && activeDevice?.isConnected) {
         // If no brightness info in wledInfo, fetch it from device
         fetchDeviceBrightness();
       }
@@ -681,9 +721,17 @@ export default function PresetGrid({
   }, [activePreset, seasonalPresets, memoizedCustomEffects]);
 
   const handleLiveViewToggle = () => {
-    const newValue = !liveViewEnabled;
+    const newValue = !liveViewEnabledWS;
 
-    // Animate the content transition
+    // Toggle WebSocket live view (this updates context state AND sends WS command)
+    toggleLiveViewWS(newValue);
+
+    // Also update settings for persistence
+    if (onLiveViewToggle) {
+      onLiveViewToggle(newValue);
+    }
+
+    // Animate the content transition (for visual feedback only)
     Animated.sequence([
       Animated.timing(fadeAnim, {
         toValue: 0.3,
@@ -696,10 +744,6 @@ export default function PresetGrid({
         useNativeDriver: false,
       }),
     ]).start(() => {
-      if (onLiveViewToggle) {
-        onLiveViewToggle(newValue);
-      }
-
       // Animate back to normal
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -722,18 +766,9 @@ export default function PresetGrid({
 
       setIsTogglingDevice(true);
       try {
-        const result = turnOn
-          ? await turnWledOn(activeDevice.ip)
-          : await turnWledOff(activeDevice.ip);
-
-        if (!result.success) {
-          Alert.alert(
-            "Error",
-            `Failed to ${turnOn ? "turn on" : "turn off"} device: ${
-              result.message
-            }`
-          );
-        }
+        // Use WebSocket instead of HTTP
+        togglePowerWS(turnOn);
+        logger.log(`Device ${turnOn ? 'turned on' : 'turned off'} via WebSocket`);
       } catch (error) {
         Alert.alert(
           "Error",
@@ -767,8 +802,7 @@ export default function PresetGrid({
       const currentDevice = activeDeviceRef.current;
       if (currentDevice?.wledInfo?.bri !== undefined) {
         const newBrightness = Math.round(currentDevice.wledInfo.bri);
-        console.log(`💡 Setting slider brightness from ${sliderBrightness} to ${newBrightness}`);
-        setSliderBrightness(newBrightness);
+        console.log(`💡 Brightness from refresh: ${newBrightness} (auto-synced via WebSocket)`);
         setLastRefreshTimestamp(Date.now());
         logger.log(`💡 Brightness updated from refresh: ${newBrightness}`);
       }
@@ -786,10 +820,8 @@ export default function PresetGrid({
   // Animation coordination (non-blocking)
   const fabAnimationInProgress = useRef(false);
 
-  // Improved animation system with proper sequencing
+  // FAB open animation - staggered sequence for smooth reveal
   const animateFabOpen = useCallback(() => {
-    // if (fabAnimationInProgress.current) return;
-    // fabAnimationInProgress.current = true;
     console.log("animateFabOpen called");
 
     // Ensure animations start from 0 (closed state)
@@ -848,9 +880,8 @@ export default function PresetGrid({
     fabScaleAnim5,
   ]);
 
+  // FAB close animation - reverse stagger for smooth collapse
   const animateFabClose = useCallback(() => {
-    // if (fabAnimationInProgress.current) return;
-    // fabAnimationInProgress.current = true;
     console.log("animateFabClose called");
 
     Animated.parallel([
@@ -1558,8 +1589,8 @@ export default function PresetGrid({
         <LiveViewSection
           activeDevice={activeDevice}
           activePresetData={activePresetData}
-          liveViewEnabled={liveViewEnabled}
-          liveLedData={liveLedData}
+          liveViewEnabled={liveViewEnabledWS}
+          liveLedData={liveLedDataWS}
           liveViewLedSize={liveViewLedSize}
           sliderBrightness={sliderBrightness}
           isFetchingBrightness={isFetchingBrightness}
@@ -1572,7 +1603,6 @@ export default function PresetGrid({
           textColor={textColor}
           subtextColor={subtextColor}
           onLiveViewToggle={handleLiveViewToggle}
-          onSetSliderBrightness={setSliderBrightness}
           onBrightnessChange={onBrightnessChange}
         />
       </View>
@@ -1653,62 +1683,102 @@ export default function PresetGrid({
             />
           }
         >
-        {/* Seasonal Presets */}
-        <SeasonalPresetsSection
-          seasonalPresets={seasonalPresets}
-          activePreset={activePreset}
-          isCollapsed={isSeasonalCollapsed}
-          isDark={isDark}
-          cardBackground={cardBackground}
-          borderColor={borderColor}
-          textColor={textColor}
-          subtextColor={subtextColor}
-          onToggleCollapse={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
-          onPresetSelect={onPresetSelect}
-          PresetCard={PresetCard}
-        />
+        {/* Preset sections with Audio Reactive overlay */}
+        <View style={{ position: 'relative' }}>
+          {/* Seasonal Presets */}
+          <SeasonalPresetsSection
+            seasonalPresets={seasonalPresets}
+            activePreset={activePreset}
+            isCollapsed={isSeasonalCollapsed}
+            isDark={isDark}
+            cardBackground={cardBackground}
+            borderColor={borderColor}
+            textColor={textColor}
+            subtextColor={subtextColor}
+            onToggleCollapse={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
+            onPresetSelect={onPresetSelect}
+            PresetCard={PresetCard}
+          />
 
-        {/* Custom Effects */}
-        <CustomEffectsSection
-          customEffects={memoizedCustomEffects}
-          activePreset={activePreset}
-          activeDevice={activeDevice}
-          isCollapsed={isCustomEffectsCollapsed}
-          isDeleteMode={isDeleteMode}
-          selectedForDelete={selectedForDelete}
-          wiggleAnim={wiggleAnim}
-          isCooldownActive={isCooldownActive}
-          cooldownProgress={cooldownProgress}
-          cooldownAnimRef={cooldownAnimRef}
-          isDark={isDark}
-          cardBackground={cardBackground}
-          borderColor={borderColor}
-          textColor={textColor}
-          subtextColor={subtextColor}
-          onToggleCollapse={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
-          onPresetSelect={onPresetSelect}
-          onToggleSelection={toggleCardSelection}
-          onGenerateRandom={generateRandomCustomEffect}
-          PresetCard={MemoizedPresetCard}
-        />
+          {/* Custom Effects */}
+          <CustomEffectsSection
+            customEffects={memoizedCustomEffects}
+            activePreset={activePreset}
+            activeDevice={activeDevice}
+            isCollapsed={isCustomEffectsCollapsed}
+            isDeleteMode={isDeleteMode}
+            selectedForDelete={selectedForDelete}
+            wiggleAnim={wiggleAnim}
+            isCooldownActive={isCooldownActive}
+            cooldownProgress={cooldownProgress}
+            cooldownAnimRef={cooldownAnimRef}
+            isDark={isDark}
+            cardBackground={cardBackground}
+            borderColor={borderColor}
+            textColor={textColor}
+            subtextColor={subtextColor}
+            onToggleCollapse={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
+            onPresetSelect={onPresetSelect}
+            onToggleSelection={toggleCardSelection}
+            onGenerateRandom={generateRandomCustomEffect}
+            PresetCard={MemoizedPresetCard}
+          />
 
-        {/* Playlists */}
-        <PlaylistsSection
-          savedPlaylists={savedPlaylists}
-          customEffectsCount={memoizedCustomEffects.length}
-          isCollapsed={isPlaylistsCollapsed}
-          isDeleteMode={isDeleteMode}
-          isLoadingPlaylists={isLoadingPlaylists}
-          selectedForDelete={selectedForDelete}
-          wiggleAnim={wiggleAnim}
-          cardBackground={cardBackground}
-          borderColor={borderColor}
-          textColor={textColor}
-          subtextColor={subtextColor}
-          onToggleCollapse={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
-          onPlaylistSelect={onPlaylistSelect}
-          onToggleSelection={toggleCardSelection}
-        />
+          {/* Playlists */}
+          <PlaylistsSection
+            savedPlaylists={savedPlaylists}
+            customEffectsCount={memoizedCustomEffects.length}
+            isCollapsed={isPlaylistsCollapsed}
+            isDeleteMode={isDeleteMode}
+            isLoadingPlaylists={isLoadingPlaylists}
+            selectedForDelete={selectedForDelete}
+            wiggleAnim={wiggleAnim}
+            cardBackground={cardBackground}
+            borderColor={borderColor}
+            textColor={textColor}
+            subtextColor={subtextColor}
+            onToggleCollapse={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
+            onPlaylistSelect={onPlaylistSelect}
+            onToggleSelection={toggleCardSelection}
+          />
+
+          {/* Audio Reactive Active Overlay */}
+          {isAudioReactiveActive && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000,
+              }}
+              pointerEvents="box-only"
+            >
+              <View
+                style={{
+                  backgroundColor: cardBackground,
+                  borderRadius: 16,
+                  padding: 24,
+                  borderWidth: 2,
+                  borderColor: '#3b82f6',
+                  maxWidth: '80%',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: textColor, marginBottom: 8 }}>
+                  🎵 Audio Reactive Active
+                </Text>
+                <Text style={{ fontSize: 14, color: subtextColor, textAlign: 'center' }}>
+                  Turn off Audio Reactive to change presets
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
         </ScrollView>
 
         {/* Page 2: Audio Reactive */}
@@ -1726,6 +1796,7 @@ export default function PresetGrid({
             subtextColor={subtextColor}
             onBrightnessChange={onBrightnessChange}
             activeDeviceIp={activeDevice?.ip}
+            onAudioReactiveChange={setIsAudioReactiveActive}
           />
         </ScrollView>
 

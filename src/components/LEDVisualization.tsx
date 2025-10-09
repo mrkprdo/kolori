@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, Dimensions } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, Dimensions, StyleSheet } from 'react-native';
 import { LEDColor } from '../types';
 
 interface LEDVisualizationProps {
@@ -78,6 +78,62 @@ const detect2DMatrix = (wledInfo: any) => {
   return { is2D: false, width: 0, height: 0, serpentine: false, transpose: false, vertical: false };
 };
 
+// Memoized LED component - defined OUTSIDE to prevent recreation
+const LED = React.memo<{ color: LEDColor; index: number; ledSize: number; spacing: number }>(
+  ({ color, ledSize, spacing }) => {
+    // Handle undefined color values
+    let r = color.r || 0;
+    let g = color.g || 0;
+    let b = color.b || 0;
+    const w = color.w || 0;
+
+    // For RGBW LEDs, white channel might need to be added to RGB channels
+    if (w > 0) {
+      r = Math.min(255, r + Math.floor(w * 0.3));
+      g = Math.min(255, g + Math.floor(w * 0.3));
+      b = Math.min(255, b + Math.floor(w * 0.3));
+    }
+
+    const brightness = (r + g + b) / 3 / 255;
+    const isActive = brightness > 0.1;
+    const isOff = r === 0 && g === 0 && b === 0;
+
+    const borderRadius = ledSize <= 6 ? 2 : Math.min(ledSize / 3, 4);
+    const showHighlight = isActive && ledSize > 8 && brightness > 0.7;
+
+    return (
+      <View
+        style={[
+          styles.led,
+          {
+            width: ledSize,
+            height: ledSize,
+            marginRight: spacing,
+            marginBottom: spacing,
+            borderRadius,
+            backgroundColor: isOff ? '#1e1e1e' : `rgb(${r}, ${g}, ${b})`,
+          },
+        ]}
+      >
+        {showHighlight && (
+          <View style={styles.highlight} />
+        )}
+      </View>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison - only re-render if color actually changed
+    return (
+      prevProps.color.r === nextProps.color.r &&
+      prevProps.color.g === nextProps.color.g &&
+      prevProps.color.b === nextProps.color.b &&
+      prevProps.color.w === nextProps.color.w &&
+      prevProps.ledSize === nextProps.ledSize &&
+      prevProps.spacing === nextProps.spacing
+    );
+  }
+);
+
 /**
  * Render a live LED visualization for either a 1D LED strip or a 2D WLED matrix.
  *
@@ -101,12 +157,8 @@ function LEDVisualization({
   liveViewLedSize = 'normal',
   containerWidth,
   showLedCount = true,
-  wledInfo,
-  brightness = 255
+  wledInfo
 }: LEDVisualizationProps) {
-
-  // Calculate brightness opacity (0-255 → 0-1)
-  const brightnessOpacity = useMemo(() => brightness / 255, [brightness]);
 
   // Detect matrix early to override size settings
   const earlyMatrixDetection = detect2DMatrix(wledInfo);
@@ -115,6 +167,21 @@ function LEDVisualization({
   const effectiveLedSize = earlyMatrixDetection.is2D ? 'normal' : liveViewLedSize;
 
   const screenWidth = containerWidth || (Dimensions.get('window').width - 96); // Account for card padding + margins
+
+  // Create a stable hash for wledInfo matrix properties to detect device changes
+  const wledInfoHash = useMemo(() => {
+    if (!wledInfo) return 'no-device';
+    const matrix = wledInfo.ledMatrix || wledInfo.leds?.matrix || wledInfo.matrix;
+    if (!matrix) return 'no-matrix';
+    return `${matrix.w || 0}x${matrix.h || 0}`;
+  }, [
+    wledInfo?.ledMatrix?.w,
+    wledInfo?.ledMatrix?.h,
+    wledInfo?.leds?.matrix?.w,
+    wledInfo?.leds?.matrix?.h,
+    wledInfo?.matrix?.w,
+    wledInfo?.matrix?.h,
+  ]);
 
   const matrixInfo = useMemo(() => {
     const detected = detect2DMatrix(wledInfo);
@@ -132,7 +199,7 @@ function LEDVisualization({
       }
     }
     return detected;
-  }, [wledInfo, ledData.length]);
+  }, [wledInfoHash, ledData.length]);
 
   const filteredLedData = useMemo(() => {
     // For 2D matrices, use all LED data. For 1D strips, remove first LED (status LED)
@@ -140,6 +207,11 @@ function LEDVisualization({
   }, [matrixInfo.is2D, ledData]);
 
   const ledCount = filteredLedData.length;
+
+  // Function to map matrix coordinates to LED index
+  const mapMatrixToLEDIndex = useCallback((row: number, col: number, width: number) => {
+    return row * width + col;
+  }, []);
 
   const sizeMultiplier = useMemo(() => {
     // For 2D matrices, completely ignore the size setting
@@ -154,15 +226,6 @@ function LEDVisualization({
     }
   }, [matrixInfo.is2D ? 'fixed' : effectiveLedSize, matrixInfo.is2D]);
 
-
-  // Function to map matrix coordinates to LED index
-  // WLED WebSocket already sends data in the correct physical layout order,
-  // so we just need simple row-major indexing
-  const mapMatrixToLEDIndex = (row: number, col: number, matrixInfo: any) => {
-    const { width } = matrixInfo;
-    // Simple row-major indexing: each row is 'width' LEDs
-    return row * width + col;
-  };
 
   // Cache for 2D matrix layouts to prevent recalculation
   const static2DLayoutCache = useMemo(() => new Map(), []);
@@ -273,79 +336,6 @@ function LEDVisualization({
     ? [screenWidth, matrixInfo.width, matrixInfo.height, static2DLayoutCache] // 2D: Only screen and matrix dimensions
     : [ledCount, screenWidth, matrixInfo.is2D, sizeMultiplier] // 1D: Include size multiplier
   );
-  
-  const renderLED = useMemo(() => {
-    return (color: LEDColor, index: number) => {
-      // Handle undefined color values
-      let r = color.r || 0;
-      let g = color.g || 0;
-      let b = color.b || 0;
-      const w = color.w || 0;
-
-      // For RGBW LEDs, white channel might need to be added to RGB channels
-      // This is a common issue with WLED RGBW data
-      if (w > 0) {
-        r = Math.min(255, r + Math.floor(w * 0.3)); // Add some white to red
-        g = Math.min(255, g + Math.floor(w * 0.3)); // Add some white to green
-        b = Math.min(255, b + Math.floor(w * 0.3)); // Add some white to blue
-      }
-
-
-      const brightness = (r + g + b) / 3 / 255;
-      const isActive = brightness > 0.1; // Consider LED "active" if it's not very dim
-      const isOff = r === 0 && g === 0 && b === 0; // LED is completely off
-
-      return (
-        <View
-          key={index}
-          style={[
-            {
-              width: layout.ledSize,
-              height: layout.ledSize,
-              marginRight: layout.spacing,
-              marginBottom: layout.spacing,
-              flexShrink: 0, // Prevent shrinking
-              borderRadius: layout.ledSize <= 6 ? 2 : Math.min(layout.ledSize / 3, 4), // Simplified border radius calculation
-              backgroundColor: isOff ? '#1e1e1e' : `rgb(${r}, ${g}, ${b})`,
-              // Remove expensive shadow effects for performance
-              // Apply brightness-based opacity masking only to active LEDs
-              opacity: isOff ? 0.8 : (isActive ? brightnessOpacity : 0.8 * brightnessOpacity),
-            }
-          ]}
-        >
-          {/* Simplified highlight effect - only for larger LEDs and very active ones */}
-          {isActive && layout.ledSize > 8 && brightness > 0.7 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 1,
-                left: 1,
-                borderRadius: 1,
-                height: 2,
-                width: 2,
-                backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                opacity: brightnessOpacity, // Also dim the highlight
-              }}
-            />
-          )}
-        </View>
-      );
-    };
-  }, [layout, brightnessOpacity]);
-  
-  // Throttle LED updates to reduce render frequency
-  const throttledLedData = useMemo(() => {
-    // Only update every few renders to reduce computational load
-    const dataHash = JSON.stringify(filteredLedData.slice(0, 50)); // Sample first 50 LEDs for change detection
-    return { data: filteredLedData, hash: dataHash };
-  }, [filteredLedData]);
-
-  // Memoize individual LED components to prevent unnecessary re-renders
-  const MemoizedLED = useMemo(() => {
-    return React.memo(({ color, index }: { color: LEDColor; index: number }) => {
-      return renderLED(color, index);
-    });
-  }, [renderLED]);
 
   // Function to render LEDs based on layout type
   const renderLEDs = useMemo(() => {
@@ -354,7 +344,7 @@ function LEDVisualization({
     const maxLedsToRender = (layout.type === '2d-matrix' && matrixInfo.is2D)
       ? filteredLedData.length // Render all LEDs for 2D matrix
       : 300; // Cap for 1D devices
-    const ledsToRender = throttledLedData.data.slice(0, maxLedsToRender);
+    const ledsToRender = filteredLedData.slice(0, maxLedsToRender);
 
     // Only use 2D matrix rendering if device is actually configured as 2D
     if (layout.type === '2d-matrix' && matrixInfo.is2D) {
@@ -366,14 +356,16 @@ function LEDVisualization({
         const rowLEDs = [];
         for (let col = 0; col < matrixWidth; col++) {
           // Use proper WLED matrix mapping instead of linear index
-          const ledIndex = mapMatrixToLEDIndex(row, col, matrixInfo);
+          const ledIndex = mapMatrixToLEDIndex(row, col, matrixWidth);
 
           if (ledIndex < ledsToRender.length && ledsToRender[ledIndex]) {
             rowLEDs.push(
-              <MemoizedLED
+              <LED
                 key={ledIndex}
                 color={ledsToRender[ledIndex]}
                 index={ledIndex}
+                ledSize={layout.ledSize}
+                spacing={layout.spacing}
               />
             );
           } else {
@@ -392,17 +384,7 @@ function LEDVisualization({
                     borderRadius: Math.min(layout.ledSize / 2, 4),
                     borderWidth: 0.5,
                     borderColor: '#660000',
-                    opacity: 0.3,
                   }}
-                />
-              );
-            } else {
-              // LED exists but is off (0,0,0)
-              rowLEDs.push(
-                <MemoizedLED
-                  key={ledIndex}
-                  color={{ r: 0, g: 0, b: 0, w: 0 }}
-                  index={ledIndex}
                 />
               );
             }
@@ -441,12 +423,18 @@ function LEDVisualization({
           paddingHorizontal: 4,
         }}>
           {ledsToRender.map((color, index) => (
-            <MemoizedLED key={index} color={color} index={index} />
+            <LED
+              key={index}
+              color={color}
+              index={index}
+              ledSize={layout.ledSize}
+              spacing={layout.spacing}
+            />
           ))}
         </View>
       );
     }
-  }, [layout, matrixInfo, throttledLedData, renderLED, screenWidth, MemoizedLED]);
+  }, [layout, matrixInfo, filteredLedData, screenWidth, mapMatrixToLEDIndex]);
 
   return (
     <View>
@@ -469,6 +457,21 @@ function LEDVisualization({
   );
 }
 
+const styles = StyleSheet.create({
+  led: {
+    flexShrink: 0,
+  },
+  highlight: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    borderRadius: 1,
+    height: 2,
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+  },
+});
+
 export default React.memo(LEDVisualization, (prevProps, nextProps) => {
   // Detect if this is a 2D matrix
   const is2D = (prevProps.wledInfo?.ledMatrix?.w && prevProps.wledInfo?.ledMatrix?.h) ||
@@ -476,13 +479,19 @@ export default React.memo(LEDVisualization, (prevProps, nextProps) => {
 
   // For 2D matrices, COMPLETELY ignore liveViewLedSize changes
   if (is2D) {
+    // Compare matrix dimensions efficiently without JSON.stringify
+    const prevMatrix = prevProps.wledInfo?.ledMatrix || prevProps.wledInfo?.leds?.matrix;
+    const nextMatrix = nextProps.wledInfo?.ledMatrix || nextProps.wledInfo?.leds?.matrix;
+
+    const matrixEqual = prevMatrix?.w === nextMatrix?.w &&
+                        prevMatrix?.h === nextMatrix?.h;
+
     const propsEqual = (
       prevProps.ledData === nextProps.ledData &&
       prevProps.subtextColor === nextProps.subtextColor &&
       prevProps.containerWidth === nextProps.containerWidth &&
       prevProps.showLedCount === nextProps.showLedCount &&
-      prevProps.brightness === nextProps.brightness &&
-      JSON.stringify(prevProps.wledInfo) === JSON.stringify(nextProps.wledInfo)
+      matrixEqual
       // liveViewLedSize is IGNORED for 2D matrices
     );
 

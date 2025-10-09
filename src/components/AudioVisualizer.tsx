@@ -28,52 +28,71 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   // Smoothed spectrum values using ref to avoid infinite loop
   const smoothedSpectrumRef = useRef<number[]>(new Array(barCount).fill(0));
 
-  // Animated values for idle dancing animation
+  // Animated values for idle dancing animation - use ref to persist across re-renders
   const animatedValues = useRef(
     Array.from({ length: barCount }, () => new Animated.Value(0))
   ).current;
 
-  // Smooth spectrum updates for less jitter
+  // Track if animations are running to prevent restart
+  const animationsRunning = useRef(false);
+
+  // Smooth spectrum updates with stronger smoothing for less jitter
   const displaySpectrum = isActive && melSpectrum.length > 0
     ? melSpectrum.map((val, i) => {
-        // Light smoothing: 85% new + 15% old for responsive feel
-        const smoothed = val * 0.85 + (smoothedSpectrumRef.current[i] || 0) * 0.15;
+        // Stronger smoothing: 65% new + 35% old for smooth transitions
+        const smoothed = val * 0.65 + (smoothedSpectrumRef.current[i] || 0) * 0.35;
         smoothedSpectrumRef.current[i] = smoothed;
         return smoothed;
       })
     : new Array(barCount).fill(0);
 
-  // Dancing animation when inactive
+  // Show idle animation ONLY when inactive (not when active with quiet audio)
+  const shouldShowIdleAnimation = !isActive;
+
+  // Smooth wave animation when inactive - more lively with bigger amplitude
   useEffect(() => {
-    if (!isActive) {
-      // Create staggered wave animation
+    if (shouldShowIdleAnimation && !animationsRunning.current) {
+      animationsRunning.current = true;
+
+      // Create lively multi-wave animation with varying speeds
       const animations = animatedValues.map((anim, index) => {
+        const phase = (index / barCount) * Math.PI * 4; // More waves across the spectrum
+        const baseDelay = index * 25; // Faster stagger for more fluid motion
+
+        // Vary animation speed based on position for more organic feel
+        const speedMultiplier = 0.8 + (Math.sin(index / barCount * Math.PI) * 0.4);
+        const duration = 900 * speedMultiplier;
+
         return Animated.loop(
           Animated.sequence([
+            Animated.delay(baseDelay),
             Animated.timing(anim, {
-              toValue: 0.3 + Math.random() * 0.4,
-              duration: 800 + Math.random() * 400,
-              useNativeDriver: false,
+              toValue: 0.6 + Math.sin(phase) * 0.35, // Bigger amplitude for more movement
+              duration: duration,
+              useNativeDriver: true,
             }),
             Animated.timing(anim, {
-              toValue: 0.1 + Math.random() * 0.2,
-              duration: 800 + Math.random() * 400,
-              useNativeDriver: false,
+              toValue: 0.25 + Math.sin(phase + Math.PI) * 0.3, // Deeper valleys
+              duration: duration * 1.1, // Slightly asymmetric for organic feel
+              useNativeDriver: true,
             }),
           ])
         );
       });
 
-      // Start animations with staggered delay
-      animations.forEach((anim, index) => {
-        setTimeout(() => anim.start(), index * 50);
-      });
+      // Start all animations
+      animations.forEach(anim => anim.start());
 
       return () => {
+        animationsRunning.current = false;
         animations.forEach(anim => anim.stop());
       };
+    } else if (!shouldShowIdleAnimation && animationsRunning.current) {
+      // Stop animations when switching to active mode
+      animationsRunning.current = false;
+      animatedValues.forEach(anim => anim.stopAnimation());
     }
-  }, [isActive, animatedValues]);
+  }, [shouldShowIdleAnimation, animatedValues, barCount]);
 
   // Color gradient from bass (indigo) -> mid (green) -> treble (red)
   const getBarColor = (index: number, intensity: number): string => {
@@ -109,20 +128,15 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   return (
     <View style={[styles.container, { height, backgroundColor: isDark ? '#1f2937' : '#f9fafb' }]}>
       <View style={styles.barsContainer}>
-        {(isActive ? displaySpectrum : animatedValues).map((intensityValue, index) => {
-          // For active mode, use smoothed value; for idle, use animated value
-          const intensity = isActive
-            ? (typeof intensityValue === 'number' ? intensityValue : 0)
-            : 0.2;
-
-          const barHeight = isActive
+        {displaySpectrum.map((intensityValue, index) => {
+          const intensity = shouldShowIdleAnimation ? 0.5 : intensityValue;
+          const barHeight = !shouldShowIdleAnimation
             ? Math.max(2, intensity * height * 0.85)
             : height * 0.85;
-
           const color = getBarColor(index, intensity);
 
-          return isActive ? (
-            <View
+          return shouldShowIdleAnimation ? (
+            <Animated.View
               key={index}
               style={[
                 styles.bar,
@@ -130,20 +144,25 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
                   width: `${barWidth - 0.5}%`,
                   height: barHeight,
                   backgroundColor: color,
+                  transform: [
+                    {
+                      scaleY: animatedValues[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.1, 1],
+                      }),
+                    },
+                  ],
                 },
               ]}
             />
           ) : (
-            <Animated.View
+            <View
               key={index}
               style={[
                 styles.bar,
                 {
                   width: `${barWidth - 0.5}%`,
-                  height: animatedValues[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [2, barHeight],
-                  }),
+                  height: barHeight,
                   backgroundColor: color,
                 },
               ]}

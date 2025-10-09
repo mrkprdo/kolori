@@ -6,9 +6,9 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   useDeviceCache,
   usePresetManager,
-  useWebSocketManager,
   useDeviceMonitor
 } from '../hooks';
+import { useWledDevice } from '../contexts/WledDeviceContext';
 
 // API & Config
 import { activateWledPresetById } from '../config/wledApi';
@@ -142,16 +142,14 @@ function KoloriApp({
     }
   }, [activeDevice?.id, activeDevice?.isConnected, onDeviceUpdate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const websocket = useWebSocketManager({
-    activeDevice,
-    settings,
-    isAnyModalOpen,
-    isCustomEffectsModalOpen,
-    onDeviceUpdate,
-    onLoadDevicePresets: loadDevicePresetsCallback,
-    onRefreshDeviceState: refreshDeviceStateCallback,
-    onFetchDeviceInfoViaHttp: fetchDeviceInfoViaHttp
-  });
+  const { liveLedData, setDevice: setWledContextDevice } = useWledDevice();
+
+  // Sync active device with WebSocket context
+  useEffect(() => {
+    if (activeDevice) {
+      setWledContextDevice(activeDevice);
+    }
+  }, [activeDevice, setWledContextDevice]);
 
   const deviceMonitor = useDeviceMonitor({
     devices,
@@ -242,7 +240,6 @@ function KoloriApp({
       presetManager.setCurrentPlaylist([]);
       presetManager.setSavedPlaylists([]);
       presetManager.setCustomEffects([]);
-      websocket.setLiveLedData([]);
       deviceCache.clearCache();
       logger.log('🧹 KoloriApp: Cleanup completed on unmount');
     };
@@ -347,7 +344,7 @@ function KoloriApp({
           onDeviceRemove={onDeviceDelete}
           onAddDevice={onShowAddManually}
           onScanForDevices={onScanFromMain}
-          liveLedData={websocket.liveLedData}
+          liveLedData={liveLedData}
           liveViewEnabled={settings.liveViewEnabled}
           onLiveViewToggle={(enabled) => onSettingsUpdate({ ...settings, liveViewEnabled: enabled })}
           onRefreshPresets={async () => {

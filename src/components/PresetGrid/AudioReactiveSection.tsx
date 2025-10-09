@@ -16,6 +16,7 @@ interface AudioReactiveSectionProps {
   subtextColor: string;
   onBrightnessChange?: (brightness: number) => void;
   activeDeviceIp?: string;
+  onAudioReactiveChange?: (isActive: boolean) => void;
 }
 
 /**
@@ -39,6 +40,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   subtextColor,
   onBrightnessChange,
   activeDeviceIp,
+  onAudioReactiveChange,
 }) => {
   const {
     isRecording,
@@ -49,6 +51,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
     config,
     updateConfig,
     error,
+    setAudioCallback,
   } = useAudioReactive();
 
   const [audioReactiveEnabled, setAudioReactiveEnabled] = useState(false);
@@ -200,26 +203,41 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
     }
   };
 
-  // Send LED colors to WLED via UDP Realtime (runs on every audio frame ~15-60fps)
+  // Setup direct audio callback for high-performance UDP sending (bypasses React re-renders)
   React.useEffect(() => {
-    if (!audioReactiveEnabled || !isRecording || !audioFeatures || melSpectrum.length === 0 || !activeDeviceIp) {
-      return;
+    if (audioReactiveEnabled && isRecording && activeDeviceIp) {
+      // Set up direct callback that runs on every audio frame
+      setAudioCallback((features, spectrum) => {
+        // Send UDP packet with LED colors (no React re-render!)
+        sendRealtimeToWLED(activeDeviceIp, features, spectrum, numLeds, effectType);
+
+        // Update stats every second (throttled to avoid excessive state updates)
+        const now = Date.now();
+        if (now - lastStatsUpdateRef.current >= 1000) {
+          const stats = getRealtimePacketStats();
+          const pps = stats.sent - previousSentRef.current;
+          setPacketStats(stats);
+          setPacketsPerSecond(pps);
+          previousSentRef.current = stats.sent;
+          lastStatsUpdateRef.current = now;
+        }
+      });
+    } else {
+      // Clear callback when not active
+      setAudioCallback(null);
     }
 
-    // Send UDP packet with LED colors
-    sendRealtimeToWLED(activeDeviceIp, audioFeatures, melSpectrum, numLeds, effectType);
+    return () => {
+      setAudioCallback(null);
+    };
+  }, [audioReactiveEnabled, isRecording, activeDeviceIp, effectType, numLeds, setAudioCallback]);
 
-    // Update stats every second (throttled to avoid excessive state updates)
-    const now = Date.now();
-    if (now - lastStatsUpdateRef.current >= 1000) {
-      const stats = getRealtimePacketStats();
-      const pps = stats.sent - previousSentRef.current;
-      setPacketStats(stats);
-      setPacketsPerSecond(pps);
-      previousSentRef.current = stats.sent;
-      lastStatsUpdateRef.current = now;
+  // Notify parent when AR state changes
+  React.useEffect(() => {
+    if (onAudioReactiveChange) {
+      onAudioReactiveChange(audioReactiveEnabled && isRecording);
     }
-  }, [audioFeatures, melSpectrum, audioReactiveEnabled, isRecording, activeDeviceIp, effectType, numLeds]);
+  }, [audioReactiveEnabled, isRecording, onAudioReactiveChange]);
 
   // Update packet stats for test mode (audio mode updates inline above)
   React.useEffect(() => {
@@ -419,9 +437,9 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
         {/* Info Text */}
         {!isRecording && !error && (
           <View style={styles.infoContainer}>
-            <Ionicons name="information-circle" size={20} color={subtextColor} />
+            <Ionicons name="information-circle" size={16} color={subtextColor} />
             <Text style={[styles.infoText, { color: subtextColor }]}>
-              Analyze audio in real-time and control LEDs directly via UDP.
+              Uses phone mic to render audio reactive effects on WLED.
             </Text>
           </View>
         )}
@@ -563,6 +581,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    minWidth: 90,
     gap: 6,
   },
   toggleText: {
@@ -632,7 +651,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   verticalSliderWrapper: {
-    height: 140,
+    height: 170,
     width: 60,
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -690,7 +709,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   infoText: {
-    fontSize: 12,
+    fontSize: 10,
     lineHeight: 16,
     flex: 1,
   },
