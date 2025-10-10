@@ -59,14 +59,103 @@
             50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 255, 255, 0.5)); }
         }
 
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
         .logo:hover .logo-icon {
             animation: glow 3s ease-in-out infinite;
+        }
+
+        header {
+            animation: fadeIn 1s ease-out;
+        }
+
+        .hero h1 {
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .hero p {
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .download-buttons {
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+        }
+
+        .privacy-badges {
+            animation: fadeInUp 0.8s ease-out 0.8s both;
+        }
+
+        .feature-card {
+            animation: fadeInUp 0.6s ease-out both;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0.1s; }
+        .feature-card:nth-child(2) { animation-delay: 0.2s; }
+        .feature-card:nth-child(3) { animation-delay: 0.3s; }
+        .feature-card:nth-child(4) { animation-delay: 0.4s; }
+        .feature-card:nth-child(5) { animation-delay: 0.5s; }
+
+        .feature-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            animation: float 2s ease-in-out infinite;
         }
 
         .tagline {
             font-size: 1.5rem;
             opacity: 0.9;
             font-weight: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tagline .wled-logo {
+            height: 1.4rem;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 2px;
         }
 
         .hero {
@@ -127,30 +216,48 @@
         .store-button {
             display: inline-flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255, 255, 255, 0.15);
-            padding: 15px 30px;
-            border-radius: 15px;
+            padding: 20px 40px;
+            border-radius: 18px;
             color: #fff;
             text-decoration: none;
-            font-size: 1rem;
+            font-size: 1.25rem;
             font-weight: 600;
             transition: all 0.3s ease;
             cursor: pointer;
+            min-width: 240px;
         }
 
         .store-button:hover {
             background: rgba(255, 255, 255, 0.15);
             border-color: rgba(255, 255, 255, 0.3);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
         }
 
         .store-button svg {
-            width: 32px;
-            height: 32px;
+            width: 42px;
+            height: 42px;
+        }
+
+        .store-button-text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .store-button-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        .store-button-name {
+            font-size: 1.35rem;
+            font-weight: 700;
         }
 
         .features {
@@ -167,7 +274,7 @@
 
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 30px;
         }
 
@@ -201,6 +308,12 @@
             line-height: 1.6;
         }
 
+        .feature-card.center {
+            grid-column: 1 / -1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
         footer {
             text-align: center;
             padding: 40px 0;
@@ -223,6 +336,7 @@
         footer a:hover {
             opacity: 0.7;
         }
+
 
         @media (max-width: 768px) {
             .hero h1 {
@@ -252,6 +366,12 @@
 
             .tagline {
                 font-size: 1.2rem;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .tagline .wled-logo {
+                height: 2rem;
             }
 
             .features h2 {
@@ -279,11 +399,6 @@
                 font-size: 1.75rem;
             }
 
-            .logo {
-                flex-direction: column;
-                gap: 10px;
-            }
-
             .logo-icon {
                 width: 50px;
                 height: 50px;
@@ -302,7 +417,11 @@
                 <img src="https://raw.githubusercontent.com/mrkprdo/kolori/dev/assets/kolori.png" alt="Kolori Icon" class="logo-icon">
                 <span class="logo-text">Kolori</span>
             </div>
-            <div class="tagline">A mobile app for controlling WLED devices</div>
+            <div class="tagline">
+                <span>A mobile app for controlling</span>
+                <img src="https://raw.githubusercontent.com/mrkprdo/kolori/refs/heads/dev/assets/wled_logo_akemi.png" alt="WLED" class="wled-logo">
+                <span>devices</span>
+            </div>
         </div>
     </header>
 
@@ -316,19 +435,19 @@
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
                     </svg>
-                    <div>
-                        <div style="font-size: 0.75rem; opacity: 0.8;">GET IT ON</div>
-                        <div>Google Play</div>
+                    <div class="store-button-text">
+                        <div class="store-button-label">GET IT ON</div>
+                        <div class="store-button-name">Google Play</div>
                     </div>
                 </a>
-                
+
                 <a href="https://apps.apple.com/gb/app/kolori/id6751673198" class="store-button" target="_blank" rel="noopener">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.1,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.09,16.67C20.06,16.74 19.67,18.11 18.71,19.5M13,3.5C13.73,2.67 14.94,2.04 15.94,2C16.07,3.17 15.6,4.35 14.9,5.19C14.21,6.04 13.07,6.7 11.95,6.61C11.8,5.46 12.36,4.26 13,3.5Z"/>
                     </svg>
-                    <div>
-                        <div style="font-size: 0.75rem; opacity: 0.8;">Download on the</div>
-                        <div>App Store</div>
+                    <div class="store-button-text">
+                        <div class="store-button-label">Download on the</div>
+                        <div class="store-button-name">App Store</div>
                     </div>
                 </a>
             </div>
@@ -361,39 +480,33 @@
             <h2>Powerful Features</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">🎨</div>
-                    <h3>Custom Effects</h3>
-                    <p>Build and save your own lighting effects with full palette support and live preview.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🎭</div>
-                    <h3>Seasonal Presets</h3>
-                    <p>Save your favorite presets as seasonal and access them easily. </p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Real-time Control</h3>
-                    <p>Instant effect application with WebSocket connectivity for seamless control.</p>
-                </div>
-                
-                <div class="feature-card">
                     <div class="feature-icon">🔍</div>
                     <h3>Device Discovery</h3>
                     <p>Easy setup with IP address or mDNS hostname support for quick connections.</p>
                 </div>
-                
+
                 <div class="feature-card">
                     <div class="feature-icon">📱</div>
                     <h3>Multi-Device Support</h3>
                     <p>Manage multiple WLED controllers from one beautiful interface.</p>
                 </div>
-                
+
                 <div class="feature-card">
-                    <div class="feature-icon">🎵</div>
-                    <h3>Playlist Builder</h3>
-                    <p>Create dynamic sequences of effects for automated shows.</p>
+                    <div class="feature-icon">🎨</div>
+                    <h3>Custom Effects Generator</h3>
+                    <p>Build and save your own lighting effects with full palette support and live preview.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⏰</div>
+                    <h3>Scheduler</h3>
+                    <p>Automate your lighting with time-based schedules and presets.</p>
+                </div>
+
+                <div class="feature-card center">
+                    <div class="feature-icon">✨</div>
+                    <h3>And So Much More!</h3>
+                    <p>Seasonal presets, playlist builder, real-time control, audio reactive features, and more.</p>
                 </div>
             </div>
         </div>
@@ -401,7 +514,10 @@
 
     <footer>
         <div class="container">
-            <p>Made with ❤️ for the WLED community</p>
+            <p>Made with ❤️ for the
+                <img src="https://raw.githubusercontent.com/mrkprdo/kolori/refs/heads/dev/assets/wled_logo_akemi.png" alt="WLED" class="wled-logo" style="height: 1.2rem;">
+                community
+            </p>
             <p><a href="https://github.com/mrkprdo/kolori" target="_blank" rel="noopener">View on GitHub</a></p>
         </div>
     </footer>
