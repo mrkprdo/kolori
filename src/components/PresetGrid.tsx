@@ -1167,6 +1167,7 @@ export default function PresetGrid({
                 );
 
                 if (result.success) {
+                  // Remove from local state immediately
                   onRemoveCustomEffect(item.id as number);
                   // Remove from selection immediately
                   setSelectedForDelete(prev => {
@@ -1307,6 +1308,11 @@ export default function PresetGrid({
             results.failed.length !== 1 ? "s" : ""
           }:\n`;
           alertMessage += results.failed.map((item) => `• ${item}`).join("\n");
+        }
+
+        // Refresh presets from device to update UI with latest state
+        if (onRefreshPresets && results.success.length > 0) {
+          await onRefreshPresets();
         }
 
         Alert.alert(alertTitle, alertMessage, [{ text: "OK" }]);
