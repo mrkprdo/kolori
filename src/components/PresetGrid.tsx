@@ -769,20 +769,39 @@ export default function PresetGrid({
         // Use WebSocket instead of HTTP
         togglePowerWS(turnOn);
         logger.log(`Device ${turnOn ? 'turned on' : 'turned off'} via WebSocket`);
+
+        // Optimistic UI update: immediately update the local device state
+        if (onDeviceUpdate && activeDevice?.id) {
+          onDeviceUpdate(activeDevice.id, {
+            wledInfo: {
+              ...activeDevice.wledInfo,
+              on: turnOn,
+            },
+          });
+        }
       } catch (error) {
         Alert.alert(
           "Error",
           `Failed to ${turnOn ? "turn on" : "turn off"} device`
         );
+        // Revert optimistic update on error
+        if (onDeviceUpdate && activeDevice?.id) {
+          onDeviceUpdate(activeDevice.id, {
+            wledInfo: {
+              ...activeDevice.wledInfo,
+              on: !turnOn,
+            },
+          });
+        }
       } finally {
         setIsTogglingDevice(false);
-        // Refresh device state after toggle
+        // Refresh device state after toggle to sync with actual device state
         if (onRefreshPresets) {
           onRefreshPresets();
         }
       }
     },
-    [activeDevice?.ip, isTogglingDevice, onRefreshPresets]
+    [activeDevice?.ip, activeDevice?.id, activeDevice?.wledInfo, isTogglingDevice, onRefreshPresets, onDeviceUpdate, togglePowerWS]
   );
 
   // Use ref to always get latest device info
