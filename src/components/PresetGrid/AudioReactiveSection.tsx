@@ -102,26 +102,47 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       closeRealtimeSocket(); // Close UDP socket when stopping
       setAudioReactiveEnabled(false);
     } else {
+      // Check if device is connected
+      if (!activeDeviceIp) {
+        alert('No device connected! Please connect to a WLED device first.');
+        return;
+      }
+
       // Show loading state
       setIsStarting(true);
       setTestMode(false);
-      setConfigStatus(null);
       resetRealtimeState();
       resetRealtimePacketStats(); // Reset stats for new session
 
-      // Start audio in background
-      startAudioCapture().then((success) => {
-        setIsStarting(false);
-        if (success) {
-          setAudioReactiveEnabled(true);
-          // Clear any test patterns
-          if (activeDeviceIp) {
-            turnOffAllLEDs(activeDeviceIp, numLeds);
-          }
+      // Check UDP Realtime status before starting
+      try {
+        const status = await checkWLEDAudioReactiveConfig(activeDeviceIp);
+        setConfigStatus(status);
+
+        if (!status.udpRealtimeEnabled) {
+          setIsStarting(false);
+          alert('UDP Realtime is not enabled on your WLED device.\n\nPlease tap "Enable UDP" below to enable it, or enable it manually in WLED settings:\nSettings > Sync Interfaces > Realtime DMX');
+          return;
         }
-      }).catch(() => {
+
+        // UDP Realtime is enabled, proceed with starting audio
+        startAudioCapture().then((success) => {
+          setIsStarting(false);
+          if (success) {
+            setAudioReactiveEnabled(true);
+            // Clear any test patterns
+            if (activeDeviceIp) {
+              turnOffAllLEDs(activeDeviceIp, numLeds);
+            }
+          }
+        }).catch(() => {
+          setIsStarting(false);
+        });
+      } catch (error) {
         setIsStarting(false);
-      });
+        alert('Failed to check WLED configuration. Please ensure your device is connected.');
+        console.error('Config check error:', error);
+      }
     }
   };
 
@@ -514,6 +535,16 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
               </TouchableOpacity>
             </View>
 
+            {/* Test Mode Help Message */}
+            {testMode && (
+              <View style={[styles.testHelpContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                <Ionicons name="bulb" size={14} color={isDark ? '#93c5fd' : '#3b82f6'} />
+                <Text style={[styles.testHelpText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
+                  If you don't see light effects, this means UDP Realtime is not working. Press "Check" to see UDP status and enable it if needed.
+                </Text>
+              </View>
+            )}
+
 
             {/* Config Status Display */}
             {configStatus && (
@@ -836,6 +867,19 @@ const styles = StyleSheet.create({
   enableUdpText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  testHelpContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  testHelpText: {
+    fontSize: 11,
+    lineHeight: 16,
+    flex: 1,
   },
 });
 

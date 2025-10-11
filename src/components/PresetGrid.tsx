@@ -83,6 +83,7 @@ import MemoizedPresetCard from "./PresetGrid/MemoizedPresetCard";
 import { fabStyles } from "./PresetGrid/FABStyles";
 import { deleteModeStyles } from "./PresetGrid/DeleteModeStyles";
 import { sharedStyles } from "./PresetGrid/styles";
+import { checkWLEDAudioReactiveConfig } from "../utils/wledConfigChecker";
 
 interface PresetGridProps {
   activePreset: string | number | null;
@@ -825,6 +826,24 @@ export default function PresetGrid({
         setLastRefreshTimestamp(Date.now());
         logger.log(`💡 Brightness updated from refresh: ${newBrightness}`);
       }
+
+      // Also check UDP Realtime status after refresh
+      if (currentDevice?.ip && currentDevice?.isConnected) {
+        try {
+          const status = await checkWLEDAudioReactiveConfig(currentDevice.ip);
+          // If UDP Realtime is enabled, block presets access
+          if (status.udpRealtimeEnabled) {
+            logger.log('⚠️ UDP Realtime detected as enabled after refresh - blocking access');
+            setIsAudioReactiveActive(true);
+          } else if (!status.udpRealtimeEnabled && isAudioReactiveActive) {
+            // If UDP Realtime is disabled but we're showing the overlay, hide it
+            logger.log('✅ UDP Realtime is disabled after refresh - allowing preset access');
+            setIsAudioReactiveActive(false);
+          }
+        } catch (error) {
+          logger.error('Failed to check UDP Realtime status on refresh:', error);
+        }
+      }
     } catch (error) {
       logger.error("Failed to refresh presets:", error);
     } finally {
@@ -834,7 +853,34 @@ export default function PresetGrid({
     onRefreshPresets,
     isRefreshing,
     sliderBrightness,
+    isAudioReactiveActive,
   ]);
+
+  // Check UDP Realtime status when switching to presets page (page 0)
+  useEffect(() => {
+    const checkUdpStatusOnPageChange = async () => {
+      // Only check when on page 0 (presets) and device is connected
+      if (currentPage === 0 && activeDevice?.ip && activeDevice?.isConnected) {
+        try {
+          const status = await checkWLEDAudioReactiveConfig(activeDevice.ip);
+
+          // If UDP Realtime is enabled, block presets access
+          if (status.udpRealtimeEnabled) {
+            logger.log('⚠️ UDP Realtime is enabled when navigating to presets page - blocking access');
+            setIsAudioReactiveActive(true);
+          } else if (!status.udpRealtimeEnabled && isAudioReactiveActive) {
+            // If UDP Realtime is disabled but we're showing the overlay, hide it
+            logger.log('✅ UDP Realtime is disabled - allowing preset access');
+            setIsAudioReactiveActive(false);
+          }
+        } catch (error) {
+          logger.error('Failed to check UDP Realtime status on page change:', error);
+        }
+      }
+    };
+
+    checkUdpStatusOnPageChange();
+  }, [currentPage, activeDevice?.ip, activeDevice?.isConnected, isAudioReactiveActive]);
 
   // Animation coordination (non-blocking)
   const fabAnimationInProgress = useRef(false);
@@ -1763,19 +1809,27 @@ export default function PresetGrid({
 
           {/* Audio Reactive Active Overlay */}
           {isAudioReactiveActive && (
-            <View
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => {
+                // Show toast or alert when user tries to interact
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show('Turn off Audio Reactive to change presets', ToastAndroid.SHORT);
+                } else {
+                  Alert.alert('Audio Reactive Active', 'Turn off Audio Reactive to change presets');
+                }
+              }}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.7)',
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.85)',
                 justifyContent: 'center',
                 alignItems: 'center',
                 zIndex: 1000,
               }}
-              pointerEvents="box-only"
             >
               <View
                 style={{
@@ -1786,16 +1840,23 @@ export default function PresetGrid({
                   borderColor: '#3b82f6',
                   maxWidth: '80%',
                   alignItems: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
                 }}
               >
+                <Ionicons name="musical-notes" size={40} color="#3b82f6" style={{ marginBottom: 12 }} />
                 <Text style={{ fontSize: 20, fontWeight: 'bold', color: textColor, marginBottom: 8 }}>
-                  🎵 Audio Reactive Active
+                  Audio Reactive Active
                 </Text>
-                <Text style={{ fontSize: 14, color: subtextColor, textAlign: 'center' }}>
-                  Turn off Audio Reactive to change presets
+                <Text style={{ fontSize: 14, color: subtextColor, textAlign: 'center', lineHeight: 20 }}>
+                  Presets are disabled while Audio Reactive is running.{'\n'}
+                  Turn off Audio Reactive to change presets.
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         </View>
         </ScrollView>
