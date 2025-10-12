@@ -67,11 +67,11 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
       if (config.if.live.en !== undefined) {
         status.udpRealtimeEnabled = config.if.live.en === true;
 
-        if (!status.udpRealtimeEnabled) {
-          status.issues.push('UDP Realtime is disabled. Tap "Enable UDP" to fix.');
-        }
+        // if (!status.udpRealtimeEnabled) {
+        //   status.issues.push('UDP Realtime is disabled. Tap "Enable UDP" to fix.');
+        // }
       } else {
-        status.issues.push('Cannot determine UDP Realtime status');
+        // status.issues.push('Cannot determine UDP Realtime status');
       }
 
       // UDP Realtime ALWAYS uses port 21324 (hardcoded in WLED)

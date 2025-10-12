@@ -104,19 +104,11 @@ export default function DeviceManagementModal({
   };
 
   const getStyles = (isDark: boolean) => StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    contentContainer: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      gap: 6,
-    },
     deviceCard: {
-      backgroundColor: isDark ? '#1f2937' : '#ffffff', 
-      borderRadius: 10, 
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      borderRadius: 10,
       padding: 10,
-      marginBottom: 0,
+      marginBottom: 6,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: isDark ? 0.25 : 0.05,
@@ -174,26 +166,13 @@ export default function DeviceManagementModal({
       borderColor: isDark ? '#374151' : '#d1d5db',
     },
     noDevicesText: {
-      color: isDark ? '#9ca3af' : '#6b7280', 
-      fontSize: 13, 
+      color: isDark ? '#9ca3af' : '#6b7280',
+      fontSize: 13,
       fontWeight: '600',
       textAlign: 'center',
       marginTop: 6,
     },
-    stickyFooter: {
-      borderTopWidth: 1, 
-      borderTopColor: isDark ? '#374151' : '#e5e7eb', 
-      backgroundColor: isDark ? '#1f2937' : '#ffffff',
-      borderBottomLeftRadius: 16,
-      borderBottomRightRadius: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: isDark ? 0.25 : 0.1,
-      shadowRadius: 4,
-      elevation: 4,
-    },
     buttonContainer: {
-      padding: 16,
       flexDirection: 'row',
       gap: 8,
     },
@@ -239,60 +218,58 @@ export default function DeviceManagementModal({
 
   const styles = getStyles(isDark);
 
+  const footerContent = (
+    <View style={styles.buttonContainer}>
+      <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonPrimary}>
+        <Ionicons name="add" size={20} color="white" />
+        <Text style={[styles.footerButtonText, { color: 'white' }]}>Add Manually</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonSecondary}>
+        <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
+        <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Scan Network</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <FloatingModal
       visible={isVisible}
       isDark={isDark}
       onClose={onClose}
       title="Device Management"
-      scrollable={false}
+      scrollable={true}
+      footer={footerContent}
     >
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.contentContainer}>
-          {(devices || []).map((device) => (
-            <View key={device.id} style={styles.deviceCard}>
-              <View style={styles.deviceCardHeader}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }]} />
-                    <Text style={styles.deviceName}>{device.name}</Text>
-                  </View>
-                  <Text style={styles.deviceIp}>{device.ip}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TouchableOpacity onPress={() => openWledPage(device.ip)} style={styles.linkButton}>
-                    <Ionicons name="link-outline" size={18} color="#3B82F6" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => confirmDeviceReboot(device)} style={styles.rebootButton}>
-                    <Ionicons name="refresh-outline" size={18} color="#F97316" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => confirmDeviceRemoval(device)} style={styles.trashButton}>
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
+      {(devices || []).map((device) => (
+        <View key={device.id} style={styles.deviceCard}>
+          <View style={styles.deviceCardHeader}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={[styles.statusDot, { backgroundColor: device.isConnected ? '#10b981' : '#ef4444' }]} />
+                <Text style={styles.deviceName}>{device.name}</Text>
               </View>
+              <Text style={styles.deviceIp}>{device.ip}</Text>
             </View>
-          ))}
-          {(devices || []).length === 0 && (
-            <View style={styles.noDevicesContainer}>
-              <Ionicons name="hardware-chip-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-              <Text style={styles.noDevicesText}>No devices configured</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => openWledPage(device.ip)} style={styles.linkButton}>
+                <Ionicons name="link-outline" size={18} color="#3B82F6" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => confirmDeviceReboot(device)} style={styles.rebootButton}>
+                <Ionicons name="refresh-outline" size={18} color="#F97316" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => confirmDeviceRemoval(device)} style={styles.trashButton}>
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
-        <View style={styles.stickyFooter}>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonPrimary}>
-              <Ionicons name="add" size={20} color="white" />
-              <Text style={[styles.footerButtonText, { color: 'white' }]}>Add Manually</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonSecondary}>
-              <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
-              <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Scan Network</Text>
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      ))}
+      {(devices || []).length === 0 && (
+        <View style={styles.noDevicesContainer}>
+          <Ionicons name="hardware-chip-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
+          <Text style={styles.noDevicesText}>No devices configured</Text>
+        </View>
+      )}
     </FloatingModal>
   );
 }

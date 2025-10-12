@@ -95,155 +95,155 @@ export default function App() {
     const isDark = getIsDark(settingsManager.settings.theme);
 
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ActionSheetProvider>
-          <SheetProvider>
-            <WledDeviceProvider>
-              <SafeAreaProvider>
-                <NavigationContainer ref={navigationRef}>
-                  <StatusBar style={isDark ? "light" : "dark"} />
-                <Stack.Navigator
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' }
-                  }}
-                >
-                  {(deviceManager.devices.length === 0 && !isDiscoveryInProgress) ? (
-                    <Stack.Screen name="DeviceOnboarding">
-                      {(props) => (
-                        <DeviceOnboardingScreen
-                          {...props}
-                          isDark={isDark}
-                          onDeviceAdded={(device) =>
-                            deviceManager.handleAddDevice(
-                              device,
-                              settingsManager.settings,
-                              settingsManager.handleUpdateSettings
-                            )
-                          }
-                          backgroundScanDevices={backgroundScanDevices}
-                          existingDevices={deviceManager.devices}
-                          showScanNetworkModal={modalManager.showScanNetworkModal}
-                          setShowScanNetworkModal={(show) => {
-                            if (show) modalManager.openScanModalFromMain();
-                          }}
-                          setIsDiscoveryInProgress={setIsDiscoveryInProgress}
-                        />
-                      )}
-                    </Stack.Screen>
-                  ) : (
-                    <Stack.Screen name="KoloriApp">
-                      {(props) => (
-                        <KoloriApp
-                          {...props}
-                          devices={deviceManager.devices}
-                          activeDeviceId={deviceManager.activeDeviceId}
-                          settings={settingsManager.settings!}
-                          onDeviceAdd={(device) =>
-                            deviceManager.handleAddDevice(
-                              device,
-                              settingsManager.settings,
-                              settingsManager.handleUpdateSettings
-                            )
-                          }
-                          onDeviceUpdate={deviceManager.handleUpdateDevice}
-                          onDeviceDelete={(deviceId) =>
-                            deviceManager.handleDeleteDevice(
-                              deviceId,
-                              settingsManager.settings,
-                              settingsManager.handleUpdateSettings
-                            )
-                          }
-                          onSettingsUpdate={settingsManager.handleUpdateSettings}
-                          onSetActiveDeviceId={(id) =>
-                            deviceManager.handleSetActiveDeviceId(
-                              id,
-                              settingsManager.settings,
-                              settingsManager.handleUpdateSettings
-                            )
-                          }
-                          showScanNetworkModal={modalManager.showScanNetworkModal}
-                          setShowScanNetworkModal={(show) => {
-                            if (show) modalManager.openScanModalFromMain();
-                          }}
-                          setIsDiscoveryInProgress={setIsDiscoveryInProgress}
-                          onShowSettings={modalManager.openSettings}
-                          onScanFromMain={modalManager.openScanModalFromMain}
-                          onShowAddManually={modalManager.openAddManuallyModalFromMain}
-                          isAnyModalOpen={modalManager.isAnyModalOpen}
-                          isCustomEffectsModalOpen={modalManager.isCustomEffectsModalOpen}
-                          updateChildModalState={modalManager.updateChildModalState}
-                        />
-                      )}
-                    </Stack.Screen>
-                  )}
-                </Stack.Navigator>
-              </NavigationContainer>
-            </SafeAreaProvider>
-          </WledDeviceProvider>
-          </SheetProvider>
-        </ActionSheetProvider>
-      </GestureHandlerRootView>
+      <ActionSheetProvider>
+        <SheetProvider>
+          <WledDeviceProvider>
+            <SafeAreaProvider>
+              <NavigationContainer ref={navigationRef}>
+                <StatusBar style={isDark ? "light" : "dark"} />
+              <Stack.Navigator
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: isDark ? '#121212' : '#FFFFFF' }
+                }}
+              >
+                {(deviceManager.devices.length === 0 && !isDiscoveryInProgress) ? (
+                  <Stack.Screen name="DeviceOnboarding">
+                    {(props) => (
+                      <DeviceOnboardingScreen
+                        {...props}
+                        isDark={isDark}
+                        onDeviceAdded={(device) =>
+                          deviceManager.handleAddDevice(
+                            device,
+                            settingsManager.settings,
+                            settingsManager.handleUpdateSettings
+                          )
+                        }
+                        backgroundScanDevices={backgroundScanDevices}
+                        existingDevices={deviceManager.devices}
+                        showScanNetworkModal={modalManager.showScanNetworkModal}
+                        setShowScanNetworkModal={(show) => {
+                          if (show) modalManager.openScanModalFromMain();
+                        }}
+                        setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+                      />
+                    )}
+                  </Stack.Screen>
+                ) : (
+                  <Stack.Screen name="KoloriApp">
+                    {(props) => (
+                      <KoloriApp
+                        {...props}
+                        devices={deviceManager.devices}
+                        activeDeviceId={deviceManager.activeDeviceId}
+                        settings={settingsManager.settings!}
+                        onDeviceAdd={(device) =>
+                          deviceManager.handleAddDevice(
+                            device,
+                            settingsManager.settings,
+                            settingsManager.handleUpdateSettings
+                          )
+                        }
+                        onDeviceUpdate={deviceManager.handleUpdateDevice}
+                        onDeviceDelete={(deviceId) =>
+                          deviceManager.handleDeleteDevice(
+                            deviceId,
+                            settingsManager.settings,
+                            settingsManager.handleUpdateSettings
+                          )
+                        }
+                        onSettingsUpdate={settingsManager.handleUpdateSettings}
+                        onSetActiveDeviceId={(id) =>
+                          deviceManager.handleSetActiveDeviceId(
+                            id,
+                            settingsManager.settings,
+                            settingsManager.handleUpdateSettings
+                          )
+                        }
+                        showScanNetworkModal={modalManager.showScanNetworkModal}
+                        setShowScanNetworkModal={(show) => {
+                          if (show) modalManager.openScanModalFromMain();
+                        }}
+                        setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+                        onShowSettings={modalManager.openSettings}
+                        onScanFromMain={modalManager.openScanModalFromMain}
+                        onShowAddManually={modalManager.openAddManuallyModalFromMain}
+                        isAnyModalOpen={modalManager.isAnyModalOpen}
+                        isCustomEffectsModalOpen={modalManager.isCustomEffectsModalOpen}
+                        updateChildModalState={modalManager.updateChildModalState}
+                      />
+                    )}
+                  </Stack.Screen>
+                )}
+              </Stack.Navigator>
+            </NavigationContainer>
+          </SafeAreaProvider>
+        </WledDeviceProvider>
+        </SheetProvider>
+      </ActionSheetProvider>
     );
   };
 
   return (
-    <Animated.View style={{ flex: 1, opacity: appInit.fadeAnim }}>
-      {renderContent()}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Animated.View style={{ flex: 1, opacity: appInit.fadeAnim }}>
+        {renderContent()}
 
-      {/* Global ScanNetworkModal - outside navigation to prevent unmounting */}
-      <ScanNetworkModal
-        isVisible={modalManager.showScanNetworkModal}
-        onClose={modalManager.closeScanModal}
-        onDeviceAdded={(device) =>
-          deviceManager.handleAddDevice(
-            device,
-            settingsManager.settings,
-            settingsManager.handleUpdateSettings
-          )
-        }
-        isDark={getIsDark(settingsManager.settings?.theme)}
-        existingDevices={deviceManager.devices}
-        backgroundScanDevices={backgroundScanDevices}
-        setIsDiscoveryInProgress={setIsDiscoveryInProgress}
-        onManualEntry={modalManager.openAddManuallyModalFromMain}
-      />
-
-      {/* Global SettingsModal */}
-      {settingsManager.settings && (
-        <SettingsModal
-          isVisible={modalManager.showSettings}
-          onClose={modalManager.closeSettings}
-          isDark={getIsDark(settingsManager.settings.theme)}
-          theme={settingsManager.settings.theme}
-          onThemeChange={(theme) =>
-            settingsManager.handleUpdateSettings({ ...settingsManager.settings!, theme })
+        {/* Global ScanNetworkModal - outside navigation to prevent unmounting */}
+        <ScanNetworkModal
+          isVisible={modalManager.showScanNetworkModal}
+          onClose={modalManager.closeScanModal}
+          onDeviceAdded={(device) =>
+            deviceManager.handleAddDevice(
+              device,
+              settingsManager.settings,
+              settingsManager.handleUpdateSettings
+            )
           }
-          scheduleMode={settingsManager.settings.scheduleMode}
-          onScheduleModeChange={(mode) =>
-            settingsManager.handleUpdateSettings({ ...settingsManager.settings!, scheduleMode: mode })
-          }
-          settings={settingsManager.settings}
-          onSettingsUpdate={settingsManager.handleUpdateSettings}
-          activeDevice={deviceManager.activeDevice}
-          updateChildModalState={modalManager.updateChildModalState}
+          isDark={getIsDark(settingsManager.settings?.theme)}
+          existingDevices={deviceManager.devices}
+          backgroundScanDevices={backgroundScanDevices}
+          setIsDiscoveryInProgress={setIsDiscoveryInProgress}
+          onManualEntry={modalManager.openAddManuallyModalFromMain}
         />
-      )}
 
-      {/* Global AddDeviceManuallyModal */}
-      <AddDeviceManuallyModal
-        isVisible={modalManager.showAddManuallyModal}
-        onClose={modalManager.closeAddManuallyModal}
-        onDeviceAdded={(device) =>
-          deviceManager.handleAddDevice(
-            device,
-            settingsManager.settings,
-            settingsManager.handleUpdateSettings
-          )
-        }
-        isDark={getIsDark(settingsManager.settings?.theme)}
-        existingDevices={deviceManager.devices}
-      />
-    </Animated.View>
+        {/* Global SettingsModal */}
+        {settingsManager.settings && (
+          <SettingsModal
+            isVisible={modalManager.showSettings}
+            onClose={modalManager.closeSettings}
+            isDark={getIsDark(settingsManager.settings.theme)}
+            theme={settingsManager.settings.theme}
+            onThemeChange={(theme) =>
+              settingsManager.handleUpdateSettings({ ...settingsManager.settings!, theme })
+            }
+            scheduleMode={settingsManager.settings.scheduleMode}
+            onScheduleModeChange={(mode) =>
+              settingsManager.handleUpdateSettings({ ...settingsManager.settings!, scheduleMode: mode })
+            }
+            settings={settingsManager.settings}
+            onSettingsUpdate={settingsManager.handleUpdateSettings}
+            activeDevice={deviceManager.activeDevice}
+            updateChildModalState={modalManager.updateChildModalState}
+          />
+        )}
+
+        {/* Global AddDeviceManuallyModal */}
+        <AddDeviceManuallyModal
+          isVisible={modalManager.showAddManuallyModal}
+          onClose={modalManager.closeAddManuallyModal}
+          onDeviceAdded={(device) =>
+            deviceManager.handleAddDevice(
+              device,
+              settingsManager.settings,
+              settingsManager.handleUpdateSettings
+            )
+          }
+          isDark={getIsDark(settingsManager.settings?.theme)}
+          existingDevices={deviceManager.devices}
+        />
+      </Animated.View>
+    </GestureHandlerRootView>
   );
 }

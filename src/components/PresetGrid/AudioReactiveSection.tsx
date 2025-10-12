@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { sharedStyles } from './styles';
 import { useAudioReactive } from '../../hooks/useAudioReactive';
 import AudioVisualizer from '../AudioVisualizer';
@@ -121,7 +122,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
 
         if (!status.udpRealtimeEnabled) {
           setIsStarting(false);
-          alert('UDP Realtime is not enabled on your WLED device.\n\nPlease tap "Enable UDP" below to enable it, or enable it manually in WLED settings:\nSettings > Sync Interfaces > Realtime DMX');
+          alert('UDP Realtime is not enabled on your WLED device.\n\nPlease tap "Enable UDP" below to enable it, or enable it manually in WLED settings:\nSettings > Sync Interfaces > Realtime UDP');
           return;
         }
 
@@ -259,6 +260,20 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       onAudioReactiveChange(audioReactiveEnabled && isRecording);
     }
   }, [audioReactiveEnabled, isRecording, onAudioReactiveChange]);
+
+  // Keep device awake when audio reactive is active
+  React.useEffect(() => {
+    if (audioReactiveEnabled && isRecording) {
+      activateKeepAwakeAsync('audio-reactive')
+        .catch(err => console.error('Failed to activate keep awake:', err));
+    } else {
+      deactivateKeepAwake('audio-reactive');
+    }
+
+    return () => {
+      deactivateKeepAwake('audio-reactive');
+    };
+  }, [audioReactiveEnabled, isRecording]);
 
   // Update packet stats for test mode (audio mode updates inline above)
   React.useEffect(() => {
