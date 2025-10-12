@@ -6,7 +6,6 @@ import {
   TextInput,
   Alert,
   StyleSheet,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FloatingModal from './FloatingModal';
@@ -325,20 +324,13 @@ export default function SchedulerModal({
   }, [activeDevice, setSchedulerEnabled, setConfiguredSchedule, saveSchedulerState]);
 
   const getStyles = (isDark: boolean) => StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    contentContainer: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      gap: 12,
-    },
     statusCard: {
       padding: 12,
       borderRadius: 8,
       borderWidth: 1,
       backgroundColor: isDark ? '#1f2937' : '#ffffff',
       borderColor: isDark ? '#374151' : '#e5e7eb',
+      marginBottom: 6,
     },
     statusTitle: {
       fontSize: 16,
@@ -355,6 +347,7 @@ export default function SchedulerModal({
       borderWidth: 1,
       backgroundColor: isDark ? '#1f2937' : '#ffffff',
       borderColor: isDark ? '#374151' : '#e5e7eb',
+      marginBottom: 6,
     },
     sectionTitle: {
       fontSize: 14,
@@ -436,18 +429,6 @@ export default function SchedulerModal({
       paddingHorizontal: 12,
       textAlign: 'center',
     },
-    stickyFooter: {
-      borderTopWidth: 1,
-      borderTopColor: isDark ? '#374151' : '#e5e7eb',
-      backgroundColor: isDark ? '#1f2937' : '#ffffff',
-      borderBottomLeftRadius: 16,
-      borderBottomRightRadius: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: isDark ? 0.25 : 0.1,
-      shadowRadius: 4,
-      elevation: 4,
-    },
     buttonContainer: {
       padding: 16,
       flexDirection: 'row',
@@ -498,18 +479,51 @@ export default function SchedulerModal({
   const styles = getStyles(isDark);
   const textColor = isDark ? '#f3f4f6' : '#111827';
 
+  const footerContent = (
+    <View style={styles.buttonContainer}>
+      <TouchableOpacity
+        onPress={handleResetSchedule}
+        style={[
+          styles.resetButton,
+          {
+            backgroundColor: isDark ? '#dc2626' : '#ef4444',
+          },
+        ]}
+      >
+        <Ionicons name="trash-outline" size={20} color="white" />
+        <Text style={styles.resetButtonText}>Reset</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={handleSaveSchedule}
+        style={[
+          styles.saveButton,
+          {
+            backgroundColor: '#3b82f6',
+            opacity: isSchedulerSaving ? 0.6 : 1,
+          },
+        ]}
+        disabled={isSchedulerSaving}
+      >
+        <Ionicons name="save-outline" size={20} color="white" />
+        <Text style={styles.saveButtonText}>
+          {isSchedulerSaving ? 'Saving...' : 'Save Schedule'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <FloatingModal
       visible={visible}
       isDark={isDark}
       onClose={onClose}
       title="Scheduler"
-      scrollable={false}
+      scrollable={true}
+      footer={footerContent}
     >
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.contentContainer}>
-          {/* Timer Status Info */}
-          <View style={styles.statusCard}>
+      {/* Timer Status Info */}
+      <View style={styles.statusCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: schedulerEnabled ? 12 : 0 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                 <View style={{
@@ -648,10 +662,10 @@ export default function SchedulerModal({
                 </View>
               </View>
             )}
-          </View>
+      </View>
 
-          {/* Days Selection & Settings Card */}
-          <View style={styles.card}>
+      {/* Days Selection & Settings Card */}
+      <View style={styles.card}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Select Days</Text>
               <TouchableOpacity
@@ -929,43 +943,6 @@ export default function SchedulerModal({
               </View>
             </View>
 
-          </View>
-        </ScrollView>
-
-        {/* Sticky Footer with Action Buttons */}
-        <View style={styles.stickyFooter}>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={handleResetSchedule}
-              style={[
-                styles.resetButton,
-                {
-                  backgroundColor: isDark ? '#dc2626' : '#ef4444',
-                },
-              ]}
-            >
-              <Ionicons name="trash-outline" size={20} color="white" />
-              <Text style={styles.resetButtonText}>Reset</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleSaveSchedule}
-              style={[
-                styles.saveButton,
-                {
-                  backgroundColor: '#3b82f6',
-                  opacity: isSchedulerSaving ? 0.6 : 1,
-                },
-              ]}
-              disabled={isSchedulerSaving}
-            >
-              <Ionicons name="save-outline" size={20} color="white" />
-              <Text style={styles.saveButtonText}>
-                {isSchedulerSaving ? 'Saving...' : 'Save Schedule'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </View>
     </FloatingModal>
   );

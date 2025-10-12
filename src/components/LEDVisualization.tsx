@@ -205,9 +205,9 @@ function LEDVisualization({
   }, [wledInfoHash, ledData.length]);
 
   const filteredLedData = useMemo(() => {
-    // For 2D matrices, use all LED data. For 1D strips, remove first LED (status LED)
-    return matrixInfo.is2D ? ledData : ledData.slice(1);
-  }, [matrixInfo.is2D, ledData]);
+    // Use all LED data - MessageParser already skips status LED
+    return ledData;
+  }, [ledData]);
 
   const ledCount = filteredLedData.length;
 

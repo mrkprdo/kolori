@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Alert,
@@ -196,13 +195,6 @@ export default function PlaylistCreationModal({
   }, [visible]);
 
   const styles = React.useMemo(() => ({
-    container: {
-      flex: 1,
-    },
-    contentContainer: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
     section: {
       backgroundColor: isDark ? '#1f2937' : '#ffffff',
       borderRadius: 12,
@@ -214,18 +206,7 @@ export default function PlaylistCreationModal({
       elevation: 2,
       borderWidth: 1,
       borderColor: isDark ? '#374151' : '#e5e7eb',
-    },
-    stickyFooter: {
-      borderTopWidth: 1,
-      borderTopColor: isDark ? '#374151' : '#e5e7eb',
-      backgroundColor: isDark ? '#1f2937' : '#ffffff',
-      borderBottomLeftRadius: 16,
-      borderBottomRightRadius: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: isDark ? 0.25 : 0.1,
-      shadowRadius: 4,
-      elevation: 4,
+      marginBottom: 6,
     },
     buttonContainer: {
       padding: 16,
@@ -451,6 +432,57 @@ export default function PlaylistCreationModal({
     onClose();
   };
 
+  const footerContent = (
+    <View style={styles.buttonContainer}>
+      <TouchableOpacity
+        onPress={() => {
+          if (Platform.OS === 'ios') {
+            Alert.prompt(
+              'Save Playlist',
+              'Enter playlist name:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Save',
+                  onPress: (text) => {
+                    if (text && text.trim()) {
+                      handleSavePlaylist(text.trim());
+                    }
+                  }
+                }
+              ],
+              'plain-text',
+              '',
+              'default'
+            );
+          } else {
+            setShowSaveModal(true);
+          }
+        }}
+        disabled={
+          playlistItems.filter(item => item.presetId !== null).length === 0 ||
+          customEffects.length === 0
+        }
+        style={[
+          styles.footerButtonPrimary,
+          {
+            backgroundColor: (
+              playlistItems.filter(item => item.presetId !== null).length === 0 ||
+              customEffects.length === 0
+            ) ? '#9ca3af' : '#3b82f6',
+            opacity: (
+              playlistItems.filter(item => item.presetId !== null).length === 0 ||
+              customEffects.length === 0
+            ) ? 0.6 : 1
+          }
+        ]}
+      >
+        <Ionicons name="save-outline" size={20} color="white" />
+        <Text style={styles.footerButtonText}>Save Playlist</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <>
     <FloatingModal
@@ -458,11 +490,10 @@ export default function PlaylistCreationModal({
       isDark={isDark}
       onClose={handleClose}
       title="Create Playlist"
-      scrollable={false}
+      scrollable={true}
+      footer={footerContent}
     >
-      <View style={styles.container}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.contentContainer}>
-          <View style={styles.section}>
+      <View style={styles.section}>
               <Text style={{
                 fontSize: 16,
                 fontWeight: '600',
@@ -562,60 +593,6 @@ export default function PlaylistCreationModal({
                   Add Effect
                 </Text>
               </TouchableOpacity>
-          </View>
-        </ScrollView>
-        
-        {/* Sticky Footer with Action Buttons */}
-        <View style={styles.stickyFooter}>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={() => {
-                if (Platform.OS === 'ios') {
-                  Alert.prompt(
-                    'Save Playlist',
-                    'Enter playlist name:',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Save',
-                        onPress: (text) => {
-                          if (text && text.trim()) {
-                            handleSavePlaylist(text.trim());
-                          }
-                        }
-                      }
-                    ],
-                    'plain-text',
-                    '',
-                    'default'
-                  );
-                } else {
-                  setShowSaveModal(true);
-                }
-              }}
-              disabled={
-                playlistItems.filter(item => item.presetId !== null).length === 0 ||
-                customEffects.length === 0
-              }
-              style={[
-                styles.footerButtonPrimary,
-                {
-                  backgroundColor: (
-                    playlistItems.filter(item => item.presetId !== null).length === 0 ||
-                    customEffects.length === 0
-                  ) ? '#9ca3af' : '#3b82f6',
-                  opacity: (
-                    playlistItems.filter(item => item.presetId !== null).length === 0 ||
-                    customEffects.length === 0
-                  ) ? 0.6 : 1
-                }
-              ]}
-            >
-              <Ionicons name="save-outline" size={20} color="white" />
-              <Text style={styles.footerButtonText}>Save Playlist</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </View>
     </FloatingModal>
 

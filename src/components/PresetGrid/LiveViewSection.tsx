@@ -90,7 +90,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
     if (!isAdjustingBrightness && !isUserInteracting) {
       setLocalBrightness(sliderBrightness);
     }
-  }, [sliderBrightness, isAdjustingBrightness, isUserInteracting, lastRefreshTimestamp, localBrightness]);
+  }, [sliderBrightness, isAdjustingBrightness, isUserInteracting, lastRefreshTimestamp]);
 
   const handleBrightnessSlidingStart = () => {
     setIsUserInteracting(true);

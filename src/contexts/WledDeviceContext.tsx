@@ -10,6 +10,7 @@ import { wledWebSocketService, LEDColor, DeviceState } from '../services/wled';
 import { Device as WledDevice } from '../types';
 import { getDeviceAddress, getWebSocketProtocol } from '../utils/deviceUtils';
 import { logger } from '../utils/logger';
+import { useLEDFrameBuffer } from '../hooks/useLEDFrameBuffer';
 
 interface WledDeviceContextValue {
   // Current device
@@ -44,19 +45,22 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
     brightness: 128,
     activePreset: null
   });
-  const [liveLedData, setLiveLedData] = useState<LEDColor[]>([]);
   const [liveViewEnabled, setLiveViewEnabled] = useState(false);
   const [matrixDimensions, setMatrixDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   const previousDeviceId = useRef<number | null>(null);
 
+  // Buffered LED data for rendering (FIFO queue prevents infinite loops)
+  const { currentFrame: liveLedData, queueFrame } = useLEDFrameBuffer({
+    enabled: liveViewEnabled && isConnected,
+  });
+
   // Connect/disconnect when device changes
   useEffect(() => {
     if (!device) {
       wledWebSocketService.disconnect();
       setIsConnected(false);
-      setLiveLedData([]);
       setMatrixDimensions(null);
       previousDeviceId.current = null;
       return;
@@ -116,7 +120,8 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
 
     const handleLeds = (leds: LEDColor[], dims?: { width: number; height: number }) => {
       if (liveViewEnabled) {
-        setLiveLedData(leds);
+        // Queue frame directly - no state update, no re-render
+        queueFrame(leds);
       }
       if (dims) {
         setMatrixDimensions(dims);
@@ -125,9 +130,7 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
 
     const handleConnected = (connected: boolean) => {
       setIsConnected(connected);
-      if (!connected) {
-        setLiveLedData([]);
-      }
+      // Buffer will auto-clear when disabled
     };
 
     const handleInfo = (info: any) => {
@@ -146,7 +149,7 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
       wledWebSocketService.off('connected', handleConnected);
       wledWebSocketService.off('info', handleInfo);
     };
-  }, [liveViewEnabled]);
+  }, [liveViewEnabled, queueFrame]);
 
   // Actions
   const setBrightness = useCallback((value: number) => {
@@ -165,9 +168,7 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
   const toggleLiveView = useCallback((enabled: boolean) => {
     setLiveViewEnabled(enabled);
     wledWebSocketService.sendCommand({ lv: enabled }, 'urgent');
-    if (!enabled) {
-      setLiveLedData([]);
-    }
+    // Buffer will auto-clear when disabled via useEffect in hook
   }, []);
 
   const sendCommand = useCallback((command: object, priority: 'normal' | 'urgent' = 'normal') => {

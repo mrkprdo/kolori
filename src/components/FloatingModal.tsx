@@ -1,148 +1,203 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 
 interface FloatingModalProps {
   visible: boolean;
-  isDark?: boolean;
   onClose: () => void;
   title: string;
+  isDark: boolean;
   children: React.ReactNode;
   scrollable?: boolean;
-  maxHeight?: number;
+  footer?: React.ReactNode;
 }
 
-const FloatingModal: React.FC<FloatingModalProps> = ({
+/**
+ * FloatingModal - A bottom sheet modal with pull-to-dismiss gesture
+ *
+ * Behavior:
+ * - Slides up from bottom of screen
+ * - Pull down on handle or header to dismiss
+ * - Drag down > 150px or velocity > 1000 = dismiss
+ * - Otherwise springs back to position
+ */
+export default function FloatingModal({
   visible,
-  isDark = false,
   onClose,
   title,
+  isDark,
   children,
   scrollable = true,
-  maxHeight,
-}) => {
-  const styles = React.useMemo(() => {
-    const backgroundColor = isDark ? '#111827' : '#f9fafb';
-    const modalBackground = isDark ? '#1f2937' : '#ffffff';
-    const textColor = isDark ? '#ffffff' : '#111827';
-    const subtextColor = isDark ? '#9ca3af' : '#6b7280';
-    const borderColor = isDark ? '#374151' : '#e5e7eb';
+  footer,
+}: FloatingModalProps) {
+  const translateY = useSharedValue(1000); // Start off-screen
+  const backdropOpacity = useSharedValue(0);
 
-    return {
-      container: {
-        flex: 1,
-        backgroundColor,
-      },
-      modal: {
-        backgroundColor: modalBackground,
-        borderRadius: 16,
-        marginHorizontal: 12,
-        marginTop: 50,
-        marginBottom: 20,
-        flex: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-        ...(maxHeight ? { maxHeight } : {}),
-      },
-      header: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        justifyContent: 'space-between' as const,
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: borderColor,
-      },
-      titleText: {
-        color: textColor,
-      },
-      closeIcon: {
-        color: subtextColor,
-      },
-    };
-  }, [isDark, maxHeight]);
+  // Theme colors
+  const cardBackground = isDark ? '#1f2937' : '#ffffff';
+  const textColor = isDark ? '#ffffff' : '#111827';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
 
-  const content = React.useMemo(() => {
-    return scrollable ? (
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 0 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </ScrollView>
-    ) : (
-      <View style={{ flex: 1, padding: 0 }}>
-        {children}
-      </View>
-    );
-  }, [scrollable, children]);
+  // Animate modal in/out when visible changes
+  React.useEffect(() => {
+    if (visible) {
+      // Slide up from bottom
+      translateY.value = withSpring(0, { damping: 30, stiffness: 400 });
+      backdropOpacity.value = withTiming(1, { duration: 200 });
+    } else {
+      // Slide down off-screen
+      translateY.value = withTiming(1000, { duration: 200 });
+      backdropOpacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [visible]);
 
-  const handleClose = React.useCallback(() => {
-    onClose();
-  }, [onClose]);
+  // Pan gesture for dragging modal down from header
+  const gesture = Gesture.Pan()
+    .onChange((event) => {
+      // Only allow dragging down (positive translation)
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      // Dismiss if dragged down far enough or fast enough
+      if (event.translationY > 150 || event.velocityY > 1000) {
+        translateY.value = withTiming(1000, { duration: 200 });
+        backdropOpacity.value = withTiming(0, { duration: 200 });
+        runOnJS(onClose)();
+      } else {
+        // Spring back to position
+        translateY.value = withSpring(0, { damping: 30, stiffness: 400 });
+      }
+    });
+
+  // Animated styles
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
 
   return (
     <Modal
       visible={visible}
-      animationType="fade"
       transparent
-      onRequestClose={handleClose}
+      animationType="none"
+      onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-          >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={{ flex: 1 }}>
-                <TouchableWithoutFeedback onPress={() => {}}>
-                  <View style={styles.modal}>
-                    {/* Header */}
-                    <View style={styles.header}>
-                      <Text style={[staticStyles.title, styles.titleText]}>
-                        {title}
-                      </Text>
-                      <TouchableOpacity onPress={handleClose}>
-                        <Ionicons name="close" size={24} color={styles.closeIcon.color} />
-                      </TouchableOpacity>
-                    </View>
+      {/* Backdrop */}
+      <Animated.View style={[styles.backdrop, backdropStyle]}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+      </Animated.View>
 
-                    {/* Content */}
-                    {content}
-                  </View>
-                </TouchableWithoutFeedback>
+      {/* Modal Container */}
+      <SafeAreaView style={styles.safeArea}>
+        <Animated.View style={[styles.modal, { backgroundColor: cardBackground }, animatedStyle]}>
+          {/* Draggable Header */}
+          <GestureDetector gesture={gesture}>
+            <View style={[styles.header, { borderBottomColor: borderColor }]}>
+              {/* Handle */}
+              <View style={styles.handleContainer}>
+                <View style={[styles.handle, { backgroundColor: isDark ? '#4b5563' : '#d1d5db' }]} />
               </View>
-            </TouchableWithoutFeedback>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
+
+              {/* Title */}
+              <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+            </View>
+          </GestureDetector>
+
+          {/* Content */}
+          {scrollable ? (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={true}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={styles.content}>
+              {children}
+            </View>
+          )}
+
+          {/* Footer (if provided) */}
+          {footer && (
+            <View style={[styles.footer, { borderTopColor: borderColor }]}>
+              {footer}
+            </View>
+          )}
+        </Animated.View>
+      </SafeAreaView>
     </Modal>
   );
-};
+}
 
-const staticStyles = StyleSheet.create({
+const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  safeArea: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'stretch',
+  },
+  modal: {
+    height: '85%',
+    marginHorizontal: 8,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  header: {
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+  },
+  handleContainer: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  handle: {
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+  },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  footer: {
+    borderTopWidth: 1,
+    padding: 12,
   },
 });
-
-export default FloatingModal;

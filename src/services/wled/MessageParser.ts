@@ -49,46 +49,81 @@ export class MessageParser {
   private static parseBinaryLedData(byteArray: Uint8Array): ParsedMessage {
     const colors: LEDColor[] = [];
 
-    // Check for WLED 2D matrix format: [76, 2, width, height, ...RGB data]
-    if (byteArray.length >= 4 && byteArray[0] === 76 && byteArray[1] === 2) {
-      const width = byteArray[2];
-      const height = byteArray[3];
-      const expectedLEDs = width * height;
+    // Check for WLED protocol header byte 76 ('L')
+    if (byteArray.length >= 2 && byteArray[0] === 76) {
+      const protocolVersion = byteArray[1];
 
-      // Parse RGB data starting from byte 4
-      let dataIndex = 4;
-      for (let led = 0; led < expectedLEDs && dataIndex + 2 < byteArray.length; led++) {
-        colors.push({
-          r: byteArray[dataIndex],
-          g: byteArray[dataIndex + 1],
-          b: byteArray[dataIndex + 2],
-          w: 0
-        });
-        dataIndex += 3;
+      // WLED 2D matrix format: [76, 2, width, height, ...RGB data]
+      if (protocolVersion === 2 && byteArray.length >= 4) {
+        const width = byteArray[2];
+        const height = byteArray[3];
+        const expectedLEDs = width * height;
+
+        // Parse RGB data starting from byte 4
+        let dataIndex = 4;
+        for (let led = 0; led < expectedLEDs && dataIndex + 2 < byteArray.length; led++) {
+          colors.push({
+            r: byteArray[dataIndex],
+            g: byteArray[dataIndex + 1],
+            b: byteArray[dataIndex + 2],
+            w: 0
+          });
+          dataIndex += 3;
+        }
+
+        return {
+          type: 'leds',
+          data: colors,
+          matrixDimensions: { width, height }
+        };
       }
 
-      return {
-        type: 'leds',
-        data: colors,
-        matrixDimensions: { width, height }
-      };
+      // WLED 1D strip format: [76, 1, ...LED data]
+      if (protocolVersion === 1) {
+        // LED data starts at byte 2 (after the 2-byte header)
+        const ledDataStart = 2;
+        const remainingBytes = byteArray.length - ledDataStart;
+
+        // Determine bytes per LED (RGB=3 or RGBW=4)
+        // Prefer RGB (3) over RGBW (4) when both are possible
+        let bytesPerLed = 3;
+
+        // Only use RGBW if it's divisible by 4 AND NOT divisible by 3
+        if (remainingBytes % 4 === 0 && remainingBytes % 3 !== 0) {
+          bytesPerLed = 4;
+        }
+
+        // Parse LED data starting from byte 2
+        for (let i = ledDataStart; i < byteArray.length; i += bytesPerLed) {
+          if (i + 2 < byteArray.length) {
+            colors.push({
+              r: byteArray[i],
+              g: byteArray[i + 1],
+              b: byteArray[i + 2],
+              w: bytesPerLed === 4 && i + 3 < byteArray.length ? byteArray[i + 3] : undefined
+            });
+          }
+        }
+
+        return { type: 'leds', data: colors };
+      }
     }
 
-    // Legacy 1D LED strip format (GRB order)
-    let bytesPerLed = 3; // Default RGB
-
-    // Heuristic: if divisible by 4, might be RGBW
-    if (byteArray.length > 0 && byteArray.length % 4 === 0) {
+    // Fallback: No WLED header detected - parse as raw LED data
+    let bytesPerLed = 3;
+    if (byteArray.length % 4 === 0 && byteArray.length % 3 !== 0) {
       bytesPerLed = 4;
     }
 
     for (let i = 0; i < byteArray.length; i += bytesPerLed) {
-      colors.push({
-        r: byteArray[i + 2], // GRB order
-        g: byteArray[i],
-        b: byteArray[i + 1],
-        w: bytesPerLed === 4 ? byteArray[i + 3] : undefined
-      });
+      if (i + 2 < byteArray.length) {
+        colors.push({
+          r: byteArray[i],
+          g: byteArray[i + 1],
+          b: byteArray[i + 2],
+          w: bytesPerLed === 4 && i + 3 < byteArray.length ? byteArray[i + 3] : undefined
+        });
+      }
     }
 
     return { type: 'leds', data: colors };

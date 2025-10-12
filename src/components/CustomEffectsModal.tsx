@@ -7,7 +7,6 @@ import {
   Alert,
   TextInput,
   Modal,
-  ScrollView,
   FlatList,
   Platform,
 } from 'react-native';
@@ -695,36 +694,13 @@ export default function CustomEffectsModal({
   const sectionStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 6,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-  };
-
-  const containerStyle = {
-    flex: 1,
-  };
-
-  const contentContainerStyle = {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  };
-
-  const stickyFooterStyle = {
-    borderTopWidth: 1,
-    borderTopColor: isDark ? '#374151' : '#e5e7eb',
-    backgroundColor: isDark ? '#1f2937' : '#ffffff',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: isDark ? 0.25 : 0.1,
-    shadowRadius: 4,
-    elevation: 4,
   };
 
   const buttonContainerStyle = {
@@ -974,6 +950,58 @@ export default function CustomEffectsModal({
     onClose();
   };
 
+  const footerContent = selectedDevices.length > 0 ? (
+    <View style={buttonContainerStyle}>
+      {(() => {
+        const currentEffect = getSelectedEffect();
+        const isEffectSelected = selectedEffect !== null;
+        const isPaletteRequired = currentEffect?.supportsPalette && selectedPalette === null;
+        const canSave = isEffectSelected && !isPaletteRequired;
+
+        return (
+          <TouchableOpacity
+            onPress={() => {
+              if (Platform.OS === 'ios') {
+                Alert.prompt(
+                  'Save Custom Preset',
+                  'Enter preset name:',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Save',
+                      onPress: (text) => {
+                        if (text && text.trim()) {
+                          handleSavePreset(text.trim());
+                        }
+                      }
+                    }
+                  ],
+                  'plain-text',
+                  '',
+                  'default'
+                );
+              } else {
+                setShowSaveModal(true);
+              }
+            }}
+            disabled={!canSave}
+            style={[
+              footerButtonPrimaryStyle,
+              {
+                backgroundColor: canSave ? '#3b82f6' : '#9ca3af',
+                opacity: canSave ? 1 : 0.6,
+                flex: 1, // Make it take full width
+              }
+            ]}
+          >
+            <Ionicons name="save-outline" size={20} color="white" />
+            <Text style={footerButtonTextStyle}>Save Preset</Text>
+          </TouchableOpacity>
+        );
+      })()}
+    </View>
+  ) : undefined;
+
   return (
     <>
     <FloatingModal
@@ -981,11 +1009,10 @@ export default function CustomEffectsModal({
       isDark={isDark}
       onClose={handleClose}
       title="Add Custom Effects"
-      scrollable={false}
+      scrollable={true}
+      footer={footerContent}
     >
-      <View style={containerStyle}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={contentContainerStyle}>
-          {selectedDevices.length === 0 && (
+      {selectedDevices.length === 0 && (
             <View style={[sectionStyle, { alignItems: 'center', padding: 24 }]}>
               <Ionicons
                 name="warning-outline"
@@ -1153,63 +1180,6 @@ export default function CustomEffectsModal({
 
             </>
           )}
-        </ScrollView>
-
-        {/* Sticky Footer with Save Button */}
-        {selectedDevices.length > 0 && (
-          <View style={stickyFooterStyle}>
-            <View style={buttonContainerStyle}>
-              {(() => {
-                const currentEffect = getSelectedEffect();
-                const isEffectSelected = selectedEffect !== null;
-                const isPaletteRequired = currentEffect?.supportsPalette && selectedPalette === null;
-                const canSave = isEffectSelected && !isPaletteRequired;
-
-                return (
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (Platform.OS === 'ios') {
-                        Alert.prompt(
-                          'Save Custom Preset',
-                          'Enter preset name:',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Save',
-                              onPress: (text) => {
-                                if (text && text.trim()) {
-                                  handleSavePreset(text.trim());
-                                }
-                              }
-                            }
-                          ],
-                          'plain-text',
-                          '',
-                          'default'
-                        );
-                      } else {
-                        setShowSaveModal(true);
-                      }
-                    }}
-                    disabled={!canSave}
-                    style={[
-                      footerButtonPrimaryStyle,
-                      {
-                        backgroundColor: canSave ? '#3b82f6' : '#9ca3af',
-                        opacity: canSave ? 1 : 0.6,
-                        flex: 1, // Make it take full width
-                      }
-                    ]}
-                  >
-                    <Ionicons name="save-outline" size={20} color="white" />
-                    <Text style={footerButtonTextStyle}>Save Preset</Text>
-                  </TouchableOpacity>
-                );
-              })()}
-            </View>
-          </View>
-        )}
-      </View>
     </FloatingModal>
 
       {/* Save Preset Modal - Only for non-iOS platforms */}
