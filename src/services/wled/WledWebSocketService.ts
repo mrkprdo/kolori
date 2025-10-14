@@ -247,6 +247,9 @@ export class WledWebSocketService {
     // Auto-reconnect if not manual disconnect
     if (!this.isManualDisconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnect();
+    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      logger.warn(`⚠️ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
+      this.emit('connectionFailed', { reason: 'max_attempts_reached', attempts: this.reconnectAttempts });
     }
   }
 
@@ -261,7 +264,18 @@ export class WledWebSocketService {
       return;
     }
 
-    logger.error('WebSocket error:', error);
+    // Check if it's a connectivity/offline issue
+    const isConnectivityError = errorMessage.includes('Host is down') ||
+                                errorMessage.includes('Network is unreachable') ||
+                                errorMessage.includes('Connection refused') ||
+                                errorMessage.includes('timeout');
+
+    if (isConnectivityError) {
+      logger.warn('⚠️ Device may be offline or unreachable:', errorMessage);
+    } else {
+      logger.error('WebSocket error:', error);
+    }
+
     this.emit('error', error);
   }
 
@@ -271,11 +285,13 @@ export class WledWebSocketService {
   private reconnect(): void {
     if (!this.currentIp) return;
 
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-    logger.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+    // Increment attempts before scheduling reconnection
+    this.reconnectAttempts++;
+
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
+    logger.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     this.reconnectTimeout = setTimeout(() => {
-      this.reconnectAttempts++;
       this.connect(this.currentIp!, this.currentProtocol);
     }, delay);
   }

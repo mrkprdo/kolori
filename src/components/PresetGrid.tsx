@@ -1754,13 +1754,13 @@ export default function PresetGrid({
             />
           }
         >
-        {/* Preset sections with Audio Reactive overlay */}
-        <View style={{ position: 'relative' }}>
           {/* Seasonal Presets */}
           <SeasonalPresetsSection
             seasonalPresets={seasonalPresets}
             activePreset={activePreset}
             isCollapsed={isSeasonalCollapsed}
+            isBlocked={!activeDevice?.isConnected || isAudioReactiveActive}
+            blockReason={!activeDevice?.isConnected ? 'offline' : 'audioReactive'}
             isDark={isDark}
             cardBackground={cardBackground}
             borderColor={borderColor}
@@ -1777,6 +1777,8 @@ export default function PresetGrid({
             activePreset={activePreset}
             activeDevice={activeDevice}
             isCollapsed={isCustomEffectsCollapsed}
+            isBlocked={!activeDevice?.isConnected || isAudioReactiveActive}
+            blockReason={!activeDevice?.isConnected ? 'offline' : 'audioReactive'}
             isDeleteMode={isDeleteMode}
             selectedForDelete={selectedForDelete}
             wiggleAnim={wiggleAnim}
@@ -1800,10 +1802,13 @@ export default function PresetGrid({
             savedPlaylists={savedPlaylists}
             customEffectsCount={memoizedCustomEffects.length}
             isCollapsed={isPlaylistsCollapsed}
+            isBlocked={!activeDevice?.isConnected || isAudioReactiveActive}
+            blockReason={!activeDevice?.isConnected ? 'offline' : 'audioReactive'}
             isDeleteMode={isDeleteMode}
             isLoadingPlaylists={isLoadingPlaylists}
             selectedForDelete={selectedForDelete}
             wiggleAnim={wiggleAnim}
+            isDark={isDark}
             cardBackground={cardBackground}
             borderColor={borderColor}
             textColor={textColor}
@@ -1812,59 +1817,6 @@ export default function PresetGrid({
             onPlaylistSelect={onPlaylistSelect}
             onToggleSelection={toggleCardSelection}
           />
-
-          {/* Audio Reactive Active Overlay */}
-          {isAudioReactiveActive && (
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={() => {
-                // Show toast or alert when user tries to interact
-                if (Platform.OS === 'android') {
-                  ToastAndroid.show('Turn off Audio Reactive to change presets', ToastAndroid.SHORT);
-                } else {
-                  Alert.alert('Audio Reactive Active', 'Turn off Audio Reactive to change presets');
-                }
-              }}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.85)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 1000,
-              }}
-            >
-              <View
-                style={{
-                  backgroundColor: cardBackground,
-                  borderRadius: 16,
-                  padding: 24,
-                  borderWidth: 2,
-                  borderColor: '#3b82f6',
-                  maxWidth: '80%',
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-              >
-                <Ionicons name="musical-notes" size={40} color="#3b82f6" style={{ marginBottom: 12 }} />
-                <Text style={{ fontSize: 20, fontWeight: 'bold', color: textColor, marginBottom: 8 }}>
-                  Audio Reactive Active
-                </Text>
-                <Text style={{ fontSize: 14, color: subtextColor, textAlign: 'center', lineHeight: 20 }}>
-                  Presets are disabled while Audio Reactive is running.{'\n'}
-                  Turn off Audio Reactive to change presets.
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
         </ScrollView>
 
         {/* Page 2: Audio Reactive */}
@@ -1882,6 +1834,7 @@ export default function PresetGrid({
             subtextColor={subtextColor}
             onBrightnessChange={onBrightnessChange}
             activeDeviceIp={activeDevice?.ip}
+            isDeviceConnected={activeDevice?.isConnected}
             onAudioReactiveChange={setIsAudioReactiveActive}
           />
         </ScrollView>
@@ -1896,6 +1849,7 @@ export default function PresetGrid({
         isDeleteMode={isDeleteMode}
         isTogglingDevice={isTogglingDevice}
         showDeviceDropdown={showDeviceDropdown}
+        devicePowerState={wledState.on}
         isDark={isDark}
         cardBackground={cardBackground}
         borderColor={borderColor}

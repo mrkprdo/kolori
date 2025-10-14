@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Platform, ToastAndroid, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomEffect } from '../../types';
 import { sharedStyles } from './styles';
@@ -9,6 +9,8 @@ interface CustomEffectsSectionProps {
   activePreset: string | number | null;
   activeDevice: { isConnected?: boolean } | undefined;
   isCollapsed: boolean;
+  isBlocked?: boolean;
+  blockReason?: 'offline' | 'audioReactive';
   isDeleteMode: boolean;
   selectedForDelete: Set<string | number>;
   wiggleAnim: Animated.Value;
@@ -32,6 +34,8 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
   activePreset,
   activeDevice,
   isCollapsed,
+  isBlocked = false,
+  blockReason = 'offline',
   isDeleteMode,
   selectedForDelete,
   wiggleAnim,
@@ -53,7 +57,7 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor },
+        { backgroundColor: cardBackground, borderColor, position: 'relative' },
       ]}
     >
       <TouchableOpacity
@@ -231,6 +235,72 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
             </View>
           )}
         </View>
+      )}
+
+      {/* Overlay when blocked - covers entire section */}
+      {isBlocked && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            if (blockReason === 'offline') {
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('Connect to a WLED device to change presets', ToastAndroid.SHORT);
+              } else {
+                Alert.alert('Device Offline', 'Connect to a WLED device to change presets');
+              }
+            } else {
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('Turn off Audio Reactive to change presets', ToastAndroid.SHORT);
+              } else {
+                Alert.alert('Audio Reactive Active', 'Turn off Audio Reactive to change presets');
+              }
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            borderRadius: 12,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: cardBackground,
+              borderRadius: 10,
+              padding: 12,
+              borderWidth: 2,
+              borderColor: blockReason === 'offline' ? '#ef4444' : '#3b82f6',
+              maxWidth: '70%',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+          >
+            <Ionicons
+              name={blockReason === 'offline' ? 'cloud-offline' : 'musical-notes'}
+              size={28}
+              color={blockReason === 'offline' ? '#ef4444' : '#3b82f6'}
+              style={{ marginBottom: 6 }}
+            />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+              {blockReason === 'offline' ? 'Device Offline' : 'Audio Reactive Active'}
+            </Text>
+            <Text style={{ fontSize: 11, color: subtextColor, textAlign: 'center', lineHeight: 14 }}>
+              {blockReason === 'offline'
+                ? 'Connect to a WLED device to change presets.'
+                : 'Turn off Audio Reactive to change presets.'}
+            </Text>
+          </View>
+        </TouchableOpacity>
       )}
     </View>
   );

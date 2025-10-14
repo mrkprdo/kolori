@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, ToastAndroid, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SeasonalPreset } from '../../types';
 import { getSeasonalGradient } from '../../utils/presetUtils';
@@ -9,6 +9,8 @@ interface SeasonalPresetsSectionProps {
   seasonalPresets: SeasonalPreset[];
   activePreset: string | number | null;
   isCollapsed: boolean;
+  isBlocked?: boolean;
+  blockReason?: 'offline' | 'audioReactive';
   isDark: boolean;
   cardBackground: string;
   borderColor: string;
@@ -88,6 +90,8 @@ const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
   seasonalPresets,
   activePreset,
   isCollapsed,
+  isBlocked = false,
+  blockReason = 'offline',
   isDark,
   cardBackground,
   borderColor,
@@ -101,7 +105,7 @@ const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor },
+        { backgroundColor: cardBackground, borderColor, position: 'relative' },
       ]}
     >
       <TouchableOpacity
@@ -137,6 +141,40 @@ const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
             ))}
           </View>
         </View>
+      )}
+
+      {/* Overlay when blocked - covers entire section */}
+      {isBlocked && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            if (blockReason === 'offline') {
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('Connect to a WLED device to change presets', ToastAndroid.SHORT);
+              } else {
+                Alert.alert('Device Offline', 'Connect to a WLED device to change presets');
+              }
+            } else {
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('Turn off Audio Reactive to change presets', ToastAndroid.SHORT);
+              } else {
+                Alert.alert('Audio Reactive Active', 'Turn off Audio Reactive to change presets');
+              }
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            borderRadius: 12,
+          }}
+        />
       )}
     </View>
   );

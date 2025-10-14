@@ -62,6 +62,7 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
       wledWebSocketService.disconnect();
       setIsConnected(false);
       setMatrixDimensions(null);
+      setState({ on: false, brightness: 128, activePreset: null });
       previousDeviceId.current = null;
       return;
     }
@@ -73,9 +74,21 @@ export function WledDeviceProvider({ children }: { children: ReactNode }) {
 
     previousDeviceId.current = device.id;
 
+    // Don't attempt to connect if device is marked as offline
+    if (!device.isConnected) {
+      logger.log('⚠️ Device marked as offline, skipping WebSocket connection');
+      wledWebSocketService.disconnect();
+      setIsConnected(false);
+      setState({ on: false, brightness: 128, activePreset: null });
+      setMatrixDimensions(null);
+      return;
+    }
+
     const deviceAddress = getDeviceAddress(device);
     if (!deviceAddress) {
       logger.warn('No device address available');
+      wledWebSocketService.disconnect();
+      setIsConnected(false);
       return;
     }
 

@@ -254,7 +254,7 @@ export const liveViewStyles = StyleSheet.create({
   },
 
   innerCardCompact: {
-    // Keep same padding as normal to prevent slider layout shift
+    padding: 8, // Reduce padding when offline/compact
   },
 
   cardContent: {
@@ -263,7 +263,8 @@ export const liveViewStyles = StyleSheet.create({
   },
 
   cardContentCompact: {
-    minHeight: 60,
+    minHeight: 30, // Much more compact for offline state
+    paddingVertical: 4,
   },
 
   activePresetBadge: {
@@ -288,7 +289,8 @@ export const liveViewStyles = StyleSheet.create({
   },
 
   statusContainerCompact: {
-    paddingVertical: 4,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
 
   compactStatusRow: {
