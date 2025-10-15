@@ -1018,6 +1018,10 @@ export default function PresetGrid({
       console.log("🔴 FAB close complete");
     } else {
       console.log("🟢 Opening FAB - setting state to true");
+      // Close device dropdown when opening FAB
+      if (showDeviceDropdown) {
+        setShowDeviceDropdown(false);
+      }
       setShowFabOptions(true);
       console.log("🟢 Setting animations to open state (no animation)");
       // Set animations to open state immediately
@@ -1031,6 +1035,7 @@ export default function PresetGrid({
     }
   }, [
     showFabOptions,
+    showDeviceDropdown,
     fabRotateAnim,
     fabScaleAnim1,
     fabScaleAnim2,
@@ -1921,17 +1926,20 @@ export default function PresetGrid({
                 bottom: 320,
               },
             ]}
-            pointerEvents={showFabOptions ? "auto" : "none"}
+            pointerEvents={showFabOptions && activeDevice?.isConnected ? "auto" : "none"}
           >
             <TouchableOpacity
               onPress={() => {
+                if (!activeDevice?.isConnected) return;
                 closeFabAndOpenModal(() => setShowCreateNewOptions(true));
               }}
+              disabled={!activeDevice?.isConnected}
               style={[
                 fabStyles.miniFabButton,
                 {
-                  backgroundColor: "#10b981",
-                  shadowColor: isDark ? "#000" : "#10b981",
+                  backgroundColor: activeDevice?.isConnected ? "#10b981" : "#6b7280",
+                  shadowColor: isDark ? "#000" : (activeDevice?.isConnected ? "#10b981" : "#6b7280"),
+                  opacity: activeDevice?.isConnected ? 1 : 0.5,
                 },
               ]}
             >
@@ -1975,17 +1983,20 @@ export default function PresetGrid({
                 bottom: 140,
               },
             ]}
-            pointerEvents={showFabOptions ? "auto" : "none"}
+            pointerEvents={showFabOptions && activeDevice?.isConnected ? "auto" : "none"}
           >
             <TouchableOpacity
               onPress={() => {
+                if (!activeDevice?.isConnected) return;
                 closeFabAndOpenModal(() => enterDeleteMode());
               }}
+              disabled={!activeDevice?.isConnected}
               style={[
                 fabStyles.miniFabButton,
                 {
-                  backgroundColor: "#ef4444",
-                  shadowColor: isDark ? "#000" : "#ef4444",
+                  backgroundColor: activeDevice?.isConnected ? "#ef4444" : "#6b7280",
+                  shadowColor: isDark ? "#000" : (activeDevice?.isConnected ? "#ef4444" : "#6b7280"),
+                  opacity: activeDevice?.isConnected ? 1 : 0.5,
                 },
               ]}
             >
@@ -2029,17 +2040,20 @@ export default function PresetGrid({
                 bottom: 260,
               },
             ]}
-            pointerEvents={showFabOptions ? "auto" : "none"}
+            pointerEvents={showFabOptions && activeDevice?.isConnected ? "auto" : "none"}
           >
             <TouchableOpacity
               onPress={() => {
+                if (!activeDevice?.isConnected) return;
                 closeFabAndOpenModal(() => setShowSchedulerModal(true));
               }}
+              disabled={!activeDevice?.isConnected}
               style={[
                 fabStyles.miniFabButton,
                 {
-                  backgroundColor: "#8b5cf6",
-                  shadowColor: isDark ? "#000" : "#8b5cf6",
+                  backgroundColor: activeDevice?.isConnected ? "#8b5cf6" : "#6b7280",
+                  shadowColor: isDark ? "#000" : (activeDevice?.isConnected ? "#8b5cf6" : "#6b7280"),
+                  opacity: activeDevice?.isConnected ? 1 : 0.5,
                 },
               ]}
             >
