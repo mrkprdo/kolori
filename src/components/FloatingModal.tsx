@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   modal: {
-    height: '85%',
+    height: '50%',
     marginHorizontal: 8,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
