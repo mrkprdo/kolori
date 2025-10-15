@@ -430,7 +430,7 @@ export default function SchedulerModal({
       textAlign: 'center',
     },
     buttonContainer: {
-      padding: 16,
+      paddingTop: 4,
       flexDirection: 'row',
       gap: 8,
     },

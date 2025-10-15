@@ -704,7 +704,7 @@ export default function CustomEffectsModal({
   };
 
   const buttonContainerStyle = {
-    padding: 16,
+    paddingTop: 4,
     flexDirection: 'row' as const,
     gap: 8,
   };

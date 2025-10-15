@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -119,27 +119,35 @@ export default function FloatingModal({
             </View>
           </GestureDetector>
 
-          {/* Content */}
-          {scrollable ? (
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={true}
-            >
-              {children}
-            </ScrollView>
-          ) : (
-            <View style={styles.content}>
-              {children}
-            </View>
-          )}
+          {/* KeyboardAvoidingView for footer visibility */}
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          >
+            {/* Content */}
+            {scrollable ? (
+              <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={true}
+                keyboardShouldPersistTaps="handled"
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              <View style={styles.content}>
+                {children}
+              </View>
+            )}
 
-          {/* Footer (if provided) */}
-          {footer && (
-            <View style={[styles.footer, { borderTopColor: borderColor }]}>
-              {footer}
-            </View>
-          )}
+            {/* Footer (if provided) */}
+            {footer && (
+              <View style={[styles.footer, { borderTopColor: borderColor, backgroundColor: cardBackground }]}>
+                {footer}
+              </View>
+            )}
+          </KeyboardAvoidingView>
         </Animated.View>
       </SafeAreaView>
     </Modal>
@@ -185,6 +193,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,

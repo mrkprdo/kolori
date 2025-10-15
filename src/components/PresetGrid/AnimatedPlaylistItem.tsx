@@ -73,12 +73,12 @@ const AnimatedPlaylistItem = React.memo(
           !isDeleteMode && {
             borderWidth: 2,
             borderColor: '#3b82f6',
-            borderRadius: 8,
+            borderRadius: 10,
           },
         isSelected && {
-          borderWidth: 3,
+          borderWidth: 2,
           borderColor: '#ef4444',
-          borderRadius: 8,
+          borderRadius: 10,
         },
       ],
       [

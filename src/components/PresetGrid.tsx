@@ -59,10 +59,7 @@ import {
   deleteWledPreset,
   deleteWledPlaylistViaWebSocket,
   createWledPreset,
-  turnWledOn,
-  turnWledOff,
   getWledBrightnessFromWin,
-  setWledBrightness,
   fetchWledTimerSettings,
   generatePresetGradient,
 } from "../config/wledApi";
@@ -82,7 +79,6 @@ import PresetCard from "./PresetGrid/PresetCard";
 import MemoizedPresetCard from "./PresetGrid/MemoizedPresetCard";
 import { fabStyles } from "./PresetGrid/FABStyles";
 import { deleteModeStyles } from "./PresetGrid/DeleteModeStyles";
-import { sharedStyles } from "./PresetGrid/styles";
 import { checkWLEDAudioReactiveConfig } from "../utils/wledConfigChecker";
 
 interface PresetGridProps {

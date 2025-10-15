@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Device } from '../types';
 import { ipToDeviceId } from '../utils/deviceId';
@@ -91,8 +91,17 @@ export default function AddDeviceManuallyModal({
       title="Add Device Manually"
       scrollable={false}
     >
-      <View style={styles.container}>
-        <View style={styles.contentContainer}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.inputCard}>
             <Text style={styles.label}>Device Name (Optional)</Text>
             <TextInput
@@ -104,7 +113,7 @@ export default function AddDeviceManuallyModal({
               maxLength={50}
             />
           </View>
-          
+
           <View style={styles.inputCard}>
             <Text style={styles.label}>IP Address</Text>
             <TextInput
@@ -122,13 +131,12 @@ export default function AddDeviceManuallyModal({
               <Text style={styles.warningText}>{getValidationMessage()}</Text>
             )}
           </View>
-        </View>
-        
-        <View style={styles.stickyFooter}>
+
+          {/* Footer button inside ScrollView for keyboard visibility */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              onPress={addManualDevice} 
-              disabled={isValidating || !isFormValid()} 
+            <TouchableOpacity
+              onPress={addManualDevice}
+              disabled={isValidating || !isFormValid()}
               style={[
                 styles.footerButtonPrimary,
                 {
@@ -147,8 +155,8 @@ export default function AddDeviceManuallyModal({
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </FloatingModal>
   );
 }
@@ -157,10 +165,13 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
   },
-  contentContainer: {
+  scrollView: {
     flex: 1,
+  },
+  contentContainer: {
     paddingHorizontal: 12,
     paddingVertical: 20,
+    paddingBottom: 30,
     gap: 16,
   },
   inputCard: {
@@ -200,20 +211,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     marginTop: 6,
     fontWeight: '500',
   },
-  stickyFooter: {
-    borderTopWidth: 1, 
-    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
-    backgroundColor: isDark ? '#1f2937' : '#ffffff',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: isDark ? 0.25 : 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
   buttonContainer: {
-    padding: 16,
+    paddingTop: 8,
     flexDirection: 'row',
     gap: 8,
   },

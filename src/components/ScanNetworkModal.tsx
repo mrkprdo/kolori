@@ -131,20 +131,11 @@ const AddAllDevicesButton: React.FC<AddAllDevicesButtonProps> = ({
 };
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6,
-  },
   scanButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 8,
   },
   scanButton: {
     flexDirection: 'row',
@@ -156,10 +147,10 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     gap: 4,
   },
   deviceCard: {
-    backgroundColor: isDark ? '#1f2937' : '#ffffff', 
-    borderRadius: 10, 
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderRadius: 10,
     padding: 10,
-    marginBottom: 0,
+    marginBottom: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: isDark ? 0.25 : 0.05,
@@ -192,36 +183,25 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
   },
   noDevicesContainer: {
-    alignItems: 'center', 
-    paddingVertical: 32, 
+    alignItems: 'center',
+    paddingVertical: 32,
     paddingHorizontal: 20,
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 10,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: isDark ? '#374151' : '#d1d5db',
+    marginBottom: 6,
   },
   noDevicesText: {
-    color: isDark ? '#9ca3af' : '#6b7280', 
-    fontSize: 13, 
+    color: isDark ? '#9ca3af' : '#6b7280',
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 6,
   },
-  stickyFooter: {
-    borderTopWidth: 1, 
-    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
-    backgroundColor: isDark ? '#1f2937' : '#ffffff',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: isDark ? 0.25 : 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
   buttonContainer: {
-    padding: 16,
+    paddingTop: 4,
     flexDirection: 'row',
     gap: 8,
   },
@@ -594,60 +574,57 @@ export default function ScanNetworkModal({
     console.log('🏁 Add All Devices scheduled');
   };
 
+  const footerContent = (
+    <View style={styles.buttonContainer}>
+      <AddAllDevicesButton
+        availableDevices={discoveredDevices.filter(d => d.status === 'discovered')}
+        isScanning={isScanning}
+        onPress={addAllDevices}
+        styles={styles}
+      />
+    </View>
+  );
+
   return (
     <FloatingModal
       visible={isVisible}
       isDark={isDark}
       onClose={onClose}
       title="Device Discovery"
-      scrollable={false}
+      scrollable={true}
+      footer={footerContent}
     >
-      <View style={styles.container}>
-        <View style={styles.scanButtonContainer}>
-          <TouchableOpacity 
-            onPress={scanForDevices} 
-            style={styles.scanButton}
-            disabled={isScanning}
-          >
-            {isScanning ? (
-              <ActivityIndicator size="small" color="#3b82f6" />
-            ) : (
-              <Ionicons name="refresh" size={18} color="#3b82f6" />
-            )}
-            <Text style={{ color: '#3b82f6', fontWeight: '600', fontSize: 14 }}>
-              {isScanning ? 'Scanning...' : 'Scan'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView contentContainerStyle={styles.contentContainer}>
-          {discoveredDevices.map((device) => (
-            <DeviceCard 
-              key={device.name}
-              device={device}
-              styles={styles}
-              onConnect={() => connectToDevice(device)}
-            />
-          ))}
-          {!isScanning && discoveredDevices.length === 0 && (
-            <View style={styles.noDevicesContainer}>
-              <Ionicons name="search" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-              <Text style={styles.noDevicesText}>No WLED devices found on your network.</Text>
-            </View>
+      <View style={styles.scanButtonContainer}>
+        <TouchableOpacity
+          onPress={scanForDevices}
+          style={styles.scanButton}
+          disabled={isScanning}
+        >
+          {isScanning ? (
+            <ActivityIndicator size="small" color="#3b82f6" />
+          ) : (
+            <Ionicons name="refresh" size={18} color="#3b82f6" />
           )}
-        </ScrollView>
-        
-        <View style={styles.stickyFooter}>
-          <View style={styles.buttonContainer}>
-            <AddAllDevicesButton
-              availableDevices={discoveredDevices.filter(d => d.status === 'discovered')}
-              isScanning={isScanning}
-              onPress={addAllDevices}
-              styles={styles}
-            />
-          </View>
-        </View>
+          <Text style={{ color: '#3b82f6', fontWeight: '600', fontSize: 14 }}>
+            {isScanning ? 'Scanning...' : 'Scan'}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {discoveredDevices.map((device) => (
+        <DeviceCard
+          key={device.name}
+          device={device}
+          styles={styles}
+          onConnect={() => connectToDevice(device)}
+        />
+      ))}
+      {!isScanning && discoveredDevices.length === 0 && (
+        <View style={styles.noDevicesContainer}>
+          <Ionicons name="search" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
+          <Text style={styles.noDevicesText}>No WLED devices found on your network.</Text>
+        </View>
+      )}
 
       {/* Network Warning Modal */}
       <Modal
