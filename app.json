@@ -7,7 +7,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "plugins": ["expo-audio"],
+    "plugins": [
+      "expo-audio",
+      "expo-font"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -21,7 +24,10 @@
       },
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "This app uses the local network to discover and connect to WLED-enabled devices on your network.",
-        "NSBonjourServices": ["_http._tcp", "_http._tcp.local"]
+        "NSBonjourServices": [
+          "_http._tcp",
+          "_http._tcp.local"
+        ]
       }
     },
     "android": {

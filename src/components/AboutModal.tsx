@@ -1,8 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { APP_VERSION } from '../constants/version';
 import FloatingModal from './FloatingModal';
+
+// Color palette for animated letters
+const COLOR_PALETTE = [
+  '#ef4444', // red
+  '#f59e0b', // amber
+  '#10b981', // emerald
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#84cc16', // lime
+];
+
+// Helper function to get a random color different from the current one
+const getRandomColor = (currentColor: string) => {
+  const availableColors = COLOR_PALETTE.filter(c => c !== currentColor);
+  return availableColors[Math.floor(Math.random() * availableColors.length)];
+};
 
 interface AboutModalProps {
   isVisible: boolean;
@@ -11,8 +29,35 @@ interface AboutModalProps {
 }
 
 const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) => {
-  if (!isVisible) return null;
+  // State for each letter's color
+  const [letterColors, setLetterColors] = useState(() => ({
+    K: COLOR_PALETTE[0],
+    o1: COLOR_PALETTE[1],
+    l: COLOR_PALETTE[2],
+    o2: COLOR_PALETTE[3],
+    r: COLOR_PALETTE[4],
+    i: COLOR_PALETTE[5],
+  }));
 
+  // Color changing animation for each letter
+  useEffect(() => {
+    if (!isVisible) return; // Only animate when modal is visible
+
+    const letters = ['K', 'o1', 'l', 'o2', 'r', 'i'] as const;
+
+    // Change a random letter's color every 800ms
+    const colorInterval = setInterval(() => {
+      const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+      setLetterColors(prev => ({
+        ...prev,
+        [randomLetter]: getRandomColor(prev[randomLetter]),
+      }));
+    }, 800);
+
+    return () => clearInterval(colorInterval);
+  }, [isVisible]);
+
+  if (!isVisible) return null;
 
   const openGitHub = () => {
     Linking.openURL('https://github.com/mrkprdo/kolori');
@@ -74,9 +119,10 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
     appName: {
       fontSize: 36, // text-4xl
       fontWeight: 'bold',
-      // bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent
-      // This gradient text is complex in RN, simplifying to a single color
-      color: '#3B82F6', // Simplified to blue
+    },
+    appNameLetter: {
+      fontSize: 36,
+      fontWeight: 'bold',
     },
     plusText: {
       fontSize: 28,
@@ -173,7 +219,14 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
         {/* Description */}
         <View style={styles.descriptionSection}>
           <View style={styles.appNameContainer}>
-            <Text style={styles.appName}>Kolori</Text>
+            <Text style={styles.appName}>
+              <Text style={[styles.appNameLetter, { color: letterColors.K }]}>K</Text>
+              <Text style={[styles.appNameLetter, { color: letterColors.o1 }]}>o</Text>
+              <Text style={[styles.appNameLetter, { color: letterColors.l }]}>l</Text>
+              <Text style={[styles.appNameLetter, { color: letterColors.o2 }]}>o</Text>
+              <Text style={[styles.appNameLetter, { color: letterColors.r }]}>r</Text>
+              <Text style={[styles.appNameLetter, { color: letterColors.i }]}>i</Text>
+            </Text>
             <Text style={styles.plusText}>+</Text>
             <View style={styles.wledContainer}>
               <Image

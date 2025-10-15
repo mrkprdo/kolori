@@ -9,6 +9,8 @@ import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SheetProvider } from 'react-native-actions-sheet';
 import { BackHandler, Animated } from 'react-native';
+import { useFonts, Montserrat_400Regular } from '@expo-google-fonts/montserrat';
+import { setupDefaultFont } from './src/utils/fontSetup';
 
 // Components
 import KoloriApp from './src/components/KoloriApp';
@@ -35,6 +37,18 @@ const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
 
 export default function App() {
+  // Load Montserrat font
+  const [fontsLoaded] = useFonts({
+    Montserrat_400Regular,
+  });
+
+  // Setup default font when fonts are loaded
+  useEffect(() => {
+    if (fontsLoaded) {
+      setupDefaultFont();
+    }
+  }, [fontsLoaded]);
+
   // Custom Hooks
   const deviceManager = useDeviceManagement();
   const settingsManager = useSettingsManagement();
@@ -73,7 +87,8 @@ export default function App() {
   };
 
   const renderContent = () => {
-    if (appInit.isLoading || appInit.hasAgreed === null || settingsManager.settings === null || appInit.currentScreen === 'loading') {
+    // Show loading screen while fonts are loading
+    if (!fontsLoaded || appInit.isLoading || appInit.hasAgreed === null || settingsManager.settings === null || appInit.currentScreen === 'loading') {
       return (
         <LoadingScreen
           isDark={getIsDark(settingsManager.settings?.theme)}
