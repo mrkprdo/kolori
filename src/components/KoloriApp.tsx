@@ -142,7 +142,7 @@ function KoloriApp({
     }
   }, [activeDevice?.id, activeDevice?.isConnected, onDeviceUpdate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { liveLedData, setDevice: setWledContextDevice } = useWledDevice();
+  const { liveLedData, setDevice: setWledContextDevice, toggleLiveView, liveViewEnabled } = useWledDevice();
 
   // Sync active device with WebSocket context
   useEffect(() => {
@@ -260,6 +260,20 @@ function KoloriApp({
   }, [settings.theme, systemColorScheme]);
 
   // Handle playlist selection
+  // Wrapper to turn off Live View before switching devices
+  const handleSetActiveDeviceId = useCallback(
+    (id: number | null) => {
+      logger.log('🔄 Switching device - turning off Live View first');
+      // Turn off Live View before switching devices
+      if (liveViewEnabled) {
+        toggleLiveView(false);
+      }
+      // Call the original handler
+      onSetActiveDeviceId(id);
+    },
+    [liveViewEnabled, toggleLiveView, onSetActiveDeviceId]
+  );
+
   const handlePlaylistSelect = useCallback(
     async (id: number) => {
       const selectedPlaylist = presetManager.savedPlaylists.find(p => p.id === id);
@@ -321,7 +335,7 @@ function KoloriApp({
           activeDevice={activeDevice}
           devices={devices}
           activeDeviceId={activeDeviceId}
-          onSetActiveDeviceId={onSetActiveDeviceId}
+          onSetActiveDeviceId={handleSetActiveDeviceId}
           customEffects={presetManager.customEffects}
           onAddCustomEffect={(effect) => {
             const newEffects = [...presetManager.customEffects, effect];

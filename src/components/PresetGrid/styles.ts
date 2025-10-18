@@ -120,7 +120,7 @@ export const deviceSelectionStyles = StyleSheet.create({
     paddingLeft: 7,
     paddingRight: 10,
     zIndex: 999,
-    elevation: 8,
+    elevation: 10,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -171,7 +171,7 @@ export const deviceSelectionStyles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 999,
+    zIndex: 1000,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -186,7 +186,8 @@ export const deviceSelectionStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 12,
+    elevation: 15,
+    zIndex: 1001,
   },
 
   dropdownTitle: {
