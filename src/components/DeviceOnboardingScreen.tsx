@@ -96,13 +96,13 @@ export default function DeviceOnboardingScreen({
         </View>
 
         <View style={styles.buttonSection}>
-          <TouchableOpacity onPress={() => setShowAddManuallyModal(true)} style={styles.primaryButton}>
-            <Ionicons name="add" size={20} color="white" />
-            <Text style={styles.primaryButtonText}>Add Device Manually</Text>
+          <TouchableOpacity onPress={() => setShowScanNetworkModal(true)} style={styles.primaryButton}>
+            <Ionicons name="search" size={20} color="white" />
+            <Text style={styles.primaryButtonText}>Scan Network for Devices</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowScanNetworkModal(true)} style={styles.secondaryButton}>
-            <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#374151'} />
-            <Text style={styles.secondaryButtonText}>Scan Network for Devices</Text>
+          <TouchableOpacity onPress={() => setShowAddManuallyModal(true)} style={styles.secondaryButton}>
+            <Ionicons name="add" size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+            <Text style={styles.secondaryButtonText}>Add Device Manually</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -120,17 +120,17 @@ export default function DeviceOnboardingScreen({
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: isDark ? '#111827' : '#f9fafb' },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  header: { alignItems: 'center', position: 'absolute', top: 80, left: 20, right: 20 },
+  content: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 40 },
+  header: { alignItems: 'center', marginTop: 80 },
   logo: { fontSize: 48, fontWeight: 'bold' },
   logoLetter: { fontSize: 48, fontWeight: 'bold' },
   tagline: { fontSize: 18, color: isDark ? '#d1d5db' : '#6b7280', marginTop: 8 },
-  welcomeSection: { alignItems: 'center', paddingHorizontal: 20, marginBottom: 40 },
+  welcomeSection: { alignItems: 'center', paddingHorizontal: 20, flex: 1, justifyContent: 'center' },
   welcomeTitle: { fontSize: 24, fontWeight: '600', textAlign: 'center', marginBottom: 8, color: isDark ? '#FFF' : '#111827' },
   welcomeText: { textAlign: 'center', lineHeight: 22, fontSize: 16, color: isDark ? '#9ca3af' : '#6b7280' },
   buttonSection: { gap: 12, paddingHorizontal: 20 },
   primaryButton: { backgroundColor: '#3b82f6', paddingVertical: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { color: 'white', fontWeight: '600', fontSize: 16 },
-  secondaryButton: { backgroundColor: isDark ? '#1F2937' : '#E5E7EB', paddingVertical: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  secondaryButtonText: { color: isDark ? '#FFF' : '#374151', fontWeight: '600', fontSize: 16 },
+  secondaryButton: { backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  secondaryButtonText: { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '500', fontSize: 14 },
 });

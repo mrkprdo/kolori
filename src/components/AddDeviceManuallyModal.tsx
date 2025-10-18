@@ -83,101 +83,79 @@ export default function AddDeviceManuallyModal({
     }, 1000);
   };
 
+  const footerContent = (
+    <View style={styles.buttonContainer}>
+      <TouchableOpacity
+        onPress={addManualDevice}
+        disabled={isValidating || !isFormValid()}
+        style={[
+          styles.footerButtonPrimary,
+          {
+            backgroundColor: (!isValidating && isFormValid()) ? '#3b82f6' : '#9ca3af',
+            opacity: (!isValidating && isFormValid()) ? 1 : 0.6
+          }
+        ]}
+      >
+        {isValidating ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Ionicons name="add-circle" size={20} color="white" />
+        )}
+        <Text style={styles.footerButtonText}>
+          {isValidating ? 'Adding Device...' : 'Add Device'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <FloatingModal
       visible={isVisible}
       isDark={isDark}
       onClose={onClose}
       title="Add Device Manually"
-      scrollable={false}
+      scrollable={true}
+      footer={footerContent}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.inputCard}>
-            <Text style={styles.label}>Device Name (Optional)</Text>
-            <TextInput
-              value={deviceName}
-              onChangeText={setDeviceName}
-              placeholder="Living Room LEDs"
-              placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-              style={styles.input}
-              maxLength={50}
-            />
-          </View>
+      <View style={styles.inputCard}>
+        <Text style={styles.label}>Device Name (Optional)</Text>
+        <TextInput
+          value={deviceName}
+          onChangeText={setDeviceName}
+          placeholder="Living Room LEDs"
+          placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+          style={styles.input}
+          maxLength={50}
+        />
+      </View>
 
-          <View style={styles.inputCard}>
-            <Text style={styles.label}>IP Address</Text>
-            <TextInput
-              value={deviceIP}
-              onChangeText={setDeviceIP}
-              placeholder="192.168.1.100"
-              placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-              style={[
-                styles.input,
-                getValidationMessage() ? styles.inputError : null
-              ]}
-              keyboardType="default"
-            />
-            {getValidationMessage() && (
-              <Text style={styles.warningText}>{getValidationMessage()}</Text>
-            )}
-          </View>
-
-          {/* Footer button inside ScrollView for keyboard visibility */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={addManualDevice}
-              disabled={isValidating || !isFormValid()}
-              style={[
-                styles.footerButtonPrimary,
-                {
-                  backgroundColor: (!isValidating && isFormValid()) ? '#3b82f6' : '#9ca3af',
-                  opacity: (!isValidating && isFormValid()) ? 1 : 0.6
-                }
-              ]}
-            >
-              {isValidating ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons name="add-circle" size={20} color="white" />
-              )}
-              <Text style={styles.footerButtonText}>
-                {isValidating ? 'Adding Device...' : 'Add Device'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <View style={styles.inputCard}>
+        <Text style={styles.label}>IP Address</Text>
+        <TextInput
+          value={deviceIP}
+          onChangeText={setDeviceIP}
+          placeholder="192.168.1.100"
+          placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+          style={[
+            styles.input,
+            getValidationMessage() ? styles.inputError : null
+          ]}
+          keyboardType="default"
+        />
+        {getValidationMessage() && (
+          <Text style={styles.warningText}>{getValidationMessage()}</Text>
+        )}
+      </View>
     </FloatingModal>
   );
 }
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 20,
-    paddingBottom: 30,
-    gap: 16,
-  },
   inputCard: {
-    backgroundColor: isDark ? '#1f2937' : '#ffffff', 
-    borderRadius: 10, 
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderRadius: 10,
     padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: isDark ? 0.25 : 0.05,
@@ -212,7 +190,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '500',
   },
   buttonContainer: {
-    paddingTop: 8,
     flexDirection: 'row',
     gap: 8,
   },

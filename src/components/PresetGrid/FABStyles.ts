@@ -12,6 +12,7 @@ export const fabStyles = StyleSheet.create({
     right: 24,
     alignItems: 'center',
     zIndex: 1002,
+    elevation: 20, // Ensure FAB is always on top on Android
   },
 
   // Main FAB
