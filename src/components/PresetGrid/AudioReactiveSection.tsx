@@ -17,6 +17,7 @@ interface AudioReactiveSectionProps {
   subtextColor: string;
   onBrightnessChange?: (brightness: number) => void;
   activeDeviceIp?: string;
+  isDeviceConnected?: boolean;
   onAudioReactiveChange?: (isActive: boolean) => void;
 }
 
@@ -41,6 +42,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   subtextColor,
   onBrightnessChange,
   activeDeviceIp,
+  isDeviceConnected = false,
   onAudioReactiveChange,
 }) => {
   const {
@@ -85,7 +87,17 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
             }
           }
         } catch (error) {
-          console.error('Failed to detect LED count:', error);
+          // Check if it's a network/timeout error
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isNetworkError = errorMessage.includes('timeout') ||
+                                 errorMessage.includes('Network request') ||
+                                 errorMessage.includes('Failed to fetch');
+
+          if (isNetworkError) {
+            console.log('⚠️ Could not detect LED count - device may be offline or unreachable');
+          } else {
+            console.error('Failed to detect LED count:', error);
+          }
         }
       }
     };
@@ -317,7 +329,50 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   }, [testMode, activeDeviceIp, numLeds]);
 
   return (
-    <View style={[sharedStyles.sectionCard, { backgroundColor: cardBackground, borderColor }]}>
+    <View style={[sharedStyles.sectionCard, { backgroundColor: cardBackground, borderColor, position: 'relative' }]}>
+      {/* Device Offline Overlay */}
+      {!isDeviceConnected && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            borderRadius: 12,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: cardBackground,
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 2,
+              borderColor: '#ef4444',
+              maxWidth: '75%',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.25,
+              shadowRadius: 6,
+              elevation: 6,
+            }}
+          >
+            <Ionicons name="cloud-offline" size={32} color="#ef4444" style={{ marginBottom: 8 }} />
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor, marginBottom: 6 }}>
+              Device Offline
+            </Text>
+            <Text style={{ fontSize: 12, color: subtextColor, textAlign: 'center', lineHeight: 16 }}>
+              Connect to a WLED device to use Audio Reactive features.
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={sharedStyles.sectionHeader}>
         <View style={sharedStyles.headerLeft}>
           <Ionicons name="musical-notes" size={20} color={textColor} />

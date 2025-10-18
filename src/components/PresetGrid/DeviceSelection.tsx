@@ -11,6 +11,7 @@ interface DeviceSelectionProps {
   isDeleteMode: boolean;
   isTogglingDevice: boolean;
   showDeviceDropdown: boolean;
+  devicePowerState?: boolean; // Power state from WebSocket
   isDark: boolean;
   cardBackground: string;
   borderColor: string;
@@ -28,6 +29,7 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
   isDeleteMode,
   isTogglingDevice,
   showDeviceDropdown,
+  devicePowerState,
   isDark,
   cardBackground,
   borderColor,
@@ -37,6 +39,12 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
   onSetShowDeviceDropdown,
   onSetActiveDeviceId,
 }) => {
+  // Use WebSocket state if available, fallback to wledInfo
+  // Only trust the power state if device is connected
+  const isPowerOn = activeDevice?.isConnected
+    ? (devicePowerState ?? activeDevice?.wledInfo?.on ?? false)
+    : false;
+
   if (isDeleteMode) {
     return null;
   }
@@ -52,14 +60,12 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
       >
         {/* On/Off Button */}
         <TouchableOpacity
-          onPress={() => onDeviceToggle(!activeDevice?.wledInfo?.on)}
+          onPress={() => onDeviceToggle(!isPowerOn)}
           disabled={!activeDevice?.isConnected || isTogglingDevice}
           style={[
             styles.powerButton,
             {
-              backgroundColor: activeDevice?.wledInfo?.on
-                ? '#10b981'
-                : '#6b7280',
+              backgroundColor: isPowerOn ? '#10b981' : '#6b7280',
               opacity:
                 !activeDevice?.isConnected || isTogglingDevice ? 0.5 : 1,
             },
@@ -74,7 +80,7 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
             />
           ) : (
             <Ionicons
-              name={activeDevice?.wledInfo?.on ? 'power' : 'power-outline'}
+              name={isPowerOn ? 'power' : 'power-outline'}
               size={20}
               color="#ffffff"
             />

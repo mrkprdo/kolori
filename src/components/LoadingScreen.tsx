@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,24 @@ interface LoadingScreenProps {
 }
 
 
+// Color palette for animated letters
+const COLOR_PALETTE = [
+  '#ef4444', // red
+  '#f59e0b', // amber
+  '#10b981', // emerald
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#84cc16', // lime
+];
+
+// Helper function to get a random color different from the current one
+const getRandomColor = (currentColor: string) => {
+  const availableColors = COLOR_PALETTE.filter(c => c !== currentColor);
+  return availableColors[Math.floor(Math.random() * availableColors.length)];
+};
+
 export default function LoadingScreen({
   isDark = false,
   onLoadingComplete,
@@ -21,6 +39,16 @@ export default function LoadingScreen({
 }: LoadingScreenProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
+
+  // State for each letter's color
+  const [letterColors, setLetterColors] = useState(() => ({
+    K: COLOR_PALETTE[0],
+    o1: COLOR_PALETTE[1],
+    l: COLOR_PALETTE[2],
+    o2: COLOR_PALETTE[3],
+    r: COLOR_PALETTE[4],
+    i: COLOR_PALETTE[5],
+  }));
 
   useEffect(() => {
     // Pulsing animation for logo
@@ -55,6 +83,22 @@ export default function LoadingScreen({
       pulseAnimation.stop();
       spinAnimation.stop();
     };
+  }, []);
+
+  // Color changing animation for each letter
+  useEffect(() => {
+    const letters = ['K', 'o1', 'l', 'o2', 'r', 'i'] as const;
+
+    // Change a random letter's color every 800ms
+    const colorInterval = setInterval(() => {
+      const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+      setLetterColors(prev => ({
+        ...prev,
+        [randomLetter]: getRandomColor(prev[randomLetter]),
+      }));
+    }, 800);
+
+    return () => clearInterval(colorInterval);
   }, []);
 
   // Fetch device data during loading
@@ -126,7 +170,7 @@ export default function LoadingScreen({
       <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <View style={styles.content}>
           {/* Logo */}
-          <Animated.View 
+          <Animated.View
             style={[
               styles.logoContainer,
               { transform: [{ scale: pulseAnim }] }
@@ -134,8 +178,12 @@ export default function LoadingScreen({
           >
             <View style={[styles.logoBackground, { backgroundColor: isDark ? '#1f2937' : '#ffffff' }]}>
               <Text style={styles.logo}>
-                <Text style={styles.logoBlue}>Ko</Text>
-                <Text style={styles.logoPurple}>lori</Text>
+                <Text style={[styles.logoLetter, { color: letterColors.K }]}>K</Text>
+                <Text style={[styles.logoLetter, { color: letterColors.o1 }]}>o</Text>
+                <Text style={[styles.logoLetter, { color: letterColors.l }]}>l</Text>
+                <Text style={[styles.logoLetter, { color: letterColors.o2 }]}>o</Text>
+                <Text style={[styles.logoLetter, { color: letterColors.r }]}>r</Text>
+                <Text style={[styles.logoLetter, { color: letterColors.i }]}>i</Text>
               </Text>
             </View>
           </Animated.View>
@@ -205,11 +253,9 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
   },
-  logoBlue: {
-    color: '#2563eb',
-  },
-  logoPurple: {
-    color: '#7c3aed',
+  logoLetter: {
+    fontSize: 32,
+    fontWeight: 'bold',
   },
   spinner: {
     marginBottom: 24,

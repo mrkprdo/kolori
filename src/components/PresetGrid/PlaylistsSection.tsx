@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Platform, ToastAndroid, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SavedPlaylist } from '../../types';
 import { sharedStyles } from './styles';
@@ -9,10 +9,13 @@ interface PlaylistsSectionProps {
   savedPlaylists: SavedPlaylist[];
   customEffectsCount: number;
   isCollapsed: boolean;
+  isBlocked?: boolean;
+  blockReason?: 'offline' | 'audioReactive';
   isDeleteMode: boolean;
   isLoadingPlaylists: boolean;
   selectedForDelete: Set<string | number>;
   wiggleAnim: Animated.Value;
+  isDark: boolean;
   cardBackground: string;
   borderColor: string;
   textColor: string;
@@ -26,10 +29,13 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
   savedPlaylists,
   customEffectsCount,
   isCollapsed,
+  isBlocked = false,
+  blockReason = 'offline',
   isDeleteMode,
   isLoadingPlaylists,
   selectedForDelete,
   wiggleAnim,
+  isDark,
   cardBackground,
   borderColor,
   textColor,
@@ -42,7 +48,7 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor },
+        { backgroundColor: cardBackground, borderColor, position: 'relative' },
       ]}
     >
       <TouchableOpacity
@@ -132,6 +138,40 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
             </View>
           )}
         </View>
+      )}
+
+      {/* Overlay when blocked - covers entire section */}
+      {isBlocked && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            if (blockReason === 'offline') {
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('Connect to a WLED device to change presets', ToastAndroid.SHORT);
+              } else {
+                Alert.alert('Device Offline', 'Connect to a WLED device to change presets');
+              }
+            } else {
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('Turn off Audio Reactive to change presets', ToastAndroid.SHORT);
+              } else {
+                Alert.alert('Audio Reactive Active', 'Turn off Audio Reactive to change presets');
+              }
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            borderRadius: 12,
+          }}
+        />
       )}
     </View>
   );

@@ -704,7 +704,7 @@ export default function CustomEffectsModal({
   };
 
   const buttonContainerStyle = {
-    padding: 16,
+    paddingTop: 4,
     flexDirection: 'row' as const,
     gap: 8,
   };
@@ -1041,79 +1041,6 @@ export default function CustomEffectsModal({
 
           {selectedDevices.length > 0 && (
             <>
-              {/* Live View Section */}
-              <View style={sectionStyle}>
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}>
-                  <Text style={{
-                    fontSize: 16,
-                    fontWeight: '600',
-                    color: isDark ? '#ffffff' : '#111827',
-                  }}>
-                    Live View
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => onLiveViewToggle?.(!liveViewEnabled)}
-                    style={{
-                      width: 44,
-                      height: 24,
-                      borderRadius: 12,
-                      backgroundColor: liveViewEnabled
-                        ? '#3b82f6'
-                        : isDark ? '#4b5563' : '#d1d5db',
-                      justifyContent: 'center',
-                      paddingHorizontal: 2,
-                    }}
-                  >
-                    <View style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: '#ffffff',
-                      transform: [{ translateX: liveViewEnabled ? 20 : 0 }],
-                    }} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={{
-                  backgroundColor: isDark ? '#374151' : '#f9fafb',
-                  borderRadius: 8,
-                  padding: 12,
-                  minHeight: 60,
-                }}>
-                  {liveViewEnabled && liveLedData.length > 0 ? (
-                    <LEDVisualization
-                      ledData={liveLedData}
-                      subtextColor={isDark ? '#9ca3af' : '#6b7280'}
-                      liveViewLedSize="normal"
-                      containerWidth={300} // Modal content width
-                      showLedCount={true}
-                      wledInfo={selectedDevices[0]?.wledInfo}
-                    />
-                  ) : liveViewEnabled ? (
-                    <Text style={{
-                      fontSize: 14,
-                      color: isDark ? '#9ca3af' : '#6b7280',
-                      textAlign: 'center',
-                    }}>
-                      No live data available
-                    </Text>
-                  ) : (
-                    <Text style={{
-                      fontSize: 14,
-                      color: isDark ? '#9ca3af' : '#6b7280',
-                      textAlign: 'center',
-                    }}>
-                      Live view disabled
-                    </Text>
-                  )}
-                </View>
-              </View>
-
               {/* Effects Dropdown */}
               <View style={sectionStyle}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

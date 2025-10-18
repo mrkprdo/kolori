@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, ActivityIndicator, Platform, ToastAndroid, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { Device as WledDevice, LEDColor } from '../../types';
@@ -129,7 +129,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor },
+        { backgroundColor: cardBackground, borderColor, position: 'relative' },
       ]}
     >
       <View style={sharedStyles.sectionHeader}>
@@ -161,10 +161,12 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
         {/* Toggle Button */}
         <TouchableOpacity
           onPress={onLiveViewToggle}
+          disabled={!isConnected}
           style={[
             styles.toggleButton,
             {
               backgroundColor: liveViewEnabled ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
+              opacity: !isConnected ? 0.5 : 1,
             },
           ]}
         >
@@ -244,10 +246,18 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
             ) : (
               <View style={[
                 styles.statusContainer,
-                !liveViewEnabled && isConnected && styles.statusContainerCompact
+                (!liveViewEnabled || !isConnected) && styles.statusContainerCompact
               ]}>
-                {!liveViewEnabled && isConnected ? (
-                  // Compact single-line view when disabled
+                {!isConnected ? (
+                  // Offline state - compact single line with no padding
+                  <View style={[styles.compactStatusRow, { paddingVertical: 0, paddingHorizontal: 0 }]}>
+                    <Ionicons name="cloud-offline" size={16} color="#ef4444" />
+                    <Text style={[styles.compactStatusText, { color: '#ef4444' }]}>
+                      Device Offline
+                    </Text>
+                  </View>
+                ) : !liveViewEnabled ? (
+                  // Live view disabled - compact with warning
                   <>
                     <View style={styles.compactStatusRow}>
                       <Ionicons name="eye-off-outline" size={16} color={subtextColor} />
@@ -272,7 +282,6 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
                         </>
                       )}
                     </View>
-                    {/* Performance Warning */}
                     <View style={[styles.warningContainer, styles.warningContainerCompact, { backgroundColor: isDark ? '#422006' : '#fef3c7' }]}>
                       <Ionicons name="warning" size={12} color={isDark ? '#fbbf24' : '#d97706'} />
                       <Text style={[styles.warningText, styles.warningTextCompact, { color: isDark ? '#fbbf24' : '#92400e' }]}>
@@ -281,51 +290,75 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
                     </View>
                   </>
                 ) : (
-                  // Full view for offline or waiting states
-                  <>
-                    <Ionicons
-                      name={!isConnected ? 'cloud-offline' : 'eye-off-outline'}
-                      size={32}
-                      color={!isConnected ? '#ef4444' : subtextColor}
-                      style={{ marginBottom: 8 }}
-                    />
-                    <Text
-                      style={[
-                        styles.statusText,
-                        { color: !isConnected ? '#ef4444' : textColor },
-                      ]}
-                    >
-                      {!isConnected
-                        ? 'Device Offline'
-                        : 'Waiting for LED data...'}
+                  // Waiting for LED data
+                  <View style={styles.compactStatusRow}>
+                    <Ionicons name="eye-off-outline" size={16} color={subtextColor} />
+                    <Text style={[styles.compactStatusText, { color: textColor }]}>
+                      Waiting for LED data...
                     </Text>
-
-                    {/* LED Info */}
-                    {isConnected && ledCount && (
-                      <View style={styles.ledInfoContainer}>
-                        <View style={styles.ledInfoRow}>
-                          <Ionicons name="bulb" size={14} color={subtextColor} />
-                          <Text style={[styles.ledInfoText, { color: subtextColor }]}>
-                            {ledCount} LED{ledCount !== 1 ? 's' : ''}
-                          </Text>
-                        </View>
-                        {isRgbw && (
-                          <View style={[styles.ledInfoRow, { marginTop: 4 }]}>
-                            <Ionicons name="color-palette" size={14} color={subtextColor} />
-                            <Text style={[styles.ledInfoText, { color: subtextColor }]}>
-                              RGBW Support
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                  </>
+                  </View>
                 )}
               </View>
             )}
           </Animated.View>
         </View>
       </View>
+
+      {/* Overlay when device is offline - covers entire section */}
+      {!isConnected && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            if (Platform.OS === 'android') {
+              ToastAndroid.show('Connect to a WLED device to use Live View', ToastAndroid.SHORT);
+            } else {
+              Alert.alert('Device Offline', 'Connect to a WLED device to use Live View');
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            borderRadius: 12,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: cardBackground,
+              borderRadius: 10,
+              padding: 12,
+              borderWidth: 2,
+              borderColor: '#ef4444',
+              maxWidth: '70%',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+          >
+            <Ionicons
+              name="cloud-offline"
+              size={28}
+              color="#ef4444"
+              style={{ marginBottom: 6 }}
+            />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+              Device Offline
+            </Text>
+            <Text style={{ fontSize: 11, color: subtextColor, textAlign: 'center', lineHeight: 14 }}>
+              Connect to a WLED device to use Live View.
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
