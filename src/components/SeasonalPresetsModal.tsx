@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FloatingModal from './FloatingModal';
+import ConfirmDialog from './ConfirmDialog';
 import { SeasonalPreset, WledDevice } from '../types';
 import { loadDeviceSeasonalPresets, saveDeviceSeasonalPresets } from '../utils/storage';
 
@@ -144,6 +145,33 @@ export default function SeasonalPresetsModal({
     setConfirmText('');
   };
 
+  const footerContent = (
+    <View style={styles.footer}>
+      {!isEditing ? (
+        <>
+          <TouchableOpacity onPress={resetToDefault} style={styles.resetButton}>
+            <Ionicons name="refresh" size={16} color="#ef4444" />
+            <Text style={styles.resetButtonText}>Reset</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
+            <Ionicons name="pencil" size={16} color="#ffffff" />
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+            <Ionicons name="checkmark" size={16} color="#ffffff" />
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+
   return (
     <>
       <FloatingModal
@@ -151,149 +179,100 @@ export default function SeasonalPresetsModal({
         isDark={isDark}
         onClose={onClose}
         title="Seasonal Presets"
-        scrollable={false}
+        scrollable={true}
+        footer={footerContent}
       >
-        <View style={styles.container}>
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.description}>
-              Configure which WLED preset IDs to use for seasonal effects.
-            </Text>
+        <Text style={styles.description}>
+          Configure which WLED preset IDs to use for seasonal effects.
+        </Text>
 
-            {editingPresets.map((preset, index) => (
-              <View key={preset.id} style={styles.presetCard}>
-                <View style={styles.presetHeader}>
-                  <View style={styles.presetInfo}>
-                    <Text style={styles.presetIcon}>{preset.icon}</Text>
-                    {isEditing ? (
-                      <TextInput
-                        style={styles.nameInput}
-                        value={preset.name}
-                        onChangeText={(text) => updatePreset(index, 'name', text)}
-                        placeholder="Preset name"
-                        placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
-                      />
-                    ) : (
-                      <Text style={styles.presetName}>{preset.name}</Text>
-                    )}
-                  </View>
-                  {isEditing && (
-                    <TouchableOpacity
-                      onPress={() => removePreset(index)}
-                      style={styles.removeButton}
-                    >
-                      <Ionicons name="trash" size={16} color="#ef4444" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <View style={styles.presetDetails}>
-                  <Text style={styles.label}>Icon:</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.iconInput}
-                      value={preset.icon}
-                      onChangeText={(text) => updatePreset(index, 'icon', text)}
-                      placeholder="🎄"
-                      maxLength={2}
-                    />
-                  ) : (
-                    <Text style={styles.value}>{preset.icon}</Text>
-                  )}
-                </View>
-
-                <View style={styles.presetDetails}>
-                  <Text style={styles.label}>Preset ID:</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.idInput}
-                      value={preset.presetId.toString()}
-                      onChangeText={(text) => {
-                        const numericValue = text.replace(/[^0-9]/g, '');
-                        if (numericValue === '' || (parseInt(numericValue) >= 1 && parseInt(numericValue) <= 250)) {
-                          updatePreset(index, 'presetId', numericValue === '' ? 1 : parseInt(numericValue));
-                        }
-                      }}
-                      placeholder="1"
-                      keyboardType="number-pad"
-                      returnKeyType="done"
-                    />
-                  ) : (
-                    <Text style={styles.value}>{preset.presetId}</Text>
-                  )}
-                </View>
+        {editingPresets.map((preset, index) => (
+          <View key={preset.id} style={styles.presetCard}>
+            <View style={styles.presetHeader}>
+              <View style={styles.presetInfo}>
+                <Text style={styles.presetIcon}>{preset.icon}</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.nameInput}
+                    value={preset.name}
+                    onChangeText={(text) => updatePreset(index, 'name', text)}
+                    placeholder="Preset name"
+                    placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                  />
+                ) : (
+                  <Text style={styles.presetName}>{preset.name}</Text>
+                )}
               </View>
-            ))}
+              {isEditing && (
+                <TouchableOpacity
+                  onPress={() => removePreset(index)}
+                  style={styles.removeButton}
+                >
+                  <Ionicons name="trash" size={16} color="#ef4444" />
+                </TouchableOpacity>
+              )}
+            </View>
 
-            {isEditing && (
-              <TouchableOpacity onPress={addPreset} style={styles.addButton}>
-                <Ionicons name="add" size={20} color="#3b82f6" />
-                <Text style={styles.addButtonText}>Add Preset</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
+            <View style={styles.presetDetails}>
+              <Text style={styles.label}>Icon:</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.iconInput}
+                  value={preset.icon}
+                  onChangeText={(text) => updatePreset(index, 'icon', text)}
+                  placeholder="🎄"
+                  maxLength={2}
+                />
+              ) : (
+                <Text style={styles.value}>{preset.icon}</Text>
+              )}
+            </View>
 
-          <View style={styles.footer}>
-            {!isEditing ? (
-              <>
-                <TouchableOpacity onPress={resetToDefault} style={styles.resetButton}>
-                  <Ionicons name="refresh" size={16} color="#ef4444" />
-                  <Text style={styles.resetButtonText}>Reset</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
-                  <Ionicons name="pencil" size={16} color="#ffffff" />
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                  <Ionicons name="checkmark" size={16} color="#ffffff" />
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            <View style={styles.presetDetails}>
+              <Text style={styles.label}>Preset ID:</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.idInput}
+                  value={preset.presetId.toString()}
+                  onChangeText={(text) => {
+                    const numericValue = text.replace(/[^0-9]/g, '');
+                    if (numericValue === '' || (parseInt(numericValue) >= 1 && parseInt(numericValue) <= 250)) {
+                      updatePreset(index, 'presetId', numericValue === '' ? 1 : parseInt(numericValue));
+                    }
+                  }}
+                  placeholder="1"
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                />
+              ) : (
+                <Text style={styles.value}>{preset.presetId}</Text>
+              )}
+            </View>
           </View>
-        </View>
+        ))}
+
+        {isEditing && (
+          <TouchableOpacity onPress={addPreset} style={styles.addButton}>
+            <Ionicons name="add" size={20} color="#3b82f6" />
+            <Text style={styles.addButtonText}>Add Preset</Text>
+          </TouchableOpacity>
+        )}
       </FloatingModal>
 
-      {/* Reset Confirmation Modal */}
-      <FloatingModal
+      {/* Reset Confirmation Dialog */}
+      <ConfirmDialog
         visible={showResetConfirm}
         isDark={isDark}
         onClose={handleCancelReset}
         title="Confirm Reset"
-        scrollable={false}
-      >
-        <View style={styles.confirmContainer}>
-          <Text style={styles.confirmText}>
-            This will reset all seasonal presets to their default values.
-          </Text>
-          <Text style={styles.confirmWarning}>
-            This action cannot be undone.
-          </Text>
-          <Text style={styles.confirmInstruction}>
-            Type "Kolori" to confirm:
-          </Text>
-          
-          <TextInput
-            style={styles.confirmInput}
-            value={confirmText}
-            onChangeText={setConfirmText}
-            placeholder="Enter confirmation text"
-            placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
-            autoFocus
-          />
-          
+        footer={
           <View style={styles.confirmButtons}>
             <TouchableOpacity onPress={handleCancelReset} style={styles.confirmCancelButton}>
               <Text style={styles.confirmCancelText}>Cancel</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={handleConfirmReset} 
+
+            <TouchableOpacity
+              onPress={handleConfirmReset}
               style={[
                 styles.confirmResetButton,
                 { opacity: confirmText.toLowerCase() === 'kolori' ? 1 : 0.5 }
@@ -302,30 +281,43 @@ export default function SeasonalPresetsModal({
               <Text style={styles.confirmResetText}>Reset</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </FloatingModal>
+        }
+      >
+        <Text style={styles.confirmText}>
+          This will reset all seasonal presets to their default values.
+        </Text>
+        <Text style={styles.confirmWarning}>
+          This action cannot be undone.
+        </Text>
+        <Text style={styles.confirmInstruction}>
+          Type "Kolori" to confirm:
+        </Text>
+
+        <TextInput
+          style={styles.confirmInput}
+          value={confirmText}
+          onChangeText={setConfirmText}
+          placeholder="Enter confirmation text"
+          placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+          autoFocus
+        />
+      </ConfirmDialog>
     </>
   );
 }
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 12,
-  },
   description: {
     color: isDark ? '#9ca3af' : '#6b7280',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   presetCard: {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 10,
     padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: isDark ? '#374151' : '#e5e7eb',
   },
@@ -419,53 +411,66 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    padding: 16,
     gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: isDark ? '#374151' : '#e5e7eb',
   },
   editButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     backgroundColor: '#3b82f6',
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 6,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   editButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   resetButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     backgroundColor: 'transparent',
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 6,
     borderWidth: 1,
     borderColor: '#ef4444',
   },
   resetButtonText: {
     color: '#ef4444',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   cancelButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    backgroundColor: isDark ? '#374151' : '#f3f4f6',
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: isDark ? '#374151' : '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDark ? '#4b5563' : '#d1d5db',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDark ? 0.25 : 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cancelButtonText: {
     color: isDark ? '#9ca3af' : '#6b7280',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   saveButton: {
@@ -473,37 +478,41 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     backgroundColor: '#10b981',
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 6,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   saveButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-  },
-  confirmContainer: {
-    padding: 20,
-    gap: 16,
   },
   confirmText: {
     color: isDark ? '#ffffff' : '#111827',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: '500',
+    marginBottom: 8,
   },
   confirmWarning: {
     color: '#ef4444',
     fontSize: 14,
     textAlign: 'center',
     fontWeight: '600',
+    marginBottom: 16,
   },
   confirmInstruction: {
     color: isDark ? '#9ca3af' : '#6b7280',
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 8,
+    marginBottom: 12,
   },
   confirmInput: {
     color: isDark ? '#ffffff' : '#111827',
@@ -519,32 +528,45 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   confirmButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
   },
   confirmCancelButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    backgroundColor: isDark ? '#374151' : '#f3f4f6',
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: isDark ? '#374151' : '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDark ? '#4b5563' : '#d1d5db',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDark ? 0.25 : 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   confirmCancelText: {
     color: isDark ? '#9ca3af' : '#6b7280',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   confirmResetButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     backgroundColor: '#ef4444',
-    borderRadius: 8,
+    borderRadius: 12,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   confirmResetText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

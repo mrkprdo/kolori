@@ -134,8 +134,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   scanButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    marginBottom: 8,
   },
   scanButton: {
     flexDirection: 'row',
@@ -150,7 +149,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 10,
     padding: 10,
-    marginBottom: 6,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: isDark ? 0.25 : 0.05,
@@ -191,7 +190,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: isDark ? '#374151' : '#d1d5db',
-    marginBottom: 6,
+    marginBottom: 12,
   },
   noDevicesText: {
     color: isDark ? '#9ca3af' : '#6b7280',
@@ -201,7 +200,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     marginTop: 6,
   },
   buttonContainer: {
-    paddingTop: 4,
     flexDirection: 'row',
     gap: 8,
   },

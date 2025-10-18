@@ -220,13 +220,13 @@ export default function DeviceManagementModal({
 
   const footerContent = (
     <View style={styles.buttonContainer}>
-      <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonPrimary}>
-        <Ionicons name="add" size={20} color="white" />
-        <Text style={[styles.footerButtonText, { color: 'white' }]}>Add Manually</Text>
+      <TouchableOpacity onPress={handleShowAddManually} style={styles.footerButtonSecondary}>
+        <Ionicons name="add" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
+        <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Add Manually</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonSecondary}>
-        <Ionicons name="scan" size={20} color={isDark ? '#FFF' : '#3B82F6'} />
-        <Text style={[styles.footerButtonText, { color: isDark ? '#FFF' : '#3B82F6' }]}>Scan Network</Text>
+      <TouchableOpacity onPress={handleShowScanNetwork} style={styles.footerButtonPrimary}>
+        <Ionicons name="search" size={20} color="white" />
+        <Text style={[styles.footerButtonText, { color: 'white' }]}>Scan Network</Text>
       </TouchableOpacity>
     </View>
   );

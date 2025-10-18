@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import React, { useRef } from 'react';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
   runOnJS,
+  useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 
 interface FloatingModalProps {
@@ -39,6 +40,8 @@ export default function FloatingModal({
 }: FloatingModalProps) {
   const translateY = useSharedValue(1000); // Start off-screen
   const backdropOpacity = useSharedValue(0);
+  const scrollViewRef = useRef(null);
+  const scrollOffset = useSharedValue(0);
 
   // Theme colors
   const cardBackground = isDark ? '#1f2937' : '#ffffff';
@@ -58,8 +61,15 @@ export default function FloatingModal({
     }
   }, [visible]);
 
-  // Pan gesture for dragging modal down from header
-  const gesture = Gesture.Pan()
+  // Scroll handler to track scroll position
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollOffset.value = event.contentOffset.y;
+    },
+  });
+
+  // Pan gesture for dragging modal down
+  const panGesture = Gesture.Pan()
     .onChange((event) => {
       // Only allow dragging down (positive translation)
       if (event.translationY > 0) {
@@ -94,47 +104,53 @@ export default function FloatingModal({
       animationType="none"
       onRequestClose={onClose}
     >
-      {/* Backdrop */}
-      <Animated.View style={[styles.backdrop, backdropStyle]}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-      </Animated.View>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {/* Backdrop */}
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+        </Animated.View>
 
-      {/* Modal Container */}
-      <SafeAreaView style={styles.safeArea}>
-        <Animated.View style={[styles.modal, { backgroundColor: cardBackground }, animatedStyle]}>
-          {/* Draggable Header */}
-          <GestureDetector gesture={gesture}>
-            <View style={[styles.header, { borderBottomColor: borderColor }]}>
-              {/* Handle */}
-              <View style={styles.handleContainer}>
-                <View style={[styles.handle, { backgroundColor: isDark ? '#4b5563' : '#d1d5db' }]} />
+        {/* Modal Container */}
+        <SafeAreaView style={styles.safeArea}>
+          <Animated.View style={[styles.modal, { backgroundColor: cardBackground }, animatedStyle]}>
+            {/* Draggable Header */}
+            <GestureDetector gesture={panGesture}>
+              <View style={[styles.header, { borderBottomColor: borderColor }]}>
+                {/* Handle */}
+                <View style={styles.handleContainer}>
+                  <View style={[styles.handle, { backgroundColor: isDark ? '#4b5563' : '#d1d5db' }]} />
+                </View>
+
+                {/* Title */}
+                <Text style={[styles.title, { color: textColor }]}>{title}</Text>
               </View>
-
-              {/* Title */}
-              <Text style={[styles.title, { color: textColor }]}>{title}</Text>
-            </View>
-          </GestureDetector>
+            </GestureDetector>
 
           {/* KeyboardAvoidingView for footer visibility */}
           <KeyboardAvoidingView
             style={styles.keyboardAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={0}
           >
             {/* Content */}
             {scrollable ? (
-              <ScrollView
+              <Animated.ScrollView
+                ref={scrollViewRef}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={true}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                bounces={true}
+                scrollEventThrottle={16}
+                onScroll={scrollHandler}
               >
                 {children}
-              </ScrollView>
+              </Animated.ScrollView>
             ) : (
               <View style={styles.content}>
                 {children}
@@ -150,6 +166,7 @@ export default function FloatingModal({
           </KeyboardAvoidingView>
         </Animated.View>
       </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
