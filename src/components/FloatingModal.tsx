@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, SafeAreaView, Platform, Keyboard } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -42,6 +42,7 @@ export default function FloatingModal({
   const backdropOpacity = useSharedValue(0);
   const scrollViewRef = useRef(null);
   const scrollOffset = useSharedValue(0);
+  const keyboardHeight = useSharedValue(0);
 
   // Theme colors
   const cardBackground = isDark ? '#1f2937' : '#ffffff';
@@ -60,6 +61,29 @@ export default function FloatingModal({
       backdropOpacity.value = withTiming(0, { duration: 200 });
     }
   }, [visible]);
+
+  // Handle keyboard showing/hiding
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        // Move modal up by keyboard height plus extra to eliminate gap
+        keyboardHeight.value = withTiming(-(e.endCoordinates.height + 10), { duration: Platform.OS === 'ios' ? 250 : 200 });
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        keyboardHeight.value = withTiming(0, { duration: Platform.OS === 'ios' ? 250 : 200 });
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   // Scroll handler to track scroll position
   const scrollHandler = useAnimatedScrollHandler({
@@ -90,7 +114,7 @@ export default function FloatingModal({
 
   // Animated styles
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
+    transform: [{ translateY: translateY.value + keyboardHeight.value }],
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
@@ -130,40 +154,35 @@ export default function FloatingModal({
               </View>
             </GestureDetector>
 
-          {/* KeyboardAvoidingView for footer visibility */}
-          <KeyboardAvoidingView
-            style={styles.keyboardAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={0}
-          >
             {/* Content */}
-            {scrollable ? (
-              <Animated.ScrollView
-                ref={scrollViewRef}
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={true}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
-                bounces={true}
-                scrollEventThrottle={16}
-                onScroll={scrollHandler}
-              >
-                {children}
-              </Animated.ScrollView>
-            ) : (
-              <View style={styles.content}>
-                {children}
-              </View>
-            )}
+            <View style={styles.keyboardAvoidingView}>
+              {scrollable ? (
+                <Animated.ScrollView
+                  ref={scrollViewRef}
+                  style={styles.scrollView}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="interactive"
+                  bounces={true}
+                  scrollEventThrottle={16}
+                  onScroll={scrollHandler}
+                >
+                  {children}
+                </Animated.ScrollView>
+              ) : (
+                <View style={styles.content}>
+                  {children}
+                </View>
+              )}
 
-            {/* Footer (if provided) */}
-            {footer && (
-              <View style={[styles.footer, { borderTopColor: borderColor, backgroundColor: cardBackground }]}>
-                {footer}
-              </View>
-            )}
-          </KeyboardAvoidingView>
+              {/* Footer (if provided) */}
+              {footer && (
+                <View style={[styles.footer, { borderTopColor: borderColor, backgroundColor: cardBackground }]}>
+                  {footer}
+                </View>
+              )}
+            </View>
         </Animated.View>
       </SafeAreaView>
       </GestureHandlerRootView>
