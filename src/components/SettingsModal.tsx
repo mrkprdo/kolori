@@ -63,9 +63,9 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   tabContentContainer: { paddingHorizontal: 12, paddingVertical: 8, gap: 12 },
 
   // Device Cards
-  deviceCard: { 
-    backgroundColor: isDark ? '#1f2937' : '#ffffff', 
-    borderRadius: 10, 
+  deviceCard: {
+    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+    borderRadius: 10,
     padding: 10,
     marginBottom: 8,
     shadowColor: '#000',
@@ -73,24 +73,30 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     shadowOpacity: isDark ? 0.25 : 0.05,
     shadowRadius: 3,
     elevation: 2,
-    borderWidth: 1,
-    borderColor: isDark ? '#374151' : '#e5e7eb',
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
   deviceCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   deviceName: { color: isDark ? '#ffffff' : '#111827', fontWeight: '700', fontSize: 13 },
   deviceIp: { color: isDark ? '#9ca3af' : '#6b7280', fontSize: 11, fontWeight: '500', marginTop: 1 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  trashButton: { padding: 5, borderRadius: 6, backgroundColor: isDark ? '#374151' : '#fef2f2' },
+  trashButton: {
+    padding: 5,
+    borderRadius: 6,
+    backgroundColor: isDark ? '#374151' : '#fef2f2',
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
+  },
 
-  noDevicesContainer: { 
-    alignItems: 'center', 
-    paddingVertical: 32, 
+  noDevicesContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
     paddingHorizontal: 20,
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: isDark ? '#374151' : '#d1d5db',
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
   noDevicesText: { 
     color: isDark ? '#9ca3af' : '#6b7280', 
@@ -101,20 +107,20 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
 
   // Section Styling
-  sectionTitle: { 
-    fontSize: 16, 
-    fontWeight: '700', 
-    color: isDark ? '#ffffff' : '#111827', 
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: isDark ? '#ffffff' : '#111827',
     marginBottom: 8,
     letterSpacing: -0.3,
   },
-  settingsGroup: { 
+  settingsGroup: {
     gap: 6,
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 10,
     paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: isDark ? '#374151' : '#e5e7eb',
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
 
   // Option Buttons
@@ -137,35 +143,37 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   optionSubText: { color: isDark ? '#9ca3af' : '#6b7280', fontSize: 12, marginTop: 1 },
 
   // Footer Buttons
-  stickyFooter: { 
-    flexDirection: 'row', 
-    padding: 10, 
-    gap: 8, 
-    borderTopWidth: 1, 
-    borderTopColor: isDark ? '#374151' : '#e5e7eb', 
+  stickyFooter: {
+    flexDirection: 'row',
+    padding: 10,
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: isDark ? '#374151' : '#e5e7eb',
     backgroundColor: isDark ? '#111827' : '#f9fafb',
   },
-  footerButtonPrimary: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingVertical: 10, 
-    borderRadius: 8, 
-    backgroundColor: '#3b82f6', 
+  footerButtonPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#3b82f6',
     gap: 5,
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
-  footerButtonSecondary: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingVertical: 10, 
-    borderRadius: 8, 
-    backgroundColor: isDark ? '#374151' : '#ffffff', 
+  footerButtonSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: isDark ? '#374151' : '#ffffff',
     gap: 5,
-    borderWidth: 1,
-    borderColor: isDark ? '#4b5563' : '#d1d5db',
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
   footerButtonText: { fontSize: 14, fontWeight: '700' },
   ledSizeButton: {
@@ -173,7 +181,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     borderRadius: 8,
     gap: 6,
     minWidth: 120,
@@ -254,7 +262,7 @@ export default function SettingsModal({
                'Normal - Balanced view'}
             </Text>
           </View>
-          <View style={[styles.ledSizeButton, { borderColor: isDark ? '#4b5563' : '#d1d5db' }]}>
+          <View style={[styles.ledSizeButton, { borderColor: isDark ? '#4b5563' : '#1e293b' }]}>
             <Text style={[styles.ledSizeButtonText, { color: isDark ? '#ffffff' : '#111827' }]}>
               {settings.liveViewLedSize === 'compact' ? 'Compact' :
                settings.liveViewLedSize === 'large' ? 'Large' :

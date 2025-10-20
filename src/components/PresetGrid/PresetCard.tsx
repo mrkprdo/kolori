@@ -118,12 +118,12 @@ const PresetCard = React.memo(
             },
         isActive &&
           !isDeleteMode && {
-            borderWidth: 2,
+            borderWidth: 3,
             borderColor: '#3b82f6',
             borderRadius: 10,
           },
         isSelected && {
-          borderWidth: 2,
+          borderWidth: 3,
           borderColor: '#ef4444',
           borderRadius: 10,
         },

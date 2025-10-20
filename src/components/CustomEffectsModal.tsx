@@ -102,8 +102,8 @@ const PaletteDropdownItem = React.memo<{
           height: 24,
           borderRadius: 4,
           marginRight: 12,
-          borderWidth: 1,
-          borderColor: isDark ? '#4b5563' : '#d1d5db',
+          borderWidth: 2,
+          borderColor: isDark ? '#4b5563' : '#1e293b',
         }}
       />
 
@@ -212,9 +212,9 @@ const PaletteDropdown = React.memo<{
           paddingHorizontal: 16,
           paddingVertical: 14,
           borderRadius: 8,
-          borderWidth: 1,
+          borderWidth: 2,
           backgroundColor: isDark ? '#374151' : '#f9fafb',
-          borderColor: isDark ? '#4b5563' : '#d1d5db',
+          borderColor: isDark ? '#4b5563' : '#1e293b',
           minHeight: 50,
           opacity: disabled ? 0.6 : 1,
         }}
@@ -233,8 +233,8 @@ const PaletteDropdown = React.memo<{
               height: 20,
               borderRadius: 4,
               marginRight: 12,
-              borderWidth: 1,
-              borderColor: isDark ? '#4b5563' : '#d1d5db',
+              borderWidth: 2,
+              borderColor: isDark ? '#4b5563' : '#1e293b',
             }}
           />
         )}
@@ -284,8 +284,8 @@ const PaletteDropdown = React.memo<{
               height: '60%',
               backgroundColor: isDark ? '#1f2937' : '#ffffff',
               borderRadius: 16,
-              borderWidth: 1,
-              borderColor: isDark ? '#374151' : '#e5e7eb',
+              borderWidth: 2,
+              borderColor: isDark ? '#4b5563' : '#1e293b',
             }}
           >
             {/* Header */}
@@ -492,8 +492,8 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
             maxLength={50}
             style={{
               backgroundColor: isDark ? '#374151' : '#f9fafb',
-              borderWidth: 1,
-              borderColor: isDark ? '#4b5563' : '#d1d5db',
+              borderWidth: 2,
+              borderColor: isDark ? '#4b5563' : '#1e293b',
               borderRadius: 8,
               paddingHorizontal: 16,
               paddingVertical: 12,
@@ -526,6 +526,8 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
                 paddingVertical: 12,
                 borderRadius: 8,
                 alignItems: 'center',
+                borderWidth: 2,
+                borderColor: isDark ? '#4b5563' : '#1e293b',
               }}
             >
               <Text style={{
@@ -549,6 +551,8 @@ const SavePresetModal: React.FC<SavePresetModalProps> = ({
                 flexDirection: 'row',
                 justifyContent: 'center',
                 gap: 8,
+                borderWidth: 2,
+                borderColor: isDark ? '#4b5563' : '#1e293b',
               }}
             >
               {isLoading && <ActivityIndicator size="small" color="white" />}
@@ -696,6 +700,8 @@ export default function CustomEffectsModal({
     borderRadius: 12,
     marginBottom: 6,
     padding: 16,
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -718,6 +724,8 @@ export default function CustomEffectsModal({
     paddingHorizontal: 20,
     borderRadius: 12,
     gap: 6,
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
     shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -1041,7 +1049,7 @@ export default function CustomEffectsModal({
 
           {selectedDevices.length > 0 && (
             <>
-              {/* Effects Dropdown */}
+              {/* Effects and Palette Dropdown */}
               <View style={sectionStyle}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <Text style={{
@@ -1073,37 +1081,38 @@ export default function CustomEffectsModal({
                   isDark={isDark}
                   searchable={true}
                 />
+
+                {/* Palettes Dropdown - Only show if effect is selected and supports palettes */}
+                {(() => {
+                  const currentEffect = getSelectedEffect();
+                  // Hide palette dropdown by default - only show when effect is selected and supports palettes
+                  const showPalettes = selectedEffect !== null && currentEffect && currentEffect.supportsPalette;
+
+                  if (!showPalettes) return null;
+
+                  return (
+                    <>
+                      <Text style={{
+                        fontSize: 16,
+                        fontWeight: '600',
+                        color: isDark ? '#ffffff' : '#111827',
+                        marginTop: 16,
+                        marginBottom: 12,
+                      }}>
+                        Palette
+                      </Text>
+
+                      <PaletteDropdown
+                        data={memoizedPaletteData}
+                        selectedValue={selectedPalette}
+                        onValueChange={handlePaletteChange}
+                        placeholder="Select a palette..."
+                        isDark={isDark}
+                      />
+                    </>
+                  );
+                })()}
               </View>
-
-              {/* Palettes Dropdown - Only show if effect is selected and supports palettes */}
-              {(() => {
-                const currentEffect = getSelectedEffect();
-                // Hide palette dropdown by default - only show when effect is selected and supports palettes
-                const showPalettes = selectedEffect !== null && currentEffect && currentEffect.supportsPalette;
-
-                if (!showPalettes) return null;
-
-                return (
-                  <View style={sectionStyle}>
-                    <Text style={{
-                      fontSize: 16,
-                      fontWeight: '600',
-                      color: isDark ? '#ffffff' : '#111827',
-                      marginBottom: 12,
-                    }}>
-                      Palette
-                    </Text>
-
-                    <PaletteDropdown
-                      data={memoizedPaletteData}
-                      selectedValue={selectedPalette}
-                      onValueChange={handlePaletteChange}
-                      placeholder="Select a palette..."
-                      isDark={isDark}
-                    />
-                  </View>
-                );
-              })()}
 
             </>
           )}

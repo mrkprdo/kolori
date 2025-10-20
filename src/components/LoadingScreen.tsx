@@ -247,7 +247,8 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    
+    borderWidth: 3,
+    borderColor: '#374151',
   },
   logo: {
     fontSize: 32,

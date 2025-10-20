@@ -327,9 +327,9 @@ export default function SchedulerModal({
     statusCard: {
       padding: 12,
       borderRadius: 8,
-      borderWidth: 1,
+      borderWidth: 2,
       backgroundColor: isDark ? '#1f2937' : '#ffffff',
-      borderColor: isDark ? '#374151' : '#e5e7eb',
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       marginBottom: 6,
     },
     statusTitle: {
@@ -344,9 +344,9 @@ export default function SchedulerModal({
     card: {
       padding: 16,
       borderRadius: 10,
-      borderWidth: 1,
+      borderWidth: 2,
       backgroundColor: isDark ? '#1f2937' : '#ffffff',
-      borderColor: isDark ? '#374151' : '#e5e7eb',
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       marginBottom: 6,
     },
     sectionTitle: {
@@ -366,7 +366,7 @@ export default function SchedulerModal({
       borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
+      borderWidth: 2,
     },
     dayButtonText: {
       fontSize: 11,
@@ -386,7 +386,7 @@ export default function SchedulerModal({
     },
     presetInputContainer: {
       flex: 1,
-      borderWidth: 1,
+      borderWidth: 2,
       borderRadius: 8,
       height: 44,
       justifyContent: 'center',
@@ -400,7 +400,7 @@ export default function SchedulerModal({
       paddingHorizontal: 12,
       paddingVertical: 12,
       borderRadius: 8,
-      borderWidth: 1,
+      borderWidth: 2,
     },
     subtext: {
       fontSize: 12,
@@ -418,7 +418,7 @@ export default function SchedulerModal({
       flex: 1,
     },
     timeInputContainer: {
-      borderWidth: 1,
+      borderWidth: 2,
       borderRadius: 8,
       height: 44,
       justifyContent: 'center',
@@ -443,6 +443,8 @@ export default function SchedulerModal({
       paddingHorizontal: 20,
       borderRadius: 12,
       gap: 6,
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
@@ -463,6 +465,8 @@ export default function SchedulerModal({
       paddingHorizontal: 20,
       borderRadius: 12,
       gap: 6,
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       shadowColor: '#3b82f6',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
@@ -611,7 +615,7 @@ export default function SchedulerModal({
                   padding: 8,
                   borderRadius: 8,
                   backgroundColor: isDark ? '#10b98110' : '#05966910',
-                  borderWidth: 1,
+                  borderWidth: 2,
                   borderColor: isDark ? '#10b98130' : '#05966930',
                 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
@@ -629,7 +633,7 @@ export default function SchedulerModal({
                   padding: 8,
                   borderRadius: 8,
                   backgroundColor: isDark ? '#6b728010' : '#9ca3af10',
-                  borderWidth: 1,
+                  borderWidth: 2,
                   borderColor: isDark ? '#6b728030' : '#9ca3af30',
                 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
@@ -647,7 +651,7 @@ export default function SchedulerModal({
                   padding: 8,
                   borderRadius: 8,
                   backgroundColor: isDark ? '#3b82f610' : '#3b82f610',
-                  borderWidth: 1,
+                  borderWidth: 2,
                   borderColor: isDark ? '#3b82f630' : '#3b82f630',
                 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
@@ -711,7 +715,7 @@ export default function SchedulerModal({
                           : isDark
                           ? '#374151'
                           : '#f9fafb',
-                        borderColor: isSelected ? '#3b82f6' : isDark ? '#4b5563' : '#d1d5db',
+                        borderColor: isSelected ? '#3b82f6' : (isDark ? '#4b5563' : '#1e293b'),
                         borderWidth: 2,
                         transform: [{ scale: isSelected ? 1.05 : 1 }],
                       },
@@ -781,7 +785,7 @@ export default function SchedulerModal({
                     style={{
                       flex: 1,
                       backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                      borderColor: '#3b82f6',
+                      borderColor: isDark ? '#4b5563' : '#1e293b',
                       borderWidth: 2,
                       borderRadius: 8,
                       height: 38,
@@ -819,8 +823,8 @@ export default function SchedulerModal({
                       height: 38,
                       borderRadius: 8,
                       backgroundColor: '#3b82f6',
-                      borderWidth: 1,
-                      borderColor: '#3b82f6',
+                      borderWidth: 2,
+                      borderColor: isDark ? '#4b5563' : '#1e293b',
                       opacity: (!activeDevice?.ip || !activeDevice?.isConnected) ? 0.5 : 1,
                     }}
                     onPress={async () => {
@@ -884,7 +888,7 @@ export default function SchedulerModal({
                       styles.timeInputContainer,
                       {
                         backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                        borderColor: isDark ? '#10b981' : '#059669',
+                        borderColor: isDark ? '#6b7280' : '#1e293b',
                         borderWidth: 2,
                       },
                     ]}
@@ -922,7 +926,7 @@ export default function SchedulerModal({
                       styles.timeInputContainer,
                       {
                         backgroundColor: isDark ? '#4b5563' : '#ffffff',
-                        borderColor: isDark ? '#6b7280' : '#9ca3af',
+                        borderColor: isDark ? '#6b7280' : '#1e293b',
                         borderWidth: 2,
                       },
                     ]}

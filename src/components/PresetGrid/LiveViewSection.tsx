@@ -129,7 +129,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor, position: 'relative' },
+        { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b', position: 'relative' },
       ]}
     >
       <View style={sharedStyles.sectionHeader}>
@@ -147,7 +147,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
               styles.activePresetBadge,
               {
                 backgroundColor: isDark ? '#1f2937' : '#eff6ff',
-                borderColor: isDark ? '#3b82f6' : '#93c5fd',
+                borderColor: isDark ? '#4b5563' : '#1e293b',
               },
             ]}
           >
@@ -166,6 +166,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
             styles.toggleButton,
             {
               backgroundColor: liveViewEnabled ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
+              borderColor: isDark ? '#4b5563' : '#1e293b',
               opacity: !isConnected ? 0.5 : 1,
             },
           ]}
@@ -189,7 +190,7 @@ const LiveViewSection: React.FC<LiveViewSectionProps> = ({
             !liveViewEnabled && isConnected && styles.innerCardCompact,
             {
               backgroundColor: isDark ? '#374151' : '#f9fafb',
-              borderColor: isDark ? '#4b5563' : '#e5e7eb',
+              borderColor: isDark ? '#4b5563' : '#1e293b',
             },
           ]}
         >

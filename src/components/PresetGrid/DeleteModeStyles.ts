@@ -27,14 +27,16 @@ export const deleteModeStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: '#1e293b',
   },
   deleteActionText: {
     fontSize: 16,
     fontWeight: '600',
   },
   cancelButton: {
-    borderWidth: 1,
-    borderColor: 'rgba(107, 114, 128, 0.3)',
+    borderWidth: 2,
+    borderColor: '#1e293b',
   },
 
   // Deletion Progress Modal

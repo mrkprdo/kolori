@@ -140,7 +140,7 @@ export default function FloatingModal({
 
         {/* Modal Container */}
         <SafeAreaView style={styles.safeArea}>
-          <Animated.View style={[styles.modal, { backgroundColor: cardBackground }, animatedStyle]}>
+          <Animated.View style={[styles.modal, { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b' }, animatedStyle]}>
             {/* Draggable Header */}
             <GestureDetector gesture={panGesture}>
               <View style={[styles.header, { borderBottomColor: borderColor }]}>
@@ -205,6 +205,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: 2,
+    borderBottomWidth: 0,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -214,7 +216,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 8,
-    borderBottomWidth: 1,
+    borderBottomWidth: 2,
   },
   handleContainer: {
     alignItems: 'center',
@@ -244,7 +246,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   footer: {
-    borderTopWidth: 1,
+    borderTopWidth: 2,
     padding: 12,
   },
 });

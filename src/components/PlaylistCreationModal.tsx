@@ -98,8 +98,8 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
             maxLength={50}
             style={{
               backgroundColor: isDark ? '#374151' : '#f9fafb',
-              borderWidth: 1,
-              borderColor: isDark ? '#4b5563' : '#d1d5db',
+              borderWidth: 2,
+              borderColor: isDark ? '#4b5563' : '#1e293b',
               borderRadius: 8,
               paddingHorizontal: 16,
               paddingVertical: 12,
@@ -132,6 +132,8 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
                 paddingVertical: 12,
                 borderRadius: 8,
                 alignItems: 'center',
+                borderWidth: 2,
+                borderColor: isDark ? '#4b5563' : '#1e293b',
               }}
             >
               <Text style={{
@@ -152,6 +154,8 @@ const SavePlaylistModal: React.FC<SavePlaylistModalProps> = ({
                 paddingVertical: 12,
                 borderRadius: 8,
                 alignItems: 'center',
+                borderWidth: 2,
+                borderColor: isDark ? '#4b5563' : '#1e293b',
               }}
             >
               <Text style={{
@@ -204,8 +208,8 @@ export default function PlaylistCreationModal({
       shadowOpacity: isDark ? 0.25 : 0.05,
       shadowRadius: 3,
       elevation: 2,
-      borderWidth: 1,
-      borderColor: isDark ? '#374151' : '#e5e7eb',
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       marginBottom: 6,
     },
     buttonContainer: {
@@ -222,6 +226,8 @@ export default function PlaylistCreationModal({
       paddingHorizontal: 20,
       borderRadius: 12,
       gap: 6,
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       shadowColor: '#3b82f6',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
@@ -511,7 +517,7 @@ export default function PlaylistCreationModal({
                   backgroundColor: isDark ? '#374151' : '#f9fafb',
                   borderRadius: 10,
                   padding: 12,
-                  borderWidth: 1,
+                  borderWidth: 2,
                   borderColor: isDark ? '#4b5563' : '#e5e7eb',
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 1 },

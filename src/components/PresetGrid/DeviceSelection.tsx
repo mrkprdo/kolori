@@ -55,7 +55,7 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
       <View
         style={[
           styles.floatingDropdown,
-          { backgroundColor: `${cardBackground}CC`, borderColor },
+          { backgroundColor: `${cardBackground}CC`, borderColor: isDark ? '#4b5563' : '#1e293b' },
         ]}
       >
         {/* On/Off Button */}
@@ -148,7 +148,7 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
                   style={[
                     styles.deviceOption,
                     index < devices.length - 1
-                      ? { borderBottomWidth: 1, borderBottomColor: borderColor }
+                      ? { borderBottomWidth: 2, borderBottomColor: '#1e293b' }
                       : { borderBottomWidth: 0 },
                     device.id === activeDeviceId && {
                       backgroundColor: isDark ? '#374151' : '#f3f4f6',

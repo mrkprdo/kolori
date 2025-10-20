@@ -80,8 +80,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
       maxWidth: 500,
       maxHeight: '80%',
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: isDark ? '#374151' : '#e5e7eb',
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
       backgroundColor: isDark ? '#1f2937' : '#ffffff',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 8 },
@@ -183,6 +183,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
       backgroundColor: isDark ? '#374151' : '#F3F4F6',
       marginBottom: 20,
       alignItems: 'center',
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
     },
     developerText: {
       fontSize: 14,
@@ -206,6 +208,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ isVisible, onClose, isDark }) =
       justifyContent: 'center',
       gap: 8,
       marginBottom: 16,
+      borderWidth: 2,
+      borderColor: isDark ? '#4b5563' : '#1e293b',
     },
     githubButtonText: {
       color: '#FFF',
