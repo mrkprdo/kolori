@@ -98,9 +98,9 @@ const PresetCard = React.memo(
 
     const cardItemStyle = useMemo(
       () => ({
-        flexBasis: '22%',
-        maxWidth: '22%',
-        marginHorizontal: '1.5%',
+        flexBasis: '22%' as const,
+        maxWidth: '22%' as const,
+        marginHorizontal: '1.5%' as const,
         marginVertical: 6,
       }),
       []

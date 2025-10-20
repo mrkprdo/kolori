@@ -15,6 +15,9 @@ import {
   saveWledRobustSchedule,
   resetWledTimerSettings,
   fetchWledCurrentPreset,
+  fetchWledDeviceTime,
+  syncPhoneTimeToWled,
+  ensureOffPresetExists,
 } from '../config/wledApi';
 import { fetchWledTimerSettings, WledTimerSettings } from '../config/wledTimer';
 
@@ -47,6 +50,15 @@ export default function SchedulerModal({
   const [targetPresetId, setTargetPresetId] = useState<number>(3);
   const [isSchedulerSaving, setIsSchedulerSaving] = useState(false);
   const [isLoadingTimerSettings, setIsLoadingTimerSettings] = useState(false);
+  const [deviceTime, setDeviceTime] = useState<string | null>(null);
+  const [phoneTime, setPhoneTime] = useState<string>('');
+  const [isLoadingDeviceTime, setIsLoadingDeviceTime] = useState(false);
+  const [isSyncingTime, setIsSyncingTime] = useState(false);
+  const [offPresetStatus, setOffPresetStatus] = useState<{
+    exists: boolean;
+    checking: boolean;
+    creating: boolean;
+  }>({ exists: false, checking: false, creating: false });
 
   // Helper function to convert WLED timer weekdays bitmask to day set
   const convertWledDaysToSet = useCallback((weekdaysBitmask: number): Set<number> => {
@@ -129,13 +141,205 @@ export default function SchedulerModal({
     }
   }, [activeDevice, convertWledDaysToSet, formatTime]);
 
+  // Function to update phone time display
+  const updatePhoneTime = useCallback(() => {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    const dateString = now.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    setPhoneTime(`${dateString} ${timeString}`);
+  }, []);
+
+  // Function to fetch device time
+  const fetchDeviceTime = useCallback(async () => {
+    if (!activeDevice?.ip || !activeDevice?.isConnected) {
+      return;
+    }
+
+    setIsLoadingDeviceTime(true);
+    try {
+      logger.log(`🕐 Fetching device time from ${activeDevice.ip}`);
+      const result = await fetchWledDeviceTime(
+        activeDevice.ip,
+        activeDevice.protocol || 'http'
+      );
+
+      if (result.success && result.deviceTime) {
+        setDeviceTime(result.deviceTime);
+        logger.log(`✅ Device time fetched: ${result.deviceTime}`);
+      } else {
+        setDeviceTime(null);
+        logger.warn(`⚠️ Failed to fetch device time: ${result.message}`);
+      }
+    } catch (error: any) {
+      logger.error('❌ Error fetching device time:', error);
+      setDeviceTime(null);
+    } finally {
+      setIsLoadingDeviceTime(false);
+    }
+  }, [activeDevice]);
+
+  // Function to check if OFF- preset exists
+  const checkOffPreset = useCallback(async () => {
+    if (!activeDevice?.ip || !activeDevice?.isConnected) {
+      return;
+    }
+
+    setOffPresetStatus({ exists: false, checking: true, creating: false });
+    try {
+      logger.log(`🔍 Checking OFF- preset on ${activeDevice.ip}`);
+      const result = await ensureOffPresetExists(
+        activeDevice.ip,
+        activeDevice.protocol || 'http'
+      );
+
+      if (result.success) {
+        setOffPresetStatus({
+          exists: true,
+          checking: false,
+          creating: false,
+        });
+        logger.log(`✅ OFF- preset status: ${result.message}`);
+      } else {
+        setOffPresetStatus({
+          exists: false,
+          checking: false,
+          creating: false,
+        });
+        logger.warn(`⚠️ OFF- preset check failed: ${result.message}`);
+      }
+    } catch (error: any) {
+      logger.error('❌ Error checking OFF- preset:', error);
+      setOffPresetStatus({
+        exists: false,
+        checking: false,
+        creating: false,
+      });
+    }
+  }, [activeDevice]);
+
+  // Function to create the OFF- preset
+  const handleCreateOffPreset = useCallback(async () => {
+    if (!activeDevice?.ip || !activeDevice?.isConnected) {
+      Alert.alert('Error', 'Device not connected');
+      return;
+    }
+
+    setOffPresetStatus((prev) => ({ ...prev, creating: true }));
+    try {
+      logger.log(`📝 Creating OFF- preset on ${activeDevice.ip}`);
+      const result = await ensureOffPresetExists(
+        activeDevice.ip,
+        activeDevice.protocol || 'http'
+      );
+
+      if (result.success) {
+        setOffPresetStatus({
+          exists: true,
+          checking: false,
+          creating: false,
+        });
+        Alert.alert(
+          'Success',
+          'OFF- preset created successfully at slot 62!'
+        );
+        logger.log(`✅ OFF- preset created`);
+      } else {
+        setOffPresetStatus({
+          exists: false,
+          checking: false,
+          creating: false,
+        });
+        Alert.alert('Error', result.message || 'Failed to create OFF- preset');
+        logger.error('❌ Failed to create OFF- preset:', result.message);
+      }
+    } catch (error: any) {
+      setOffPresetStatus({
+        exists: false,
+        checking: false,
+        creating: false,
+      });
+      Alert.alert('Error', 'Failed to create OFF- preset');
+      logger.error('❌ Create OFF- preset error:', error);
+    }
+  }, [activeDevice]);
+
+  // Function to sync phone time to WLED
+  const handleSyncTime = useCallback(async () => {
+    if (!activeDevice?.ip || !activeDevice?.isConnected) {
+      Alert.alert('Error', 'Device not connected');
+      return;
+    }
+
+    Alert.alert(
+      'Sync Time to WLED',
+      `This will set your WLED device time to match your phone's current time.\n\nPhone Time: ${phoneTime}\n\nContinue?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sync',
+          onPress: async () => {
+            setIsSyncingTime(true);
+            try {
+              const result = await syncPhoneTimeToWled(
+                activeDevice.ip,
+                activeDevice.protocol || 'http'
+              );
+
+              if (result.success) {
+                Alert.alert('Success', 'Phone time synced to WLED device successfully!');
+                logger.log(`✅ Time synced successfully`);
+                // Refresh device time after sync
+                setTimeout(() => {
+                  fetchDeviceTime();
+                }, 1000);
+              } else {
+                Alert.alert('Error', result.message || 'Failed to sync time');
+                logger.error('❌ Failed to sync time:', result.message);
+              }
+            } catch (error: any) {
+              Alert.alert('Error', 'Failed to sync time');
+              logger.error('❌ Sync time error:', error);
+            } finally {
+              setIsSyncingTime(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [activeDevice, phoneTime, fetchDeviceTime]);
+
   // Load timer settings when modal opens
   useEffect(() => {
     if (visible && activeDevice?.isConnected) {
       logger.log(`🔍 SchedulerModal opened: schedulerEnabled=${schedulerEnabled}, configuredSchedule=${JSON.stringify(configuredSchedule)}`);
       loadTimerSettings();
+      fetchDeviceTime();
+      updatePhoneTime();
+      checkOffPreset();
     }
-  }, [visible, activeDevice?.isConnected, loadTimerSettings]);
+  }, [visible, activeDevice?.isConnected, loadTimerSettings, fetchDeviceTime, updatePhoneTime, checkOffPreset]);
+
+  // Update phone time every second when modal is visible
+  useEffect(() => {
+    if (visible) {
+      const interval = setInterval(() => {
+        updatePhoneTime();
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [visible, updatePhoneTime]);
 
   // Handle time input formatting
   const handleTimeInput = useCallback(
@@ -666,6 +870,271 @@ export default function SchedulerModal({
                 </View>
               </View>
             )}
+      </View>
+
+      {/* Device Time & Sync Card */}
+      <View style={styles.card}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Text style={styles.sectionTitle}>Device Time</Text>
+          <TouchableOpacity
+            onPress={fetchDeviceTime}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: isDark ? '#374151' : '#f3f4f6',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: (!activeDevice?.ip || !activeDevice?.isConnected || isLoadingDeviceTime) ? 0.5 : 1,
+            }}
+            disabled={!activeDevice?.ip || !activeDevice?.isConnected || isLoadingDeviceTime}
+          >
+            <Ionicons
+              name="refresh-outline"
+              size={18}
+              color={isDark ? '#d1d5db' : '#374151'}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Time Display Rows */}
+        <View style={{ gap: 8, marginBottom: 12 }}>
+          {/* Phone Time */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 12,
+            borderRadius: 8,
+            backgroundColor: isDark ? '#374151' : '#f9fafb',
+            borderWidth: 2,
+            borderColor: isDark ? '#4b5563' : '#e5e7eb',
+          }}>
+            <View style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: isDark ? '#3b82f620' : '#3b82f620',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}>
+              <Ionicons name="phone-portrait" size={20} color="#3b82f6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9ca3af' : '#6b7280', marginBottom: 2 }}>
+                Phone Time
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: textColor }}>
+                {phoneTime || 'Loading...'}
+              </Text>
+            </View>
+          </View>
+
+          {/* WLED Device Time */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 12,
+            borderRadius: 8,
+            backgroundColor: deviceTime
+              ? isDark ? '#10b98110' : '#05966910'
+              : isDark ? '#374151' : '#f9fafb',
+            borderWidth: 2,
+            borderColor: deviceTime
+              ? isDark ? '#10b98130' : '#05966930'
+              : isDark ? '#4b5563' : '#e5e7eb',
+          }}>
+            <View style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: deviceTime
+                ? isDark ? '#10b98120' : '#05966920'
+                : isDark ? '#4b556320' : '#e5e7eb20',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}>
+              <Ionicons
+                name={isLoadingDeviceTime ? "hourglass-outline" : "hardware-chip"}
+                size={20}
+                color={deviceTime ? (isDark ? '#10b981' : '#059669') : (isDark ? '#6b7280' : '#9ca3af')}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9ca3af' : '#6b7280', marginBottom: 2 }}>
+                WLED Device Time
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: textColor }}>
+                {isLoadingDeviceTime ? 'Loading...' : (deviceTime || 'Not available')}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Sync Button */}
+        <TouchableOpacity
+          onPress={handleSyncTime}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            backgroundColor: '#3b82f6',
+            borderWidth: 2,
+            borderColor: isDark ? '#4b5563' : '#1e293b',
+            opacity: (!activeDevice?.ip || !activeDevice?.isConnected || isSyncingTime) ? 0.5 : 1,
+          }}
+          disabled={!activeDevice?.ip || !activeDevice?.isConnected || isSyncingTime}
+        >
+          <Ionicons name="sync" size={18} color="white" />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: 'white', marginLeft: 8 }}>
+            {isSyncingTime ? 'Syncing...' : 'Sync Phone Time to WLED'}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.subtext, { marginTop: 8, marginBottom: 0 }]}>
+          Sync your phone's time to the WLED device to ensure schedules work correctly
+        </Text>
+      </View>
+
+      {/* OFF- Preset Validation Card */}
+      <View style={styles.card}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Text style={styles.sectionTitle}>OFF Preset (Slot 62)</Text>
+          <TouchableOpacity
+            onPress={checkOffPreset}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: isDark ? '#374151' : '#f3f4f6',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: (!activeDevice?.ip || !activeDevice?.isConnected || offPresetStatus.checking) ? 0.5 : 1,
+            }}
+            disabled={!activeDevice?.ip || !activeDevice?.isConnected || offPresetStatus.checking}
+          >
+            <Ionicons
+              name="refresh-outline"
+              size={18}
+              color={isDark ? '#d1d5db' : '#374151'}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Status Display */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 12,
+          borderRadius: 8,
+          backgroundColor: offPresetStatus.checking
+            ? isDark ? '#fbbf2410' : '#f59e0b10'
+            : offPresetStatus.exists
+            ? isDark ? '#10b98110' : '#05966910'
+            : isDark ? '#ef444410' : '#dc262610',
+          borderWidth: 2,
+          borderColor: offPresetStatus.checking
+            ? isDark ? '#fbbf2430' : '#f59e0b30'
+            : offPresetStatus.exists
+            ? isDark ? '#10b98130' : '#05966930'
+            : isDark ? '#ef444430' : '#dc262630',
+          marginBottom: 12,
+        }}>
+          <View style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: offPresetStatus.checking
+              ? isDark ? '#fbbf2420' : '#f59e0b20'
+              : offPresetStatus.exists
+              ? isDark ? '#10b98120' : '#05966920'
+              : isDark ? '#ef444420' : '#dc262620',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
+          }}>
+            <Ionicons
+              name={offPresetStatus.checking ? 'hourglass-outline' : offPresetStatus.exists ? 'checkmark-circle' : 'alert-circle'}
+              size={24}
+              color={offPresetStatus.checking
+                ? isDark ? '#fbbf24' : '#f59e0b'
+                : offPresetStatus.exists
+                ? isDark ? '#10b981' : '#059669'
+                : isDark ? '#ef4444' : '#dc2626'}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: offPresetStatus.checking
+                ? isDark ? '#fbbf24' : '#f59e0b'
+                : offPresetStatus.exists
+                ? isDark ? '#10b981' : '#059669'
+                : isDark ? '#ef4444' : '#dc2626',
+              marginBottom: 2,
+            }}>
+              {offPresetStatus.checking
+                ? 'Checking...'
+                : offPresetStatus.exists
+                ? 'OFF- Preset Found'
+                : 'OFF- Preset Missing'}
+            </Text>
+            <Text style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280' }}>
+              {offPresetStatus.checking
+                ? 'Validating preset slot 62'
+                : offPresetStatus.exists
+                ? 'Preset 62 is configured correctly'
+                : 'Required for scheduler turn-off function'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Create Button (only show if preset doesn't exist) */}
+        {!offPresetStatus.exists && !offPresetStatus.checking && (
+          <TouchableOpacity
+            onPress={handleCreateOffPreset}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              backgroundColor: '#10b981',
+              borderWidth: 2,
+              borderColor: isDark ? '#4b5563' : '#1e293b',
+              opacity: (!activeDevice?.ip || !activeDevice?.isConnected || offPresetStatus.creating) ? 0.5 : 1,
+              marginBottom: 8,
+            }}
+            disabled={!activeDevice?.ip || !activeDevice?.isConnected || offPresetStatus.creating}
+          >
+            <Ionicons name="add-circle-outline" size={18} color="white" />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: 'white', marginLeft: 8 }}>
+              {offPresetStatus.creating ? 'Creating...' : 'Create OFF- Preset'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Info Text */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          padding: 10,
+          borderRadius: 8,
+          backgroundColor: isDark ? '#1f293740' : '#f9fafb',
+          borderWidth: 1,
+          borderColor: isDark ? '#374151' : '#e5e7eb',
+        }}>
+          <Ionicons name="information-circle" size={18} color={isDark ? '#60a5fa' : '#3b82f6'} style={{ marginRight: 8, marginTop: 1 }} />
+          <Text style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', flex: 1, lineHeight: 18 }}>
+            The scheduler uses preset 62 (named "OFF-") to turn off your LEDs. This preset sets all LEDs to black (#000000) with brightness 0. It will be automatically created if missing.
+          </Text>
+        </View>
       </View>
 
       {/* Days Selection & Settings Card */}

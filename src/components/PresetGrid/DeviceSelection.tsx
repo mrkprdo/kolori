@@ -20,6 +20,7 @@ interface DeviceSelectionProps {
   onDeviceToggle: (turnOn: boolean) => void;
   onSetShowDeviceDropdown: (show: boolean) => void;
   onSetActiveDeviceId?: (id: number) => void;
+  onOpenDeviceManagement?: () => void;
 }
 
 const DeviceSelection: React.FC<DeviceSelectionProps> = ({
@@ -38,6 +39,7 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
   onDeviceToggle,
   onSetShowDeviceDropdown,
   onSetActiveDeviceId,
+  onOpenDeviceManagement,
 }) => {
   // Use WebSocket state if available, fallback to wledInfo
   // Only trust the power state if device is connected
@@ -119,7 +121,7 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
       </View>
 
       {/* Device Selection Modal */}
-      {showDeviceDropdown && devices.length > 1 && (
+      {showDeviceDropdown && (
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => onSetShowDeviceDropdown(false)}
@@ -147,11 +149,14 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
                   }}
                   style={[
                     styles.deviceOption,
-                    index < devices.length - 1
-                      ? { borderBottomWidth: 2, borderBottomColor: '#1e293b' }
-                      : { borderBottomWidth: 0 },
+                    { borderBottomWidth: 2, borderBottomColor: isDark ? '#374151' : '#e5e7eb' },
                     device.id === activeDeviceId && {
                       backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                    },
+                    index === devices.length - 1 && {
+                      borderBottomLeftRadius: 10,
+                      borderBottomRightRadius: 10,
+                      borderBottomWidth: 0,
                     },
                   ]}
                 >
@@ -186,6 +191,28 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
                 </TouchableOpacity>
               ))}
             </ScrollView>
+
+            {/* Device Management Button */}
+            {onOpenDeviceManagement && (
+              <TouchableOpacity
+                onPress={() => {
+                  onSetShowDeviceDropdown(false);
+                  onOpenDeviceManagement();
+                }}
+                style={[
+                  styles.deviceManagementButton,
+                  {
+                    backgroundColor: '#3b82f6',
+                    borderColor: isDark ? '#4b5563' : '#1e293b',
+                  }
+                ]}
+              >
+                <Ionicons name="settings-outline" size={20} color="#ffffff" />
+                <Text style={styles.deviceManagementText}>
+                  Manage Devices
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       )}

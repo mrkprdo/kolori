@@ -67,8 +67,16 @@ export default function FloatingModal({
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
-        // Move modal up by keyboard height plus extra to eliminate gap
-        keyboardHeight.value = withTiming(-(e.endCoordinates.height + 10), { duration: Platform.OS === 'ios' ? 250 : 200 });
+        if (Platform.OS === 'android') {
+          // On Android, don't move the modal - let the system handle it
+          // The windowSoftInputMode in AndroidManifest should be set to "adjustResize"
+          keyboardHeight.value = 0;
+        } else {
+          // On iOS, move modal up by keyboard height plus extra padding
+          keyboardHeight.value = withTiming(-(e.endCoordinates.height + 10), {
+            duration: 250
+          });
+        }
       }
     );
 

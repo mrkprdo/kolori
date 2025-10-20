@@ -387,12 +387,13 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
             styles.toggleButton,
             {
               backgroundColor: isRecording ? '#10b981' : (isDark ? '#374151' : '#e5e7eb'),
+              borderColor: isDark ? '#4b5563' : '#1e293b',
               opacity: isStarting ? 0.5 : 1,
             },
           ]}
         >
           <Ionicons
-            name={isStarting ? 'hourglass-outline' : (isRecording ? 'mic' : 'mic-off')}
+            name={isStarting ? 'hourglass-outline' : (isRecording ? 'mic-outline' : 'mic-off-outline')}
             size={18}
             color={isRecording ? '#ffffff' : textColor}
           />
@@ -405,7 +406,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       <View style={sharedStyles.sectionContent}>
         {/* Audio Visualizer with Sensitivity Slider */}
         <View style={styles.visualizerContainer}>
-          <View style={styles.visualizerWrapper}>
+          <View style={[styles.visualizerWrapper, { borderColor: borderColor }]}>
             <AudioVisualizer
               audioFeatures={isRecording ? audioFeatures : null}
               melSpectrum={isRecording ? melSpectrum : []}
@@ -641,6 +642,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
                     styles.enableUdpButton,
                     {
                       backgroundColor: configStatus.udpRealtimeEnabled ? '#ef4444' : '#10b981',
+                      borderColor: borderColor,
                       opacity: enablingUdp ? 0.5 : 1,
                     }
                   ]}
@@ -683,7 +685,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: isDark ? '#4b5563' : '#1e293b',
     minWidth: 90,
     gap: 6,
   },
@@ -743,7 +744,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     position: 'relative',
     borderWidth: 2,
-    borderColor: isDark ? '#4b5563' : '#1e293b',
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -939,7 +939,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: isDark ? '#4b5563' : '#1e293b',
     gap: 6,
   },
   enableUdpText: {

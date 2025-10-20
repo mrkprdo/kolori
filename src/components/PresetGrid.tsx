@@ -1859,6 +1859,7 @@ export default function PresetGrid({
         onDeviceToggle={handleDeviceToggle}
         onSetShowDeviceDropdown={setShowDeviceDropdown}
         onSetActiveDeviceId={onSetActiveDeviceId}
+        onOpenDeviceManagement={() => setShowDeviceManagementModal(true)}
       />
 
       {/* Delete Mode Action Buttons */}

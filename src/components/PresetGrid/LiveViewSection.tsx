@@ -13,7 +13,7 @@ interface LiveViewSectionProps {
   activePresetData: { name: string } | null;
   liveViewEnabled: boolean;
   liveLedData: LEDColor[];
-  liveViewLedSize: number;
+  liveViewLedSize: 'compact' | 'normal' | 'large' | 'extra-large';
   sliderBrightness: number;
   isFetchingBrightness: boolean;
   lastRefreshTimestamp: number;

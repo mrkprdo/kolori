@@ -39,6 +39,7 @@ export {
   deleteWledPreset,
   deleteWledPlaylistViaWebSocket,
   fetchWledCurrentPreset,
+  ensureOffPresetExists,
 } from "./wledPresets";
 
 // Timer & Scheduler Operations
@@ -46,6 +47,8 @@ export {
   fetchWledTimerSettings,
   saveWledRobustSchedule,
   resetWledTimerSettings,
+  fetchWledDeviceTime,
+  syncPhoneTimeToWled,
 } from "./wledTimer";
 
 // Timer Types
