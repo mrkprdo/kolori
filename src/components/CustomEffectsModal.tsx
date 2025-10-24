@@ -755,13 +755,11 @@ export default function CustomEffectsModal({
 
   const applyEffect = useCallback(async (effectId: number, paletteId: number | null) => {
     if (selectedDevices.length === 0) {
-      console.log('No device selected for effect application');
       return;
     }
 
     const device = selectedDevices[0];
     if (!device.isConnected) {
-      console.log('Device not connected, skipping effect application');
       return;
     }
 
@@ -779,10 +777,7 @@ export default function CustomEffectsModal({
         command.seg[0].pal = paletteId;
       }
 
-      console.log(`🎨 Applying effect ${effectId} with palette ${paletteId} to device ${device.ip}`);
-
       wledWebSocketService.sendCommand(command);
-      console.log(`✅ Effect command sent: ${effectId} with palette ${paletteId}`);
     } catch (error) {
       console.error('Error applying effect:', error);
     }
@@ -801,7 +796,6 @@ export default function CustomEffectsModal({
             // Find "Default" palette or use first palette as default
             const defaultPalette = palettes.find(p => p.name.toLowerCase().includes('default')) || palettes[0];
             setSelectedPalette(defaultPalette.id);
-            console.log(`Auto-selected default palette: "${defaultPalette.name}" (ID: ${defaultPalette.id})`);
 
             // Auto-apply the effect with the default palette
             applyEffect(effectId, defaultPalette.id);
@@ -871,14 +865,6 @@ export default function CustomEffectsModal({
 
     setIsSaving(true);
     try {
-      console.log('🔄 Attempting to save preset to WLED device:', {
-        deviceIp: device.ip,
-        protocol: device.protocol || 'http',
-        presetName,
-        effectId: selectedEffect,
-        paletteId: selectedPalette
-      });
-
       // Use the new createWledPreset function from wledApi with enhanced error handling
       const result = await createWledPreset(
         device.ip,
@@ -889,19 +875,15 @@ export default function CustomEffectsModal({
         device.protocol || 'http'
       );
 
-      console.log('📡 WLED API Response:', result);
-
       if (!result.success) {
         const errorMessage = result.message || 'Failed to save preset to WLED device';
-        console.error('❌ Preset save failed:', errorMessage);
+        console.error('Preset save failed:', errorMessage);
         throw new Error(errorMessage);
       }
 
       if (!result.presetId) {
-        console.warn('⚠️ Preset saved but no preset ID returned');
+        console.warn('Preset saved but no preset ID returned');
       }
-
-      console.log('✅ Preset saved successfully:', result);
       setShowSaveModal(false);
 
       // Refresh the preset list from the device

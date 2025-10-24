@@ -93,9 +93,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
                                  errorMessage.includes('Network request') ||
                                  errorMessage.includes('Failed to fetch');
 
-          if (isNetworkError) {
-            console.log('⚠️ Could not detect LED count - device may be offline or unreachable');
-          } else {
+          if (!isNetworkError) {
             console.error('Failed to detect LED count:', error);
           }
         }

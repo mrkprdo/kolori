@@ -818,7 +818,6 @@ export default function PresetGrid({
       const currentDevice = activeDeviceRef.current;
       if (currentDevice?.wledInfo?.bri !== undefined) {
         const newBrightness = Math.round(currentDevice.wledInfo.bri);
-        console.log(`💡 Brightness from refresh: ${newBrightness} (auto-synced via WebSocket)`);
         setLastRefreshTimestamp(Date.now());
         logger.log(`💡 Brightness updated from refresh: ${newBrightness}`);
       }
@@ -883,8 +882,6 @@ export default function PresetGrid({
 
   // FAB open animation - staggered sequence for smooth reveal
   const animateFabOpen = useCallback(() => {
-    console.log("animateFabOpen called");
-
     // Ensure animations start from 0 (closed state)
     fabRotateAnim.setValue(0);
     fabScaleAnim1.setValue(0);
@@ -892,8 +889,6 @@ export default function PresetGrid({
     fabScaleAnim3.setValue(0);
     fabScaleAnim4.setValue(0);
     fabScaleAnim5.setValue(0);
-
-    console.log("Animation values reset to 0, starting animations...");
 
     Animated.parallel([
       Animated.timing(fabRotateAnim, {
@@ -928,10 +923,7 @@ export default function PresetGrid({
           useNativeDriver: true,
         }),
       ]),
-    ]).start(() => {
-      // fabAnimationInProgress.current = false;
-      console.log("animateFabOpen completed");
-    });
+    ]).start();
   }, [
     fabRotateAnim,
     fabScaleAnim1,
@@ -943,8 +935,6 @@ export default function PresetGrid({
 
   // FAB close animation - reverse stagger for smooth collapse
   const animateFabClose = useCallback(() => {
-    console.log("animateFabClose called");
-
     Animated.parallel([
       Animated.timing(fabRotateAnim, {
         toValue: 0,
@@ -980,9 +970,7 @@ export default function PresetGrid({
         }),
       ]),
     ]).start(() => {
-      // fabAnimationInProgress.current = false;
       setShowFabOptions(false);
-      console.log("animateFabClose completed");
     });
   }, [
     fabRotateAnim,
@@ -994,16 +982,8 @@ export default function PresetGrid({
   ]);
 
   const toggleFabOptions = useCallback(() => {
-    console.log(
-      "🔵 FAB toggle called, current showFabOptions:",
-      showFabOptions
-    );
-    console.log("🔵 Function entering with showFabOptions:", showFabOptions);
-
     if (showFabOptions) {
-      console.log("🔴 Closing FAB - setting state to false");
       setShowFabOptions(false);
-      console.log("🔴 Reset animations to closed state");
       // Reset animations to closed state
       fabRotateAnim.setValue(0);
       fabScaleAnim1.setValue(0);
@@ -1011,15 +991,12 @@ export default function PresetGrid({
       fabScaleAnim3.setValue(0);
       fabScaleAnim4.setValue(0);
       fabScaleAnim5.setValue(0);
-      console.log("🔴 FAB close complete");
     } else {
-      console.log("🟢 Opening FAB - setting state to true");
       // Close device dropdown when opening FAB
       if (showDeviceDropdown) {
         setShowDeviceDropdown(false);
       }
       setShowFabOptions(true);
-      console.log("🟢 Setting animations to open state (no animation)");
       // Set animations to open state immediately
       fabRotateAnim.setValue(1);
       fabScaleAnim1.setValue(1);
@@ -1027,7 +1004,6 @@ export default function PresetGrid({
       fabScaleAnim3.setValue(1);
       fabScaleAnim4.setValue(1);
       fabScaleAnim5.setValue(1);
-      console.log("🟢 FAB open complete");
     }
   }, [
     showFabOptions,
@@ -1044,7 +1020,6 @@ export default function PresetGrid({
   useEffect(() => {
     if (fabAnimationInProgress.current) {
       const timeout = setTimeout(() => {
-        console.log("Animation progress flag stuck, resetting...");
         // fabAnimationInProgress.current = false;
       }, 2000);
 
@@ -1158,9 +1133,6 @@ export default function PresetGrid({
                 (e) => e.id === item.id
               );
               if (effect?.presetId && activeDevice?.ip) {
-                console.log(
-                  `🗑️ Deleting effect "${item.name}" (preset ID: ${effect.presetId})`
-                );
                 const result = await deleteWledPreset(
                   activeDevice.ip,
                   effect.presetId,
@@ -1177,13 +1149,12 @@ export default function PresetGrid({
                     return newSet;
                   });
                   results.success.push(item.name);
-                  console.log(`✅ Successfully deleted effect "${item.name}"`);
                 } else {
                   results.failed.push(
                     `${item.name}: ${result.message || "Unknown error"}`
                   );
                   console.error(
-                    `❌ Failed to delete effect "${item.name}":`,
+                    `Failed to delete effect "${item.name}":`,
                     result.message
                   );
                 }
@@ -1201,14 +1172,6 @@ export default function PresetGrid({
             } else if (item.type === "playlist") {
               const playlist = savedPlaylists.find((p) => p.id === item.id);
               if (playlist?.id) {
-                console.log(`🗑️ Deleting playlist "${item.name}":`);
-                console.log(`   - Playlist ID: ${playlist.id}`);
-                console.log(`   - Preset ID: ${playlist.presetId}`);
-                console.log(
-                  `   - Is WLED Playlist: ${playlist.isWledPlaylist}`
-                );
-                console.log(`   - Active Device IP: ${activeDevice?.ip}`);
-                console.log(`   - Protocol: ${activeDevice?.protocol}`);
 
                 let deletionResult = null;
 
@@ -1217,7 +1180,6 @@ export default function PresetGrid({
                   try {
                     // Use presetId if available, otherwise use id
                     const idToDelete = playlist.presetId || playlist.id;
-                    console.log(`   - Using ID for deletion: ${idToDelete}`);
 
                     deletionResult = await deleteWledPlaylistViaWebSocket(
                       idToDelete as number,
@@ -1225,10 +1187,7 @@ export default function PresetGrid({
                       activeDevice?.protocol || "http"
                     );
                   } catch (error) {
-                    console.error(
-                      `⚠️ Error during playlist deletion for "${item.name}":`,
-                      error
-                    );
+                    console.error(`Error deleting playlist "${item.name}":`, error);
                     deletionResult = {
                       success: false,
                       message:
@@ -1251,9 +1210,6 @@ export default function PresetGrid({
                     return newSet;
                   });
                   results.success.push(item.name);
-                  console.log(
-                    `✅ Successfully deleted playlist "${item.name}"`
-                  );
                 } else {
                   results.failed.push(
                     `${item.name}: ${
@@ -1261,7 +1217,7 @@ export default function PresetGrid({
                     }`
                   );
                   console.error(
-                    `❌ Failed to delete playlist "${item.name}":`,
+                    `Failed to delete playlist "${item.name}":`,
                     deletionResult?.message
                   );
                 }
@@ -1278,10 +1234,7 @@ export default function PresetGrid({
             const errorMessage =
               error instanceof Error ? error.message : "Unknown error occurred";
             results.failed.push(`${item.name}: ${errorMessage}`);
-            console.error(
-              `💥 Unexpected error deleting "${item.name}":`,
-              error
-            );
+            console.error(`Unexpected error deleting "${item.name}":`, error);
           }
         }
 
@@ -1443,8 +1396,6 @@ export default function PresetGrid({
     }, 100);
 
     try {
-      console.log("🎲 Generating random custom effect...");
-
       // Detect WLED device dimensions first
       const detectWledDimensions = async (
         deviceIp: string
@@ -1498,9 +1449,6 @@ export default function PresetGrid({
         palettesResponse.json(),
       ]);
 
-      console.log(`🎲 Device dimensions: ${deviceDimensions}`);
-      console.log(`🎲 Available effects: ${deviceEffects.length}`);
-      console.log(`🎲 Available palettes: ${devicePalettes.length}`);
 
       // Filter effects based on device dimensions and lookup table
       const availableEffects: WLEDEffectData[] = [];
@@ -1534,9 +1482,6 @@ export default function PresetGrid({
       // Select random effect
       const randomEffect =
         availableEffects[Math.floor(Math.random() * availableEffects.length)];
-      console.log(
-        `🎲 Selected random effect: "${randomEffect.name}" (ID: ${randomEffect.id})`
-      );
 
       // Select random palette if effect supports palettes
       let randomPalette = null;
@@ -1568,7 +1513,7 @@ export default function PresetGrid({
           const paletteDef = WLED_PALETTES_DEF.find(p => p.name === paletteName);
 
           if (!paletteDef) {
-            console.warn(`⚠️ Palette "${paletteName}" not found in WLED_PALETTES_DEF`);
+            console.warn(`Palette "${paletteName}" not found in WLED_PALETTES_DEF`);
           }
 
           const paletteId = paletteDef?.id ?? 0;
@@ -1578,13 +1523,8 @@ export default function PresetGrid({
             name: paletteName,
           };
           presetName = `${randomEffect.name}+${randomPalette.name}`;
-          console.log(
-            `🎲 Selected random palette: "${randomPalette.name}" (ID: ${randomPalette.id})`
-          );
         }
       }
-
-      console.log(`🎲 Generated preset name: "${presetName}"`);
 
       // Create the random custom effect preset
       const result = await createWledPreset(
@@ -1597,11 +1537,6 @@ export default function PresetGrid({
       );
 
       if (result.success && result.presetId) {
-        console.log(
-          `🎲 Successfully created random custom effect with preset ID: ${result.presetId}`
-        );
-
-        console.log(`🎲 Generating gradient for palette ID: ${randomPalette?.id || 0}`);
         const gradient = generatePresetGradient(randomPalette?.id || 0);
 
         // Add to local custom effects
@@ -1627,19 +1562,11 @@ export default function PresetGrid({
         if (onDeviceUpdate && activeDevice?.id) {
           onDeviceUpdate(activeDevice.id, { activePreset: result.presetId });
         }
-
-        // Note: Not calling onRefreshPresets() here to avoid overwriting our custom gradient
-
-        console.log(
-          `🎲 Random effect created: "${presetName}" with effect "${
-            randomEffect.name
-          }"${randomPalette ? ` and palette "${randomPalette.name}"` : ""}.`
-        );
       } else {
         throw new Error(result.message || "Failed to create preset");
       }
     } catch (error) {
-      console.error("🎲 Error generating random custom effect:", error);
+      console.error("Error generating random custom effect:", error);
       Alert.alert(
         "Failed to Generate Random Effect",
         error instanceof Error ? error.message : "An unexpected error occurred."

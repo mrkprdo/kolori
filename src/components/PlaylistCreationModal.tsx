@@ -280,40 +280,34 @@ export default function PlaylistCreationModal({
     setIsSaving(true);
     try {
       // First, fetch current playlists to check for name conflicts
-      console.log('🔍 Checking for existing playlists with name:', playlistName);
-      
-      // Check local playlists first (from savedPlaylists passed via KoloriApp)
-      // We'll need to get this from props or context - for now let's refresh from device
       if (onRefreshPresets) {
         try {
           await onRefreshPresets();
         } catch (error) {
-          console.warn('Could not fetch latest playlists for validation:', error);
+          // Could not fetch latest playlists for validation
         }
       }
 
       // Check if name exists in customEffects (presets from WLED device)
-      const existingPreset = customEffects.find(effect => 
+      const existingPreset = customEffects.find(effect =>
         effect.name.toLowerCase() === playlistName.toLowerCase()
       );
 
       // Check if name exists in savedPlaylists (local and device playlists)
-      const existingPlaylist = savedPlaylists.find(playlist => 
+      const existingPlaylist = savedPlaylists.find(playlist =>
         playlist.name.toLowerCase() === playlistName.toLowerCase()
       );
 
       if (existingPreset || existingPlaylist) {
         const itemType = existingPlaylist ? 'playlist' : 'preset';
         Alert.alert(
-          'Name Already Exists', 
+          'Name Already Exists',
           `A ${itemType} with the name "${playlistName}" already exists. Please choose a different name.`,
           [{ text: 'OK' }]
         );
         setIsSaving(false);
         return;
       }
-
-      console.log('✅ Playlist name is unique, proceeding with save...');
       // Create playlist items for WLED
       const wledPlaylistItems = validItems.map(item => ({
         presetId: item.presetId!,
@@ -321,13 +315,6 @@ export default function PlaylistCreationModal({
       }));
 
       // Save playlist to WLED device with enhanced error handling
-      console.log('🔄 Attempting to save playlist to WLED device:', {
-        deviceIp: device.ip,
-        protocol: device.protocol || 'http',
-        playlistName,
-        itemCount: wledPlaylistItems.length
-      });
-
       const result = await createWledPlaylist(
         device.ip,
         wledPlaylistItems,
@@ -335,19 +322,15 @@ export default function PlaylistCreationModal({
         device.protocol || 'http'
       );
 
-      console.log('📡 WLED API Response:', result);
-
       if (!result.success) {
         const errorMessage = result.message || 'Failed to save playlist to WLED device';
-        console.error('❌ Playlist save failed:', errorMessage);
+        console.error('Playlist save failed:', errorMessage);
         throw new Error(errorMessage);
       }
 
       if (!result.presetId) {
-        console.warn('⚠️ Playlist saved but no preset ID returned');
+        console.warn('Playlist saved but no preset ID returned');
       }
-
-      
 
       const playlistGradientData = generatePlaylistGradient(playlistName, validItems.length);
 
@@ -359,7 +342,6 @@ export default function PlaylistCreationModal({
       }
 
       const playlistId = result.presetId;
-      console.log('💾 Creating local playlist data with WLED preset ID:', playlistId);
 
       const playlistData: SavedPlaylist = {
         id: playlistId,
@@ -379,7 +361,6 @@ export default function PlaylistCreationModal({
         gradient: playlistGradientData.gradient,
       };
 
-      console.log('✅ Calling onSavePlaylist with data:', playlistData);
       onSavePlaylist(playlistData);
       
       // Refresh presets if callback is provided

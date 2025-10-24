@@ -58,8 +58,6 @@ export class WledMdnsDiscovery {
 
   private async initializeServiceDiscovery(): Promise<void> {
     try {
-      console.log('Initializing mDNS Service Discovery...');
-
       if (this.isRunningInExpoGo()) {
         this.handleExpoGoLimitation();
         return;
@@ -68,7 +66,6 @@ export class WledMdnsDiscovery {
       await this.waitForNativeModule();
       this.setupEventListeners();
       this.isInitialized = true;
-      console.log('mDNS Service Discovery initialized successfully');
     } catch (error) {
       console.error('Failed to initialize mDNS Service Discovery:', error);
       this.isInitialized = false;
@@ -80,8 +77,7 @@ export class WledMdnsDiscovery {
   }
 
   private handleExpoGoLimitation(): void {
-    console.warn('mDNS is not supported in Expo Go. Network discovery will be disabled.');
-    console.log('To enable network discovery, use a development build: npx expo run:android or npx expo run:ios');
+    console.warn('mDNS is not supported in Expo Go. Use a development build to enable network discovery.');
     this.isInitialized = false;
   }
 
@@ -102,8 +98,6 @@ export class WledMdnsDiscovery {
   }
 
   private handleServiceFound = (service: Service): void => {
-    console.log('mDNS service found:', service.name, service);
-
     if (this.isWledService(service)) {
       const device = this.createDeviceFromService(service);
       this.discoveredDevices.set(service.name, device);
@@ -112,9 +106,8 @@ export class WledMdnsDiscovery {
   };
 
   private handleServiceLost = (service: Service): void => {
-    console.log('mDNS service removed:', service.name);
     const device = this.discoveredDevices.get(service.name);
-    
+
     if (device) {
       this.discoveredDevices.delete(service.name);
       this.listeners.onDeviceRemoved?.(device);
@@ -139,15 +132,6 @@ export class WledMdnsDiscovery {
     const name = service.name?.toLowerCase() || '';
     const txt = service.txt || {};
     const host = service.hostName?.toLowerCase() || '';
-
-    console.log('🔍 Evaluating service for WLED:', {
-      name: service.name,
-      host: service.hostName,
-      port: service.port,
-      txt: service.txt,
-      type: service.type,
-      domain: service.domain
-    });
 
     // Check direct WLED indicators
     if (this.hasDirectWledIndicators(name, txt)) {
@@ -206,14 +190,11 @@ export class WledMdnsDiscovery {
       
       // Skip common non-WLED services
       const skipPatterns = ['airplay', 'homekit', 'printer', 'scanner', 'apple', 'iphone', 'ipad', 'mac'];
-      const shouldSkip = skipPatterns.some(pattern => 
+      const shouldSkip = skipPatterns.some(pattern =>
         name.includes(pattern) || host.includes(pattern)
       );
-      
-      if (!shouldSkip) {
-        console.log('🍎 iOS permissive mode: accepting HTTP service for validation');
-        return true;
-      }
+
+      return !shouldSkip;
     }
     
     return false;
@@ -231,14 +212,12 @@ export class WledMdnsDiscovery {
 
   public async startScan(): Promise<void> {
     if (this.isScanning) {
-      console.log('mDNS scan already in progress');
       return;
     }
 
     await this.ensureInitialized();
 
     if (!this.isInitialized) {
-      console.log('mDNS discovery not available - running in Expo Go or initialization failed');
       return;
     }
 
@@ -253,7 +232,6 @@ export class WledMdnsDiscovery {
 
   private async ensureInitialized(): Promise<void> {
     if (!this.isInitialized && this.initializationPromise) {
-      console.log('Waiting for mDNS initialization...');
       await this.initializationPromise;
     }
   }
@@ -274,12 +252,10 @@ export class WledMdnsDiscovery {
 
   private async performScan(): Promise<void> {
     await ServiceDiscovery.startSearch('http');
-    console.log('Started mDNS scan for WLED devices on _http._tcp');
   }
 
   private scheduleAutoStop(): void {
     this.scanTimeout = setTimeout(() => {
-      console.log('Auto-stopping mDNS scan after 2 seconds');
       this.forceStopScan();
     }, 2000);
   }
@@ -295,20 +271,15 @@ export class WledMdnsDiscovery {
       return;
     }
 
-    console.log('Force stopping mDNS scan...');
-    
     this.isScanning = false;
     this.clearExistingTimeout();
     this.stopNativeScan();
     this.listeners.onScanStop?.();
-    
-    console.log('mDNS scan force stopped and state updated');
   }
 
   private stopNativeScan(): void {
     ServiceDiscovery.stopSearch('http')
-      .then(() => console.log('Native scan stopped successfully'))
-      .catch(error => console.log('Native scan stop failed, but state already updated:', error));
+      .catch(error => console.error('Failed to stop native scan:', error));
   }
 
   public async stopScan(): Promise<void> {
@@ -337,8 +308,6 @@ export class WledMdnsDiscovery {
     const url = this.buildDeviceUrl(address, port, '/win');
 
     try {
-      console.log(`Getting WLED device name from ${url}`);
-
       const response = await this.fetchWithTimeout(url, {
         method: 'GET',
         headers: {
@@ -346,14 +315,10 @@ export class WledMdnsDiscovery {
         },
       }, 5000);
 
-      console.log(`Response status: ${response.status}, OK: ${response.ok}`);
-
       if (response.ok) {
         const xmlData = await response.text();
-        console.log('XML response data:', xmlData);
         return this.parseDeviceNameFromXml(xmlData);
       } else {
-        console.log(`HTTP Error: ${response.status} ${response.statusText}`);
         return {
           success: false,
           error: `HTTP ${response.status}: ${response.statusText}`,
@@ -395,16 +360,14 @@ export class WledMdnsDiscovery {
 
   private parseDeviceNameFromXml(xmlData: string): DeviceNameResult {
     const dsMatch = xmlData.match(/<ds>([^<]*)<\/ds>/);
-    
+
     if (dsMatch && dsMatch[1]) {
       const deviceName = dsMatch[1].trim();
-      console.log('Extracted device name:', deviceName);
       return {
         success: true,
         deviceName,
       };
     } else {
-      console.log('No <ds> tag found in XML response');
       return {
         success: false,
         error: 'Device name not found in response',
@@ -421,24 +384,15 @@ export class WledMdnsDiscovery {
 
   public async validateWledDevice(device: MdnsWledDevice | any): Promise<ValidationResult> {
     const port = device.port || 80;
-    
-    console.log(`🔍 Starting validation for device:`, {
-      name: device.name,
-      port,
-      allAddresses: device.addresses
-    });
-    
     const addressesToTry = this.getAddressesToTry(device);
-    console.log(`🔍 Will try addresses:`, addressesToTry);
-    
+
     for (const testAddress of addressesToTry) {
       const result = await this.tryValidateAddress(testAddress, port, device.name);
       if (result.isValid) {
         return result;
       }
-      console.log(`❌ Address ${testAddress} failed:`, result.error);
     }
-    
+
     return {
       isValid: false,
       error: `All addresses failed. Tried: ${addressesToTry.join(', ')}`
@@ -480,13 +434,11 @@ export class WledMdnsDiscovery {
 
   private async tryValidateAddress(address: string, port: number, deviceName: string): Promise<ValidationResult> {
     const endpoints = ['/json/info', '/json', '/win'];
-    
+
     for (const endpoint of endpoints) {
       const url = this.buildDeviceUrl(address, port, endpoint);
-      
-      try {
-        console.log(`🔍 Trying ${deviceName} at ${url}`);
 
+      try {
         const response = await this.fetchWithTimeout(url, {
           method: 'GET',
           headers: {
@@ -495,19 +447,13 @@ export class WledMdnsDiscovery {
           },
         }, 8000);
 
-        console.log(`🔍 ${endpoint} response: ${response.status} ${response.ok}`);
-
         if (response.ok) {
           const result = await this.processEndpointResponse(response, endpoint);
           if (result.isValid) {
             return result;
           }
-        } else {
-          console.log(`❌ HTTP ${response.status} for ${endpoint}`);
         }
       } catch (error: any) {
-        console.log(`❌ Error testing ${endpoint}:`, error.message);
-        
         if (this.isNetworkSecurityError(error)) {
           return {
             isValid: false,
@@ -516,7 +462,7 @@ export class WledMdnsDiscovery {
         }
       }
     }
-    
+
     return {
       isValid: false,
       error: `No valid WLED endpoints found on ${address}:${port}`
@@ -536,38 +482,34 @@ export class WledMdnsDiscovery {
   private async processJsonResponse(response: Response, endpoint: string): Promise<ValidationResult> {
     try {
       const data = await response.json();
-      console.log(`✅ JSON data from ${endpoint}:`, data);
 
       if (data.ver || data.name || data.brand === 'WLED' || data.arch || data.info) {
-        console.log('✅ Confirmed WLED device via JSON');
         return {
           isValid: true,
           deviceInfo: data,
         };
       }
     } catch (jsonError) {
-      console.log(`❌ JSON parse failed for ${endpoint}:`, jsonError);
+      // JSON parsing failed
     }
-    
+
     return { isValid: false };
   }
 
   private async processXmlResponse(response: Response): Promise<ValidationResult> {
     try {
       const xmlData = await response.text();
-      console.log(`✅ XML data from /win:`, xmlData.substring(0, 200));
-      
+
       if (xmlData.includes('<ds>') || xmlData.includes('WLED') || xmlData.includes('<ac>')) {
-        console.log('✅ Confirmed WLED device via XML');
         return {
           isValid: true,
           deviceInfo: { fromXml: true, hasWinEndpoint: true },
         };
       }
     } catch (xmlError) {
-      console.log(`❌ XML parse failed for /win:`, xmlError);
+      // XML parsing failed
     }
-    
+
     return { isValid: false };
   }
 
