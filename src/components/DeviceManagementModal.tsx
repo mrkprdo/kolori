@@ -90,7 +90,6 @@ export default function DeviceManagementModal({
     try {
       const response = await fetch(`http://${device.ip}/win&RB`, {
         method: 'GET',
-        timeout: 5000,
       });
       
       if (response.ok) {

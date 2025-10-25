@@ -146,7 +146,7 @@ export function usePresetManager(): UsePresetManagerReturn {
         // Merge fetched presets with stored ones, preserving gradients from storage
         const mergedPresets = fetchedPresets.map((fetchedPreset: CustomEffect) => {
           // Try multiple matching strategies to find the stored preset
-          const storedPreset = storedPresets.find((p: CustomEffect) => {
+          const storedPreset = storedPresets.find((p: any) => {
             // Match by exact ID
             if (p.id === fetchedPreset.id) return true;
             // Match by presetId

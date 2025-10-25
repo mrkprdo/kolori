@@ -176,7 +176,7 @@ export const loadDeviceSeasonalPresets = async (
 ): Promise<any[]> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(
+    const allDevicePresets: Record<string, any> = await storage.loadFromStorage(
       STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
       {}
     );
@@ -218,7 +218,7 @@ export const saveDeviceSeasonalPresets = async (
 ): Promise<boolean> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(
+    const allDevicePresets: Record<string, any> = await storage.loadFromStorage(
       STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
       {}
     );
@@ -241,7 +241,7 @@ export const removeDeviceSeasonalPresets = async (
 ): Promise<boolean> => {
   try {
     const deviceIdentifier = getDeviceIdentifier(device);
-    const allDevicePresets = await storage.loadFromStorage(
+    const allDevicePresets: Record<string, any> = await storage.loadFromStorage(
       STORAGE_KEYS.DEVICE_SEASONAL_PRESETS,
       {}
     );

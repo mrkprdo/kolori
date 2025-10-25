@@ -40,4 +40,8 @@ yarn-error.*
 .expo-shared/
 .expo/devices.json
 
+# Test coverage
+coverage/
+.nyc_output/
+
 .claude/

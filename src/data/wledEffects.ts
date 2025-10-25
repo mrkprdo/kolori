@@ -1721,13 +1721,16 @@ function createEffectsArray(): WLEDEffectData[] {
   // Process each effect from the raw JSON data
   WLED_FX_RAW_DATA.forEach((effectObj) => {
     const effectName = Object.keys(effectObj)[0];
-    const effectData = effectObj[effectName as keyof typeof effectObj];
+    const effectData: any = effectObj[effectName as keyof typeof effectObj];
+
+    // Skip if effectData is undefined
+    if (!effectData) return;
 
     const flags = effectData.Flags || [];
     const isAudioReactive = flags.includes("♪") || flags.includes("♫");
     const supports1D = flags.includes("⋮");
     const supports2D = flags.includes("▦");
-    const supportsPalette = effectData?.Colors.includes("🎨");
+    const supportsPalette = effectData.Colors?.includes("🎨") ?? false;
 
     // Create the effect name with capability indicators
     const indicators = [];

@@ -149,15 +149,29 @@ describe('wledGradients', () => {
     });
 
     it('should return default gradient for invalid palette ID', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
       const result = generatePresetGradient(99999);
 
       expect(result).toBe('linear-gradient(135deg, #888, #555)');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Palette ID 99999 not found')
+      );
+
+      consoleSpy.mockRestore();
     });
 
     it('should return default gradient for negative palette ID', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
       const result = generatePresetGradient(-1);
 
       expect(result).toBe('linear-gradient(135deg, #888, #555)');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Palette ID -1 not found')
+      );
+
+      consoleSpy.mockRestore();
     });
 
     it('should handle palette with no color data', () => {
@@ -191,15 +205,29 @@ describe('wledGradients', () => {
     });
 
     it('should return default colors for invalid palette ID', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
       const result = generateLinearGradientColors(99999);
 
       expect(result).toEqual(['#888888', '#555555']);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Palette ID 99999 not found')
+      );
+
+      consoleSpy.mockRestore();
     });
 
     it('should return default colors for negative palette ID', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
       const result = generateLinearGradientColors(-1);
 
       expect(result).toEqual(['#888888', '#555555']);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Palette ID -1 not found')
+      );
+
+      consoleSpy.mockRestore();
     });
 
     it('should duplicate single color to ensure at least 2 colors', () => {
@@ -269,6 +297,9 @@ describe('wledGradients', () => {
     });
 
     it('should handle multiple palettes', () => {
+      // Mock console.warn since some palettes may have no color data
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
       const paletteCount = Math.min(5, WLED_PALETTES_DEF.length);
 
       for (let i = 0; i < paletteCount; i++) {
@@ -280,6 +311,8 @@ describe('wledGradients', () => {
         expect(colors).toBeDefined();
         expect(colors.length).toBeGreaterThanOrEqual(2);
       }
+
+      consoleSpy.mockRestore();
     });
   });
 });

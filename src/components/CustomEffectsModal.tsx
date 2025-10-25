@@ -605,9 +605,7 @@ export default function CustomEffectsModal({
   // Detect WLED device dimensions
   const detectWledDimensions = useCallback(async (deviceIp: string): Promise<'1D' | '2D' | null> => {
     try {
-      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`, {
-        timeout: 5000,
-      });
+      const response = await fetch(`http://${deviceIp}/settings/s.js?p=10`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown error'}`);

@@ -1402,10 +1402,7 @@ export default function PresetGrid({
       ): Promise<"1D" | "2D" | null> => {
         try {
           const response = await fetch(
-            `http://${deviceIp}/settings/s.js?p=10`,
-            {
-              timeout: 5000,
-            }
+            `http://${deviceIp}/settings/s.js?p=10`
           );
 
           if (!response.ok) {
@@ -1435,8 +1432,8 @@ export default function PresetGrid({
       // Get device effects and palettes
       const [effectsResponse, palettesResponse, deviceDimensions] =
         await Promise.all([
-          fetch(`http://${activeDevice.ip}/json/eff`, { timeout: 8000 }),
-          fetch(`http://${activeDevice.ip}/json/pal`, { timeout: 8000 }),
+          fetch(`http://${activeDevice.ip}/json/eff`),
+          fetch(`http://${activeDevice.ip}/json/pal`),
           detectWledDimensions(activeDevice.ip),
         ]);
 
@@ -1499,7 +1496,7 @@ export default function PresetGrid({
         ];
 
         const validPalettes = devicePalettes.filter(
-          paletteName => !excludedPalettes.includes(paletteName)
+          (paletteName: string) => !excludedPalettes.includes(paletteName)
         );
 
         // Only proceed if we have valid palettes

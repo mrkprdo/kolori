@@ -24,7 +24,7 @@ let packetsDropped: number = 0;
 function getAudioSocket() {
   if (!audioSocket) {
     try {
-      audioSocket = dgram.createSocket('udp4');
+      audioSocket = dgram.createSocket({ type: 'udp4' });
       socketReady = false;
 
       audioSocket.bind(0, () => {

@@ -27,6 +27,8 @@ jest.mock('../logger', () => ({
   },
 }));
 
+import { logger } from '../logger';
+
 describe('storage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -487,6 +489,7 @@ describe('storage', () => {
 
         expect(result).toHaveLength(3);
         expect(result[0].name).toBe('Halloween');
+        // Note: logger.error is called by storage.loadFromStorage, not by this function
       });
     });
 
@@ -543,6 +546,7 @@ describe('storage', () => {
 
         const result = await saveDeviceSeasonalPresets(device, presets);
         expect(result).toBe(false);
+        // Note: logger.error is called by storage.saveToStorage, not by this function
       });
     });
 
@@ -597,6 +601,7 @@ describe('storage', () => {
 
         const result = await removeDeviceSeasonalPresets(device);
         expect(result).toBe(false);
+        // Note: logger.error is called by storage.saveToStorage, not by this function
       });
     });
 

@@ -67,7 +67,7 @@ export default function PlaylistModal({
   const handleAddEffect = (effect: CustomEffect) => {
     const newItem: PlaylistItemWithDuration = {
       name: effect.name,
-      presetId: effect.id,
+      presetId: typeof effect.id === 'string' ? parseInt(effect.id.replace('wled_', '')) : effect.id,
       duration: 30, // Default 30 seconds
       gradient: effect.gradient || '#6366f1',
       tempId: `${effect.id}_${Date.now()}`,

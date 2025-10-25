@@ -56,7 +56,8 @@ export default function AddDeviceManuallyModal({
   };
 
   const isFormValid = (): boolean => {
-    return deviceIP.trim() && isValidIP(deviceIP.trim()) && !isIPAlreadyAdded(deviceIP.trim());
+    const trimmedIP = deviceIP.trim();
+    return trimmedIP.length > 0 && isValidIP(trimmedIP) && !isIPAlreadyAdded(trimmedIP);
   };
 
   const addManualDevice = async () => {

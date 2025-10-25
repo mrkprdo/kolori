@@ -29,6 +29,3 @@ export type { UseDeviceMonitorReturn } from './useDeviceMonitor';
 
 export { useAudioReactive } from './useAudioReactive';
 export type { UseAudioReactiveReturn, AudioReactiveConfig } from './useAudioReactive';
-
-export { useAudioReactiveExpo } from './useAudioReactiveExpo';
-export type { UseAudioReactiveReturn as UseAudioReactiveExpoReturn } from './useAudioReactiveExpo';

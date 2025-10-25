@@ -107,7 +107,7 @@ export const fetchWledPresets = async (
 
   Object.entries(presets).forEach(([presetId, presetData]) => {
     if (presetData && typeof presetData === "object") {
-      const preset = {
+      const preset: any = {
         id: `wled_${presetId}`,
         presetId: parseInt(presetId),
         name: (presetData as any).n || `Preset ${presetId}`,

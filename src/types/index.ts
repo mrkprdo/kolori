@@ -6,7 +6,7 @@ export interface WledDevice {
   readonly protocol: "http" | "https";
   readonly bestAddress?: string;
   readonly isConnected: boolean;
-  readonly activePreset?: string | number | null;
+  activePreset?: string | number | null;
   readonly isPlaying: boolean;
   readonly wledInfo?: any;
   readonly lastHeartbeat?: string;
@@ -16,7 +16,7 @@ export interface WledDevice {
 }
 
 export interface CustomEffect {
-  readonly id: number;
+  readonly id: number | string;
   readonly name: string;
   readonly effectId: number;
   readonly effectName: string;
@@ -26,6 +26,7 @@ export interface CustomEffect {
   readonly gradient: string;
   readonly isCustom: boolean;
   readonly isWledPreset?: boolean;
+  readonly linearGradientColors?: string[];
 }
 
 export interface PlaylistItem {

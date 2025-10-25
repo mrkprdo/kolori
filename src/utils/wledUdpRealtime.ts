@@ -35,7 +35,7 @@ let colorOrder: ColorOrder = 'GBR';
 function getRealtimeSocket() {
   if (!realtimeSocket) {
     try {
-      realtimeSocket = dgram.createSocket('udp4');
+      realtimeSocket = dgram.createSocket({ type: 'udp4' });
       socketReady = false;
 
       realtimeSocket.bind(0, () => {
