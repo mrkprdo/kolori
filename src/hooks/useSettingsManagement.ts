@@ -1,9 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useColorScheme } from 'react-native';
-import { Settings, Device } from '../types';
-import { loadSettings, saveSettings, loadDeviceSeasonalPresets } from '../utils/storage';
-import { DEFAULT_SETTINGS } from '../constants/defaults';
-import { logger } from '../utils/logger';
+import { useState, useCallback, useEffect } from "react";
+import { useColorScheme } from "react-native";
+import { Settings, Device } from "../types";
+import {
+  loadSettings,
+  saveSettings,
+  loadDeviceSeasonalPresets,
+} from "../utils/storage";
+import { DEFAULT_SETTINGS } from "../constants/defaults";
+import { logger } from "../utils/logger";
 
 export interface UseSettingsManagementReturn {
   settings: Settings | null;
@@ -30,46 +34,52 @@ export function useSettingsManagement(): UseSettingsManagementReturn {
   const isDark = (() => {
     if (!settings) {
       // Default to system theme before settings load
-      return systemColorScheme === 'dark';
+      return systemColorScheme === "dark";
     }
-    if (settings.theme === 'system') {
-      const result = systemColorScheme === 'dark';
-      logger.log(`🎨 Theme mode: system, isDark: ${result}, systemColorScheme: ${systemColorScheme}`);
+    if (settings.theme === "system") {
+      const result = systemColorScheme === "dark";
+      logger.log(
+        `🎨 Theme mode: system, isDark: ${result}, systemColorScheme: ${systemColorScheme}`
+      );
       return result;
     }
-    return settings.theme === 'dark';
+    return settings.theme === "dark";
   })();
 
   /**
    * Load initial settings from storage
    */
-  const loadInitialSettings = useCallback(async (activeDevice: Device | null) => {
-    const loadedSettings = await loadSettings();
+  const loadInitialSettings = useCallback(
+    async (activeDevice: Device | null) => {
+      const loadedSettings = await loadSettings();
 
-    // Load device-specific seasonal presets if we have an active device
-    let loadedSeasonalPresets = DEFAULT_SETTINGS.seasonalPresets;
-    if (activeDevice) {
-      loadedSeasonalPresets = await loadDeviceSeasonalPresets(activeDevice);
-    }
+      // Load device-specific seasonal presets if we have an active device
+      let loadedSeasonalPresets = DEFAULT_SETTINGS.seasonalPresets;
+      if (activeDevice) {
+        loadedSeasonalPresets = await loadDeviceSeasonalPresets(activeDevice);
+      }
 
-    // Merge loaded settings with defaults
-    const finalSettings: Settings = loadedSettings && Object.keys(loadedSettings).length > 0
-      ? {
-          ...DEFAULT_SETTINGS,
-          ...loadedSettings,
-          seasonalPresets: loadedSeasonalPresets
-        }
-      : { ...DEFAULT_SETTINGS, seasonalPresets: loadedSeasonalPresets };
+      // Merge loaded settings with defaults
+      const finalSettings: Settings =
+        loadedSettings && Object.keys(loadedSettings).length > 0
+          ? {
+              ...DEFAULT_SETTINGS,
+              ...loadedSettings,
+              seasonalPresets: loadedSeasonalPresets,
+            }
+          : { ...DEFAULT_SETTINGS, seasonalPresets: loadedSeasonalPresets };
 
-    setSettings(finalSettings);
-    return finalSettings;
-  }, []);
+      setSettings(finalSettings);
+      return finalSettings;
+    },
+    []
+  );
 
   /**
    * Update settings and persist to storage
    */
   const handleUpdateSettings = useCallback((newSettings: Settings) => {
-    setSettings(prevSettings => {
+    setSettings((prevSettings) => {
       const updatedSettings = { ...newSettings };
       saveSettings(updatedSettings);
       return updatedSettings;

@@ -57,7 +57,9 @@ export function createMelFilterbank(
   const hzPoints = melPoints.map(melToHz);
 
   // Convert Hz to FFT bin numbers
-  const binPoints = hzPoints.map(hz => Math.floor((fftSize + 1) * hz / sampleRate));
+  const binPoints = hzPoints.map((hz) =>
+    Math.floor(((fftSize + 1) * hz) / sampleRate)
+  );
 
   // Create filterbank matrix
   const filterbank: number[][] = [];
@@ -128,8 +130,9 @@ export function smoothMelSpectrum(
 ): number[] {
   if (previous.length === 0) return current;
 
-  return current.map((val, i) =>
-    smoothingFactor * (previous[i] || 0) + (1 - smoothingFactor) * val
+  return current.map(
+    (val, i) =>
+      smoothingFactor * (previous[i] || 0) + (1 - smoothingFactor) * val
   );
 }
 
@@ -146,7 +149,7 @@ export function normalizeMelSpectrum(
   minDb: number = -80,
   maxDb: number = 0
 ): number[] {
-  return spectrum.map(energy => {
+  return spectrum.map((energy) => {
     // Convert to dB
     const db = energy > 0 ? 10 * Math.log10(energy) : minDb;
 
@@ -163,12 +166,12 @@ export function normalizeMelSpectrum(
  * @returns Audio features object
  */
 export interface AudioFeatures {
-  bass: number;      // Low frequency energy (20-250 Hz)
-  mid: number;       // Mid frequency energy (250-4000 Hz)
-  treble: number;    // High frequency energy (4000+ Hz)
-  volume: number;    // Overall volume/loudness
-  beat: number;      // Beat intensity (bass + energy change)
-  energy: number;    // Total spectral energy
+  bass: number; // Low frequency energy (20-250 Hz)
+  mid: number; // Mid frequency energy (250-4000 Hz)
+  treble: number; // High frequency energy (4000+ Hz)
+  volume: number; // Overall volume/loudness
+  beat: number; // Beat intensity (bass + energy change)
+  energy: number; // Total spectral energy
   spectrum: number[]; // Full frequency spectrum
 }
 
@@ -179,13 +182,17 @@ export function extractAudioFeatures(melSpectrum: number[]): AudioFeatures {
   // Bass: ~20-250 Hz (first ~20% of mel bands)
   // Mid: ~250-4000 Hz (next ~50% of mel bands)
   // Treble: ~4000-18000 Hz (last ~30% of mel bands)
-  const bassEnd = Math.floor(numBands * 0.20);     // ~0-20% = bass
-  const midEnd = Math.floor(numBands * 0.70);      // ~20-70% = mid
+  const bassEnd = Math.floor(numBands * 0.2); // ~0-20% = bass
+  const midEnd = Math.floor(numBands * 0.7); // ~20-70% = mid
   // Rest is treble (30%)
 
   // Single-pass calculation for all features (optimized)
-  let bassSum = 0, midSum = 0, trebleSum = 0;
-  let bassCount = 0, midCount = 0, trebleCount = 0;
+  let bassSum = 0,
+    midSum = 0,
+    trebleSum = 0;
+  let bassCount = 0,
+    midCount = 0,
+    trebleCount = 0;
   let volumeSum = 0;
   let energySum = 0;
 
@@ -236,7 +243,10 @@ export function extractAudioFeatures(melSpectrum: number[]): AudioFeatures {
  * @param sensitivity Sensitivity multiplier (1.0 = normal, higher = more reactive)
  * @returns Brightness value (0-255)
  */
-export function audioToBrightness(features: AudioFeatures, sensitivity: number = 1.0): number {
+export function audioToBrightness(
+  features: AudioFeatures,
+  sensitivity: number = 1.0
+): number {
   const brightness = Math.floor(features.volume * 255 * sensitivity);
   return Math.max(0, Math.min(255, brightness));
 }
@@ -247,7 +257,11 @@ export function audioToBrightness(features: AudioFeatures, sensitivity: number =
  * @param features Audio features
  * @returns HSV color { hue: 0-360, saturation: 0-100, value: 0-100 }
  */
-export function audioToColor(features: AudioFeatures): { hue: number; saturation: number; value: number } {
+export function audioToColor(features: AudioFeatures): {
+  hue: number;
+  saturation: number;
+  value: number;
+} {
   // Map frequency ranges to different hues
   // Bass = red/purple (0-60, 300-360)
   // Mid = green/yellow (60-180)

@@ -1,7 +1,7 @@
-import { useRef, useCallback } from 'react';
-import { CustomEffect, SavedPlaylist } from '../types';
-import { generateDataHash, hasDataChanged } from '../utils/deviceUtils';
-import { logger } from '../utils/logger';
+import { useRef, useCallback } from "react";
+import { CustomEffect, SavedPlaylist } from "../types";
+import { generateDataHash, hasDataChanged } from "../utils/deviceUtils";
+import { logger } from "../utils/logger";
 
 interface DeviceCache {
   [deviceId: number]: {
@@ -35,74 +35,87 @@ export function useDeviceCache(): UseDeviceCacheReturn {
   /**
    * Load cached data for a specific device
    */
-  const loadCachedDataForDevice = useCallback((deviceId: number | undefined) => {
-    if (!deviceId || !deviceCacheRef.current[deviceId]) {
-      logger.log('📦 No cached data for device:', deviceId);
-      return null;
-    }
+  const loadCachedDataForDevice = useCallback(
+    (deviceId: number | undefined) => {
+      if (!deviceId || !deviceCacheRef.current[deviceId]) {
+        logger.log("📦 No cached data for device:", deviceId);
+        return null;
+      }
 
-    const cached = deviceCacheRef.current[deviceId];
-    const cacheAge = Date.now() - cached.lastFetched;
+      const cached = deviceCacheRef.current[deviceId];
+      const cacheAge = Date.now() - cached.lastFetched;
 
-    logger.log(
-      '📦 Loading cached data for device:',
-      deviceId,
-      `${cached.presets.length} presets, ${cached.playlists.length} playlists (${Math.round(cacheAge / 1000)}s old)`
-    );
+      logger.log(
+        "📦 Loading cached data for device:",
+        deviceId,
+        `${cached.presets.length} presets, ${
+          cached.playlists.length
+        } playlists (${Math.round(cacheAge / 1000)}s old)`
+      );
 
-    return {
-      presets: cached.presets,
-      playlists: cached.playlists.map(playlist => ({ ...playlist, isActive: false }))
-    };
-  }, []);
+      return {
+        presets: cached.presets,
+        playlists: cached.playlists.map((playlist) => ({
+          ...playlist,
+          isActive: false,
+        })),
+      };
+    },
+    []
+  );
 
   /**
    * Update cache for a device and return whether data changed
    */
-  const updateCache = useCallback((
-    deviceId: number,
-    presets: CustomEffect[],
-    playlists: SavedPlaylist[]
-  ) => {
-    const currentCache = deviceCacheRef.current[deviceId];
+  const updateCache = useCallback(
+    (deviceId: number, presets: CustomEffect[], playlists: SavedPlaylist[]) => {
+      const currentCache = deviceCacheRef.current[deviceId];
 
-    const presetsChanged = !currentCache || hasDataChanged(presets, currentCache.presetsHash);
-    const playlistsChanged = !currentCache || hasDataChanged(playlists, currentCache.playlistsHash);
+      const presetsChanged =
+        !currentCache || hasDataChanged(presets, currentCache.presetsHash);
+      const playlistsChanged =
+        !currentCache || hasDataChanged(playlists, currentCache.playlistsHash);
 
-    logger.log(
-      '📦 Cache comparison:',
-      `Device ${deviceId}:`,
-      presetsChanged
-        ? `presets changed (${currentCache?.presets.length || 0}→${presets.length})`
-        : 'presets unchanged',
-      playlistsChanged
-        ? `playlists changed (${currentCache?.playlists.length || 0}→${playlists.length})`
-        : 'playlists unchanged'
-    );
+      logger.log(
+        "📦 Cache comparison:",
+        `Device ${deviceId}:`,
+        presetsChanged
+          ? `presets changed (${currentCache?.presets.length || 0}→${
+              presets.length
+            })`
+          : "presets unchanged",
+        playlistsChanged
+          ? `playlists changed (${currentCache?.playlists.length || 0}→${
+              playlists.length
+            })`
+          : "playlists unchanged"
+      );
 
-    // Update cache
-    deviceCacheRef.current[deviceId] = {
-      presets,
-      playlists,
-      presetsHash: generateDataHash(presets),
-      playlistsHash: generateDataHash(playlists),
-      lastFetched: Date.now()
-    };
+      // Update cache
+      deviceCacheRef.current[deviceId] = {
+        presets,
+        playlists,
+        presetsHash: generateDataHash(presets),
+        playlistsHash: generateDataHash(playlists),
+        lastFetched: Date.now(),
+      };
 
-    return { presetsChanged, playlistsChanged };
-  }, []);
+      return { presetsChanged, playlistsChanged };
+    },
+    []
+  );
 
   /**
    * Clear all cached data
    */
   const clearCache = useCallback(() => {
     deviceCacheRef.current = {};
-    logger.log('🧹 Device cache cleared');
+    logger.log("🧹 Device cache cleared");
   }, []);
 
   return {
     loadCachedDataForDevice,
     updateCache,
-    clearCache
+    clearCache,
   };
 }

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 
-type ModalSource = 'main' | 'settings';
+type ModalSource = "main" | "settings";
 
 export interface UseModalManagerReturn {
   // Scan Network Modal
@@ -37,45 +37,50 @@ export interface UseModalManagerReturn {
 export function useModalManager(): UseModalManagerReturn {
   // Scan Network Modal
   const [showScanNetworkModal, setShowScanNetworkModal] = useState(false);
-  const [scanModalOpenedFrom, setScanModalOpenedFrom] = useState<ModalSource>('main');
+  const [scanModalOpenedFrom, setScanModalOpenedFrom] =
+    useState<ModalSource>("main");
 
   // Add Device Manually Modal
   const [showAddManuallyModal, setShowAddManuallyModal] = useState(false);
-  const [addModalOpenedFrom, setAddModalOpenedFrom] = useState<ModalSource>('main');
+  const [addModalOpenedFrom, setAddModalOpenedFrom] =
+    useState<ModalSource>("main");
 
   // Settings Modal
   const [showSettings, setShowSettings] = useState(false);
 
   // Child Modal States (reported by child components)
-  const [childModalStates, setChildModalStates] = useState<Record<string, boolean>>({});
+  const [childModalStates, setChildModalStates] = useState<
+    Record<string, boolean>
+  >({});
 
   // Derived States
   const isAnyModalOpen =
     showScanNetworkModal ||
     showSettings ||
     showAddManuallyModal ||
-    Object.values(childModalStates).some(isOpen => isOpen);
+    Object.values(childModalStates).some((isOpen) => isOpen);
 
-  const isCustomEffectsModalOpen = childModalStates.showCustomEffectsModal || false;
+  const isCustomEffectsModalOpen =
+    childModalStates.showCustomEffectsModal || false;
 
   /**
    * Scan Network Modal Handlers
    */
   const openScanModalFromMain = useCallback(() => {
-    setScanModalOpenedFrom('main');
+    setScanModalOpenedFrom("main");
     setShowScanNetworkModal(true);
   }, []);
 
   const openScanModalFromSettings = useCallback(() => {
     setShowSettings(false);
-    setScanModalOpenedFrom('settings');
+    setScanModalOpenedFrom("settings");
     setShowScanNetworkModal(true);
   }, []);
 
   const closeScanModal = useCallback(() => {
     setShowScanNetworkModal(false);
     // Reopen settings if scan was opened from there
-    if (scanModalOpenedFrom === 'settings') {
+    if (scanModalOpenedFrom === "settings") {
       setShowSettings(true);
     }
   }, [scanModalOpenedFrom]);
@@ -84,20 +89,20 @@ export function useModalManager(): UseModalManagerReturn {
    * Add Device Manually Modal Handlers
    */
   const openAddManuallyModalFromMain = useCallback(() => {
-    setAddModalOpenedFrom('main');
+    setAddModalOpenedFrom("main");
     setShowAddManuallyModal(true);
   }, []);
 
   const openAddManuallyModalFromSettings = useCallback(() => {
     setShowSettings(false);
-    setAddModalOpenedFrom('settings');
+    setAddModalOpenedFrom("settings");
     setShowAddManuallyModal(true);
   }, []);
 
   const closeAddManuallyModal = useCallback(() => {
     setShowAddManuallyModal(false);
     // Reopen settings if add modal was opened from there
-    if (addModalOpenedFrom === 'settings') {
+    if (addModalOpenedFrom === "settings") {
       setShowSettings(true);
     }
   }, [addModalOpenedFrom]);
@@ -116,12 +121,15 @@ export function useModalManager(): UseModalManagerReturn {
   /**
    * Child Modal State Handler
    */
-  const updateChildModalState = useCallback((modalName: string, isOpen: boolean) => {
-    setChildModalStates(prev => ({
-      ...prev,
-      [modalName]: isOpen,
-    }));
-  }, []);
+  const updateChildModalState = useCallback(
+    (modalName: string, isOpen: boolean) => {
+      setChildModalStates((prev) => ({
+        ...prev,
+        [modalName]: isOpen,
+      }));
+    },
+    []
+  );
 
   return {
     // Scan Network Modal

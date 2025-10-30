@@ -20,7 +20,9 @@ export const checkWledHeartbeat = async (
   return {
     success: result.success,
     online: result.success,
-    message: result.success ? "Device online" : result.error || "Device offline",
+    message: result.success
+      ? "Device online"
+      : result.error || "Device offline",
   };
 };
 
@@ -130,7 +132,9 @@ export const getWledBrightnessFromWin = async (
   protocol = "http"
 ): Promise<ApiResponse & { brightness?: number }> => {
   const url = buildWledUrl(deviceAddress, protocol, "/win");
-  const result = await fetchWithTimeout(url, { method: "GET" }, (r) => r.text());
+  const result = await fetchWithTimeout(url, { method: "GET" }, (r) =>
+    r.text()
+  );
 
   if (!result.success) {
     return formatApiResponse(false, result.error || "Failed to get brightness");
@@ -160,7 +164,9 @@ export const detectWledDimensions = async (
   protocol = "http"
 ): Promise<"1D" | "2D" | null> => {
   const url = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=10");
-  const result = await fetchWithTimeout(url, { method: "GET" }, (r) => r.text());
+  const result = await fetchWithTimeout(url, { method: "GET" }, (r) =>
+    r.text()
+  );
 
   if (!result.success) {
     logger.error("Failed to detect WLED dimensions:", result.error);

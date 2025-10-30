@@ -1,6 +1,9 @@
-import * as ServiceDiscovery from '@inthepocket/react-native-service-discovery';
-import type { Service, Subscription } from '@inthepocket/react-native-service-discovery';
-import Constants from 'expo-constants';
+import * as ServiceDiscovery from "@inthepocket/react-native-service-discovery";
+import type {
+  Service,
+  Subscription,
+} from "@inthepocket/react-native-service-discovery";
+import Constants from "expo-constants";
 
 export interface MdnsWledDevice {
   name: string;
@@ -67,17 +70,19 @@ export class WledMdnsDiscovery {
       this.setupEventListeners();
       this.isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize mDNS Service Discovery:', error);
+      console.error("Failed to initialize mDNS Service Discovery:", error);
       this.isInitialized = false;
     }
   }
 
   private isRunningInExpoGo(): boolean {
-    return Constants.appOwnership === 'expo';
+    return Constants.appOwnership === "expo";
   }
 
   private handleExpoGoLimitation(): void {
-    console.warn('mDNS is not supported in Expo Go. Use a development build to enable network discovery.');
+    console.warn(
+      "mDNS is not supported in Expo Go. Use a development build to enable network discovery."
+    );
     this.isInitialized = false;
   }
 
@@ -87,12 +92,12 @@ export class WledMdnsDiscovery {
 
   private setupEventListeners(): void {
     this.serviceFoundSubscription = ServiceDiscovery.addEventListener(
-      'serviceFound', 
+      "serviceFound",
       this.handleServiceFound.bind(this)
     );
 
     this.serviceLostSubscription = ServiceDiscovery.addEventListener(
-      'serviceLost', 
+      "serviceLost",
       this.handleServiceLost.bind(this)
     );
   }
@@ -129,9 +134,9 @@ export class WledMdnsDiscovery {
   }
 
   private isWledService(service: Service): boolean {
-    const name = service.name?.toLowerCase() || '';
+    const name = service.name?.toLowerCase() || "";
     const txt = service.txt || {};
-    const host = service.hostName?.toLowerCase() || '';
+    const host = service.hostName?.toLowerCase() || "";
 
     // Check direct WLED indicators
     if (this.hasDirectWledIndicators(name, txt)) {
@@ -156,47 +161,70 @@ export class WledMdnsDiscovery {
     return false;
   }
 
-  private hasDirectWledIndicators(name: string, txt: Record<string, string>): boolean {
-    return name.includes('wled') || txt.brand === 'WLED' || txt.product === 'WLED';
+  private hasDirectWledIndicators(
+    name: string,
+    txt: Record<string, string>
+  ): boolean {
+    return (
+      name.includes("wled") || txt.brand === "WLED" || txt.product === "WLED"
+    );
   }
 
   private isEspBasedWledDevice(
-    name: string, 
-    host: string, 
-    txt: Record<string, string>, 
+    name: string,
+    host: string,
+    txt: Record<string, string>,
     port?: number
   ): boolean {
-    const isEspDevice = name.includes('esp') || host.includes('esp');
-    const hasWledPath = txt.path === '/' || txt.path === '/json' || port === 80;
+    const isEspDevice = name.includes("esp") || host.includes("esp");
+    const hasWledPath = txt.path === "/" || txt.path === "/json" || port === 80;
     return isEspDevice && hasWledPath;
   }
 
   private hasWledPatterns(name: string, host: string): boolean {
-    const wledPatterns = ['wled-', 'esp32-', 'esp8266-', 'pixelblaze', 'fastled'];
-    return wledPatterns.some(pattern => name.includes(pattern) || host.includes(pattern));
+    const wledPatterns = [
+      "wled-",
+      "esp32-",
+      "esp8266-",
+      "pixelblaze",
+      "fastled",
+    ];
+    return wledPatterns.some(
+      (pattern) => name.includes(pattern) || host.includes(pattern)
+    );
   }
 
   private isLikelyWledOnIOS(service: Service): boolean {
     // On iOS, mDNS responses might be different, so be more permissive
-    const isHttpService = service.type?.includes('_http._tcp') || service.port === 80;
+    const isHttpService =
+      service.type?.includes("_http._tcp") || service.port === 80;
     const hasValidHost = service.hostName && service.hostName.length > 0;
     const hasValidName = service.name && service.name.length > 0;
-    
+
     // For iOS, accept any HTTP service that we can validate later
     if (isHttpService && hasValidHost && hasValidName) {
       // Additional checks to avoid false positives
-      const name = service.name?.toLowerCase() || '';
-      const host = service.hostName?.toLowerCase() || '';
-      
+      const name = service.name?.toLowerCase() || "";
+      const host = service.hostName?.toLowerCase() || "";
+
       // Skip common non-WLED services
-      const skipPatterns = ['airplay', 'homekit', 'printer', 'scanner', 'apple', 'iphone', 'ipad', 'mac'];
-      const shouldSkip = skipPatterns.some(pattern =>
-        name.includes(pattern) || host.includes(pattern)
+      const skipPatterns = [
+        "airplay",
+        "homekit",
+        "printer",
+        "scanner",
+        "apple",
+        "iphone",
+        "ipad",
+        "mac",
+      ];
+      const shouldSkip = skipPatterns.some(
+        (pattern) => name.includes(pattern) || host.includes(pattern)
       );
 
       return !shouldSkip;
     }
-    
+
     return false;
   }
 
@@ -251,7 +279,7 @@ export class WledMdnsDiscovery {
   }
 
   private async performScan(): Promise<void> {
-    await ServiceDiscovery.startSearch('http');
+    await ServiceDiscovery.startSearch("http");
   }
 
   private scheduleAutoStop(): void {
@@ -261,7 +289,7 @@ export class WledMdnsDiscovery {
   }
 
   private handleScanError(error: any): void {
-    console.error('Failed to start mDNS scan:', error);
+    console.error("Failed to start mDNS scan:", error);
     this.isScanning = false;
     this.listeners.onError?.(`Failed to start scan: ${error}`);
   }
@@ -278,8 +306,9 @@ export class WledMdnsDiscovery {
   }
 
   private stopNativeScan(): void {
-    ServiceDiscovery.stopSearch('http')
-      .catch(error => console.error('Failed to stop native scan:', error));
+    ServiceDiscovery.stopSearch("http").catch((error) =>
+      console.error("Failed to stop native scan:", error)
+    );
   }
 
   public async stopScan(): Promise<void> {
@@ -302,18 +331,24 @@ export class WledMdnsDiscovery {
     return this.isScanning;
   }
 
-  public async getWledDeviceName(device: MdnsWledDevice | any): Promise<DeviceNameResult> {
+  public async getWledDeviceName(
+    device: MdnsWledDevice | any
+  ): Promise<DeviceNameResult> {
     const address = device.addresses?.[0] || device.host || device.ip;
     const port = device.port || 80;
-    const url = this.buildDeviceUrl(address, port, '/win');
+    const url = this.buildDeviceUrl(address, port, "/win");
 
     try {
-      const response = await this.fetchWithTimeout(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/xml,application/xml,text/plain',
+      const response = await this.fetchWithTimeout(
+        url,
+        {
+          method: "GET",
+          headers: {
+            Accept: "text/xml,application/xml,text/plain",
+          },
         },
-      }, 5000);
+        5000
+      );
 
       if (response.ok) {
         const xmlData = await response.text();
@@ -325,7 +360,7 @@ export class WledMdnsDiscovery {
         };
       }
     } catch (error: any) {
-      console.error('Device name fetch error:', error);
+      console.error("Device name fetch error:", error);
       return {
         success: false,
         error: `Failed to get device name: ${this.parseErrorMessage(error)}`,
@@ -333,13 +368,19 @@ export class WledMdnsDiscovery {
     }
   }
 
-  private buildDeviceUrl(address: string, port: number, endpoint: string): string {
-    return port === 80 ? `http://${address}${endpoint}` : `http://${address}:${port}${endpoint}`;
+  private buildDeviceUrl(
+    address: string,
+    port: number,
+    endpoint: string
+  ): string {
+    return port === 80
+      ? `http://${address}${endpoint}`
+      : `http://${address}:${port}${endpoint}`;
   }
 
   private async fetchWithTimeout(
-    url: string, 
-    options: RequestInit, 
+    url: string,
+    options: RequestInit,
     timeout: number
   ): Promise<Response> {
     const controller = new AbortController();
@@ -370,24 +411,30 @@ export class WledMdnsDiscovery {
     } else {
       return {
         success: false,
-        error: 'Device name not found in response',
+        error: "Device name not found in response",
       };
     }
   }
 
   private parseErrorMessage(error: any): string {
-    if (error.name === 'AbortError') {
-      return 'Request timeout';
+    if (error.name === "AbortError") {
+      return "Request timeout";
     }
-    return error.message || 'Unknown error';
+    return error.message || "Unknown error";
   }
 
-  public async validateWledDevice(device: MdnsWledDevice | any): Promise<ValidationResult> {
+  public async validateWledDevice(
+    device: MdnsWledDevice | any
+  ): Promise<ValidationResult> {
     const port = device.port || 80;
     const addressesToTry = this.getAddressesToTry(device);
 
     for (const testAddress of addressesToTry) {
-      const result = await this.tryValidateAddress(testAddress, port, device.name);
+      const result = await this.tryValidateAddress(
+        testAddress,
+        port,
+        device.name
+      );
       if (result.isValid) {
         return result;
       }
@@ -395,13 +442,13 @@ export class WledMdnsDiscovery {
 
     return {
       isValid: false,
-      error: `All addresses failed. Tried: ${addressesToTry.join(', ')}`
+      error: `All addresses failed. Tried: ${addressesToTry.join(", ")}`,
     };
   }
 
   private getAddressesToTry(device: any): string[] {
     const addressesToTry: string[] = [];
-    
+
     // Prefer IP addresses first
     if (device.addresses?.length > 0) {
       device.addresses.forEach((addr: string) => {
@@ -410,42 +457,54 @@ export class WledMdnsDiscovery {
         }
       });
     }
-    
+
     // Add valid hostnames with .local suffix for mDNS
     if (device.host) {
       if (this.isValidIPAddress(device.host)) {
         if (!addressesToTry.includes(device.host)) {
           addressesToTry.push(device.host);
         }
-      } else if (!device.host.includes('.')) {
+      } else if (!device.host.includes(".")) {
         const mdnsHost = `${device.host}.local`;
         if (!addressesToTry.includes(mdnsHost)) {
           addressesToTry.push(mdnsHost);
         }
       }
     }
-    
-    if (device.ip && this.isValidIPAddress(device.ip) && !addressesToTry.includes(device.ip)) {
+
+    if (
+      device.ip &&
+      this.isValidIPAddress(device.ip) &&
+      !addressesToTry.includes(device.ip)
+    ) {
       addressesToTry.push(device.ip);
     }
-    
+
     return addressesToTry;
   }
 
-  private async tryValidateAddress(address: string, port: number, deviceName: string): Promise<ValidationResult> {
-    const endpoints = ['/json/info', '/json', '/win'];
+  private async tryValidateAddress(
+    address: string,
+    port: number,
+    deviceName: string
+  ): Promise<ValidationResult> {
+    const endpoints = ["/json/info", "/json", "/win"];
 
     for (const endpoint of endpoints) {
       const url = this.buildDeviceUrl(address, port, endpoint);
 
       try {
-        const response = await this.fetchWithTimeout(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json, text/xml, text/plain',
-            'User-Agent': 'Kolori-WLED-App/1.0'
+        const response = await this.fetchWithTimeout(
+          url,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json, text/xml, text/plain",
+              "User-Agent": "Kolori-WLED-App/1.0",
+            },
           },
-        }, 8000);
+          8000
+        );
 
         if (response.ok) {
           const result = await this.processEndpointResponse(response, endpoint);
@@ -457,7 +516,7 @@ export class WledMdnsDiscovery {
         if (this.isNetworkSecurityError(error)) {
           return {
             isValid: false,
-            error: this.parseNetworkError(error, url)
+            error: this.parseNetworkError(error, url),
           };
         }
       }
@@ -465,25 +524,37 @@ export class WledMdnsDiscovery {
 
     return {
       isValid: false,
-      error: `No valid WLED endpoints found on ${address}:${port}`
+      error: `No valid WLED endpoints found on ${address}:${port}`,
     };
   }
 
-  private async processEndpointResponse(response: Response, endpoint: string): Promise<ValidationResult> {
-    if (endpoint === '/json/info' || endpoint === '/json') {
+  private async processEndpointResponse(
+    response: Response,
+    endpoint: string
+  ): Promise<ValidationResult> {
+    if (endpoint === "/json/info" || endpoint === "/json") {
       return this.processJsonResponse(response, endpoint);
-    } else if (endpoint === '/win') {
+    } else if (endpoint === "/win") {
       return this.processXmlResponse(response);
     }
-    
-    return { isValid: false, error: 'Unknown endpoint' };
+
+    return { isValid: false, error: "Unknown endpoint" };
   }
 
-  private async processJsonResponse(response: Response, endpoint: string): Promise<ValidationResult> {
+  private async processJsonResponse(
+    response: Response,
+    endpoint: string
+  ): Promise<ValidationResult> {
     try {
       const data = await response.json();
 
-      if (data.ver || data.name || data.brand === 'WLED' || data.arch || data.info) {
+      if (
+        data.ver ||
+        data.name ||
+        data.brand === "WLED" ||
+        data.arch ||
+        data.info
+      ) {
         return {
           isValid: true,
           deviceInfo: data,
@@ -496,11 +567,17 @@ export class WledMdnsDiscovery {
     return { isValid: false };
   }
 
-  private async processXmlResponse(response: Response): Promise<ValidationResult> {
+  private async processXmlResponse(
+    response: Response
+  ): Promise<ValidationResult> {
     try {
       const xmlData = await response.text();
 
-      if (xmlData.includes('<ds>') || xmlData.includes('WLED') || xmlData.includes('<ac>')) {
+      if (
+        xmlData.includes("<ds>") ||
+        xmlData.includes("WLED") ||
+        xmlData.includes("<ac>")
+      ) {
         return {
           isValid: true,
           deviceInfo: { fromXml: true, hasWinEndpoint: true },
@@ -514,26 +591,29 @@ export class WledMdnsDiscovery {
   }
 
   private isNetworkSecurityError(error: any): boolean {
-    return error.message?.includes('cleartext') || 
-           error.message?.includes('CLEARTEXT') || 
-           error.message?.includes('Network request failed');
+    return (
+      error.message?.includes("cleartext") ||
+      error.message?.includes("CLEARTEXT") ||
+      error.message?.includes("Network request failed")
+    );
   }
 
   private parseNetworkError(error: any, url: string): string {
     const errorMessages = {
-      AbortError: 'Connection timeout - device may be slow to respond',
+      AbortError: "Connection timeout - device may be slow to respond",
       NetworkFailed: `Network connection failed to ${url}. Check if device is accessible and Android network security allows HTTP connections`,
       CleartextBlocked: `Android blocked HTTP connection to ${url}. Network security config may need updating`,
-      CleartextPolicy: 'Android security policy blocks HTTP connections to this IP range'
+      CleartextPolicy:
+        "Android security policy blocks HTTP connections to this IP range",
     };
 
-    if (error.name === 'AbortError') {
+    if (error.name === "AbortError") {
       return errorMessages.AbortError;
-    } else if (error.message?.includes('Network request failed')) {
+    } else if (error.message?.includes("Network request failed")) {
       return errorMessages.NetworkFailed;
-    } else if (error.message?.includes('cleartext')) {
+    } else if (error.message?.includes("cleartext")) {
       return errorMessages.CleartextBlocked;
-    } else if (error.message?.includes('CLEARTEXT')) {
+    } else if (error.message?.includes("CLEARTEXT")) {
       return errorMessages.CleartextPolicy;
     } else {
       return `Network error: ${error.message}`;
@@ -541,7 +621,8 @@ export class WledMdnsDiscovery {
   }
 
   private isValidIPAddress(ip: string): boolean {
-    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const ipv4Regex =
+      /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
     return ipv4Regex.test(ip);
   }
 

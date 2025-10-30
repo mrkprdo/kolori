@@ -25,8 +25,8 @@
  * ```
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { LEDColor } from '../services/wled';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { LEDColor } from "../services/wled";
 
 const MAX_BUFFER_SIZE = 30; // Maximum frames to buffer
 const TARGET_FPS = 60; // Target rendering FPS
@@ -53,19 +53,22 @@ export function useLEDFrameBuffer(options: UseLEDFrameBufferOptions) {
   const lastRenderTime = useRef<number>(0);
 
   // Callback to queue a new frame (doesn't trigger re-renders)
-  const queueFrame = useCallback((ledData: LEDColor[]) => {
-    if (!enabled || ledData.length === 0) {
-      return;
-    }
+  const queueFrame = useCallback(
+    (ledData: LEDColor[]) => {
+      if (!enabled || ledData.length === 0) {
+        return;
+      }
 
-    // Add new frame to buffer
-    bufferQueue.current.push([...ledData]);
+      // Add new frame to buffer
+      bufferQueue.current.push([...ledData]);
 
-    // Drop oldest frames if buffer is full (FIFO overflow handling)
-    while (bufferQueue.current.length > maxBufferSize) {
-      bufferQueue.current.shift();
-    }
-  }, [enabled, maxBufferSize]);
+      // Drop oldest frames if buffer is full (FIFO overflow handling)
+      while (bufferQueue.current.length > maxBufferSize) {
+        bufferQueue.current.shift();
+      }
+    },
+    [enabled, maxBufferSize]
+  );
 
   // Renderer: Fetch frames from buffer at controlled rate
   useEffect(() => {

@@ -5,11 +5,11 @@
  * Supports priority commands that skip to the front of the queue
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from "../../utils/logger";
 
 interface QueueItem {
   command: object;
-  priority: 'normal' | 'urgent';
+  priority: "normal" | "urgent";
   timestamp: number;
 }
 
@@ -27,21 +27,24 @@ export class CommandQueue {
   /**
    * Add command to queue
    */
-  enqueue(command: object, priority: 'normal' | 'urgent' = 'normal'): void {
+  enqueue(command: object, priority: "normal" | "urgent" = "normal"): void {
     // Drop old commands if queue is full
     if (this.queue.length >= this.maxQueueSize) {
       const dropped = this.queue.shift();
-      logger.warn('Command queue full, dropped oldest command:', dropped?.command);
+      logger.warn(
+        "Command queue full, dropped oldest command:",
+        dropped?.command
+      );
     }
 
     const item: QueueItem = {
       command,
       priority,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Urgent commands go to front
-    if (priority === 'urgent') {
+    if (priority === "urgent") {
       this.queue.unshift(item);
     } else {
       this.queue.push(item);
@@ -65,7 +68,7 @@ export class CommandQueue {
       const success = this.sendFn(item.command);
 
       if (!success) {
-        logger.warn('Failed to send command, re-queueing:', item.command);
+        logger.warn("Failed to send command, re-queueing:", item.command);
         this.queue.unshift(item); // Put back at front
         break;
       }
@@ -90,7 +93,7 @@ export class CommandQueue {
   getStatus(): { length: number; processing: boolean } {
     return {
       length: this.queue.length,
-      processing: this.processing
+      processing: this.processing,
     };
   }
 
@@ -110,6 +113,6 @@ export class CommandQueue {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

@@ -1,13 +1,15 @@
-import { useState, useCallback, useRef } from 'react';
-import { Device as WledDevice, CustomEffect, SavedPlaylist, Settings } from '../types';
+import { useState, useCallback, useRef } from "react";
 import {
-  getWledPresets,
-  getWledState
-} from '../config/wledApi';
-import { getDeviceAddress, filterSeasonalPresets } from '../utils/deviceUtils';
-import { storage, STORAGE_KEYS } from '../utils/storage';
-import { logger } from '../utils/logger';
-import { wledWebSocketService } from '../services/wled';
+  Device as WledDevice,
+  CustomEffect,
+  SavedPlaylist,
+  Settings,
+} from "../types";
+import { getWledPresets, getWledState } from "../config/wledApi";
+import { getDeviceAddress, filterSeasonalPresets } from "../utils/deviceUtils";
+import { storage, STORAGE_KEYS } from "../utils/storage";
+import { logger } from "../utils/logger";
+import { wledWebSocketService } from "../services/wled";
 
 export interface UsePresetManagerReturn {
   customEffects: CustomEffect[];
@@ -17,11 +19,31 @@ export interface UsePresetManagerReturn {
   setCustomEffects: React.Dispatch<React.SetStateAction<CustomEffect[]>>;
   setSavedPlaylists: React.Dispatch<React.SetStateAction<SavedPlaylist[]>>;
   setCurrentPlaylist: React.Dispatch<React.SetStateAction<any[]>>;
-  loadDevicePresets: (device: WledDevice | undefined, isAnyModalOpen: boolean) => Promise<void>;
-  fetchWledPresets: (device: WledDevice | undefined, onCacheUpdate: (presets: CustomEffect[], playlists: SavedPlaylist[]) => { presetsChanged: boolean; playlistsChanged: boolean }) => Promise<void>;
-  handlePresetSelect: (presetId: string | number, device: WledDevice | undefined, settings: Settings, onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void) => Promise<void>;
-  handleBrightnessChange: (brightness: number, device: WledDevice | undefined) => Promise<void>;
-  refreshDeviceState: (device: WledDevice | undefined, onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void) => Promise<void>;
+  loadDevicePresets: (
+    device: WledDevice | undefined,
+    isAnyModalOpen: boolean
+  ) => Promise<void>;
+  fetchWledPresets: (
+    device: WledDevice | undefined,
+    onCacheUpdate: (
+      presets: CustomEffect[],
+      playlists: SavedPlaylist[]
+    ) => { presetsChanged: boolean; playlistsChanged: boolean }
+  ) => Promise<void>;
+  handlePresetSelect: (
+    presetId: string | number,
+    device: WledDevice | undefined,
+    settings: Settings,
+    onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void
+  ) => Promise<void>;
+  handleBrightnessChange: (
+    brightness: number,
+    device: WledDevice | undefined
+  ) => Promise<void>;
+  refreshDeviceState: (
+    device: WledDevice | undefined,
+    onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void
+  ) => Promise<void>;
 }
 
 /**
@@ -51,310 +73,395 @@ export function usePresetManager(): UsePresetManagerReturn {
   /**
    * Load presets from device
    */
-  const loadDevicePresets = useCallback(async (
-    device: WledDevice | undefined,
-    isAnyModalOpen: boolean
-  ) => {
-    // Skip loading presets when modals are open for better performance
-    if (isAnyModalOpen) {
-      logger.log('⏸️ Skipping preset load - modal is open');
-      return;
-    }
-
-    // Prevent duplicate calls for the same device
-    if (device?.id && lastPresetLoadDeviceId.current === device.id) {
-      logger.log('🔄 Skipping duplicate preset load for device:', device.name);
-      return;
-    }
-
-    logger.log('🔍 loadDevicePresets called with device:', {
-      deviceName: device?.name,
-      isConnected: device?.isConnected,
-      deviceAddress: getDeviceAddress(device),
-      protocol: device?.protocol
-    });
-
-    if (!device?.isConnected) {
-      logger.warn('❌ Device offline - cannot fetch presets:', device?.name);
-      return;
-    }
-
-    const deviceAddress = getDeviceAddress(device);
-    if (!deviceAddress) {
-      logger.warn('❌ No device address available for preset fetching');
-      return;
-    }
-
-    // Mark this device as having presets loaded
-    lastPresetLoadDeviceId.current = device.id;
-
-    try {
-      logger.log('📡 Fetching presets from device:', device.name, 'at', deviceAddress);
-      const result = await getWledPresets(deviceAddress, device.protocol || 'http');
-
-      logger.log(
-        '📥 getWledPresets result:',
-        result.success ? 'SUCCESS' : 'FAILED',
-        `${result.presets?.length || 0} presets, ${result.playlists?.length || 0} playlists`
-      );
-
-      if (result.success) {
-        const filteredPresets = filterSeasonalPresets(result.presets || []);
-        const filteredPlaylists = filterSeasonalPresets(result.playlists || []);
-
-        logger.log(`Fetched ${filteredPresets.length} device presets`);
-        setCustomEffects(filteredPresets);
-
-        if (filteredPlaylists.length > 0) {
-          setSavedPlaylists(filteredPlaylists);
-          logger.log(`Fetched ${filteredPlaylists.length} device playlists`);
-        }
-      } else {
-        logger.error('Failed to fetch presets:', result.message);
-        setCustomEffects([]); // Clear if failed
+  const loadDevicePresets = useCallback(
+    async (device: WledDevice | undefined, isAnyModalOpen: boolean) => {
+      // Skip loading presets when modals are open for better performance
+      if (isAnyModalOpen) {
+        logger.log("⏸️ Skipping preset load - modal is open");
+        return;
       }
-    } catch (error) {
-      logger.error('Error fetching WLED presets:', error);
-      setCustomEffects([]); // Clear if error
-    }
-  }, []);
+
+      // Prevent duplicate calls for the same device
+      if (device?.id && lastPresetLoadDeviceId.current === device.id) {
+        logger.log(
+          "🔄 Skipping duplicate preset load for device:",
+          device.name
+        );
+        return;
+      }
+
+      logger.log("🔍 loadDevicePresets called with device:", {
+        deviceName: device?.name,
+        isConnected: device?.isConnected,
+        deviceAddress: getDeviceAddress(device),
+        protocol: device?.protocol,
+      });
+
+      if (!device?.isConnected) {
+        logger.warn("❌ Device offline - cannot fetch presets:", device?.name);
+        return;
+      }
+
+      const deviceAddress = getDeviceAddress(device);
+      if (!deviceAddress) {
+        logger.warn("❌ No device address available for preset fetching");
+        return;
+      }
+
+      // Mark this device as having presets loaded
+      lastPresetLoadDeviceId.current = device.id;
+
+      try {
+        logger.log(
+          "📡 Fetching presets from device:",
+          device.name,
+          "at",
+          deviceAddress
+        );
+        const result = await getWledPresets(
+          deviceAddress,
+          device.protocol || "http"
+        );
+
+        logger.log(
+          "📥 getWledPresets result:",
+          result.success ? "SUCCESS" : "FAILED",
+          `${result.presets?.length || 0} presets, ${
+            result.playlists?.length || 0
+          } playlists`
+        );
+
+        if (result.success) {
+          const filteredPresets = filterSeasonalPresets(result.presets || []);
+          const filteredPlaylists = filterSeasonalPresets(
+            result.playlists || []
+          );
+
+          logger.log(`Fetched ${filteredPresets.length} device presets`);
+          setCustomEffects(filteredPresets);
+
+          if (filteredPlaylists.length > 0) {
+            setSavedPlaylists(filteredPlaylists);
+            logger.log(`Fetched ${filteredPlaylists.length} device playlists`);
+          }
+        } else {
+          logger.error("Failed to fetch presets:", result.message);
+          setCustomEffects([]); // Clear if failed
+        }
+      } catch (error) {
+        logger.error("Error fetching WLED presets:", error);
+        setCustomEffects([]); // Clear if error
+      }
+    },
+    []
+  );
 
   /**
    * Fetch WLED presets with caching support
    */
-  const fetchWledPresets = useCallback(async (
-    device: WledDevice | undefined,
-    onCacheUpdate: (presets: CustomEffect[], playlists: SavedPlaylist[]) => {
-      presetsChanged: boolean;
-      playlistsChanged: boolean;
-    }
-  ) => {
-    if (!device?.isConnected) {
-      return;
-    }
+  const fetchWledPresets = useCallback(
+    async (
+      device: WledDevice | undefined,
+      onCacheUpdate: (
+        presets: CustomEffect[],
+        playlists: SavedPlaylist[]
+      ) => {
+        presetsChanged: boolean;
+        playlistsChanged: boolean;
+      }
+    ) => {
+      if (!device?.isConnected) {
+        return;
+      }
 
-    try {
-      const result = await getWledPresets(getDeviceAddress(device)!, device.protocol || 'http');
+      try {
+        const result = await getWledPresets(
+          getDeviceAddress(device)!,
+          device.protocol || "http"
+        );
 
-      if (result.success) {
-        const fetchedPresets = filterSeasonalPresets(result.presets || []);
-        const fetchedPlaylists = filterSeasonalPresets(result.playlists || []);
+        if (result.success) {
+          const fetchedPresets = filterSeasonalPresets(result.presets || []);
+          const fetchedPlaylists = filterSeasonalPresets(
+            result.playlists || []
+          );
 
-        // Load stored presets to preserve custom gradients
-        const storedPresets = await storage.loadFromStorage(STORAGE_KEYS.CUSTOM_EFFECTS, []);
+          // Load stored presets to preserve custom gradients
+          const storedPresets = await storage.loadFromStorage(
+            STORAGE_KEYS.CUSTOM_EFFECTS,
+            []
+          );
 
-        // Merge fetched presets with stored ones, preserving gradients from storage
-        const mergedPresets = fetchedPresets.map((fetchedPreset: CustomEffect) => {
-          // Try multiple matching strategies to find the stored preset
-          const storedPreset = storedPresets.find((p: CustomEffect) => {
-            // Match by exact ID
-            if (p.id === fetchedPreset.id) return true;
-            // Match by presetId
-            if (p.presetId === fetchedPreset.presetId) return true;
-            // Match by numeric part of ID (e.g., "wled_60" matches presetId 60)
-            const fetchedNumericId = typeof fetchedPreset.id === 'string'
-              ? parseInt(fetchedPreset.id.replace('wled_', ''))
-              : fetchedPreset.id;
-            if (p.presetId === fetchedNumericId || p.id === fetchedNumericId) return true;
-            return false;
-          });
+          // Merge fetched presets with stored ones, preserving gradients from storage
+          const mergedPresets = fetchedPresets.map(
+            (fetchedPreset: CustomEffect) => {
+              // Try multiple matching strategies to find the stored preset
+              const storedPreset = storedPresets.find((p: CustomEffect) => {
+                // Match by exact ID
+                if (p.id === fetchedPreset.id) return true;
+                // Match by presetId
+                if (p.presetId === fetchedPreset.presetId) return true;
+                // Match by numeric part of ID (e.g., "wled_60" matches presetId 60)
+                const fetchedNumericId =
+                  typeof fetchedPreset.id === "string"
+                    ? parseInt(fetchedPreset.id.replace("wled_", ""))
+                    : fetchedPreset.id;
+                if (
+                  p.presetId === fetchedNumericId ||
+                  p.id === fetchedNumericId
+                )
+                  return true;
+                return false;
+              });
 
-          if (storedPreset && storedPreset.gradient) {
-            // Preserve the original gradient from storage
-            return {
-              ...fetchedPreset,
-              gradient: storedPreset.gradient,
-            };
+              if (storedPreset && storedPreset.gradient) {
+                // Preserve the original gradient from storage
+                return {
+                  ...fetchedPreset,
+                  gradient: storedPreset.gradient,
+                };
+              }
+              return fetchedPreset;
+            }
+          );
+
+          const { presetsChanged, playlistsChanged } = onCacheUpdate(
+            mergedPresets,
+            fetchedPlaylists
+          );
+
+          // Only update UI if data actually changed
+          let updatedCount = 0;
+          if (presetsChanged) {
+            setCustomEffects(mergedPresets);
+            storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, mergedPresets);
+            updatedCount += mergedPresets.length;
           }
-          return fetchedPreset;
-        });
 
-        const { presetsChanged, playlistsChanged } = onCacheUpdate(mergedPresets, fetchedPlaylists);
+          if (playlistsChanged) {
+            setSavedPlaylists(
+              fetchedPlaylists.map((playlist: SavedPlaylist) => ({
+                ...playlist,
+                isActive: false,
+              }))
+            );
+            storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, fetchedPlaylists);
+            updatedCount += fetchedPlaylists.length;
+          }
 
-        // Only update UI if data actually changed
-        let updatedCount = 0;
-        if (presetsChanged) {
-          setCustomEffects(mergedPresets);
-          storage.saveToStorage(STORAGE_KEYS.CUSTOM_EFFECTS, mergedPresets);
-          updatedCount += mergedPresets.length;
+          // Always clear loading state
+          setIsLoadingPlaylists(false);
+        } else {
+          // Only log non-timeout errors
+          if (result.message !== "Request timeout") {
+            logger.error("❌ Failed to fetch WLED presets:", result.message);
+          }
+          setIsLoadingPlaylists(false);
         }
-
-        if (playlistsChanged) {
-          setSavedPlaylists(fetchedPlaylists.map((playlist: SavedPlaylist) => ({ ...playlist, isActive: false })));
-          storage.saveToStorage(STORAGE_KEYS.PLAYLISTS, fetchedPlaylists);
-          updatedCount += fetchedPlaylists.length;
-        }
-
-        // Always clear loading state
-        setIsLoadingPlaylists(false);
-      } else {
+      } catch (error: any) {
         // Only log non-timeout errors
-        if (result.message !== 'Request timeout') {
-          logger.error('❌ Failed to fetch WLED presets:', result.message);
+        if (error.message !== "Request timeout") {
+          logger.error("❌ Failed to fetch WLED presets:", error.message);
         }
         setIsLoadingPlaylists(false);
       }
-    } catch (error: any) {
-      // Only log non-timeout errors
-      if (error.message !== 'Request timeout') {
-        logger.error('❌ Failed to fetch WLED presets:', error.message);
-      }
-      setIsLoadingPlaylists(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   /**
    * Activate a preset on the device
    */
-  const handlePresetSelect = useCallback(async (
-    presetId: string | number,
-    device: WledDevice | undefined,
-    settings: Settings,
-    onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void
-  ) => {
-    if (!device?.isConnected) {
-      return;
-    }
-
-    try {
-      logger.log('🎯 Activating preset:', presetId, 'on device:', device.name);
-
-      // Find the preset to get its details
-      const seasonalPresets = settings.seasonalPresets || [];
-
-      const preset = [...customEffects].find(p =>
-        p.id.toString() === presetId.toString()
-      ) || seasonalPresets.find(p =>
-        p.presetId.toString() === presetId.toString()
-      );
-
-      if (!preset) {
+  const handlePresetSelect = useCallback(
+    async (
+      presetId: string | number,
+      device: WledDevice | undefined,
+      settings: Settings,
+      onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void
+    ) => {
+      if (!device?.isConnected) {
         return;
       }
 
-      // Optimistically update UI immediately for instant feedback
-      onDeviceUpdate(device.id, { activePreset: presetId as any });
+      try {
+        logger.log(
+          "🎯 Activating preset:",
+          presetId,
+          "on device:",
+          device.name
+        );
 
-      // Clear any active playlist when a preset is selected
-      setSavedPlaylists(prev => prev.map(playlist => ({
-        ...playlist,
-        isActive: false
-      })));
+        // Find the preset to get its details
+        const seasonalPresets = settings.seasonalPresets || [];
 
-      if ('isWledPreset' in preset && preset.isWledPreset) {
-        // For device presets, use the original WLED preset ID
-        const wledPresetId = parseInt(preset.id.toString().replace('wled_', ''));
-        logger.log('🎯 Activating WLED preset ID:', wledPresetId);
+        const preset =
+          [...customEffects].find(
+            (p) => p.id.toString() === presetId.toString()
+          ) ||
+          seasonalPresets.find(
+            (p) => p.presetId.toString() === presetId.toString()
+          );
 
-        wledWebSocketService.sendCommand({ ps: wledPresetId });
-      } else if ('presetId' in preset) {
-        // For seasonal presets, use the configured presetId
-        logger.log('🎯 Activating seasonal preset:', preset.name, 'with ID:', preset.presetId);
+        if (!preset) {
+          return;
+        }
 
-        wledWebSocketService.sendCommand({ ps: preset.presetId });
-      } else {
-        // For custom effects, use the effectId and paletteId
-        logger.log('🎯 Activating custom effect:', preset.name, 'FX:', preset.effectId, 'Palette:', preset.paletteId);
+        // Optimistically update UI immediately for instant feedback
+        onDeviceUpdate(device.id, { activePreset: presetId as any });
 
-        wledWebSocketService.sendCommand({
-          seg: [{
-            fx: preset.effectId,
-            pal: preset.paletteId
-          }]
-        });
+        // Clear any active playlist when a preset is selected
+        setSavedPlaylists((prev) =>
+          prev.map((playlist) => ({
+            ...playlist,
+            isActive: false,
+          }))
+        );
+
+        if ("isWledPreset" in preset && preset.isWledPreset) {
+          // For device presets, use the original WLED preset ID
+          const wledPresetId = parseInt(
+            preset.id.toString().replace("wled_", "")
+          );
+          logger.log("🎯 Activating WLED preset ID:", wledPresetId);
+
+          wledWebSocketService.sendCommand({ ps: wledPresetId });
+        } else if ("presetId" in preset) {
+          // For seasonal presets, use the configured presetId
+          logger.log(
+            "🎯 Activating seasonal preset:",
+            preset.name,
+            "with ID:",
+            preset.presetId
+          );
+
+          wledWebSocketService.sendCommand({ ps: preset.presetId });
+        } else {
+          // For custom effects, use the effectId and paletteId
+          logger.log(
+            "🎯 Activating custom effect:",
+            preset.name,
+            "FX:",
+            preset.effectId,
+            "Palette:",
+            preset.paletteId
+          );
+
+          wledWebSocketService.sendCommand({
+            seg: [
+              {
+                fx: preset.effectId,
+                pal: preset.paletteId,
+              },
+            ],
+          });
+        }
+
+        logger.log("✅ Preset activation command sent:", preset.name);
+      } catch (error: any) {
+        logger.error("❌ Failed to activate preset:", error.message.toString());
       }
-
-      logger.log('✅ Preset activation command sent:', preset.name);
-    } catch (error: any) {
-      logger.error('❌ Failed to activate preset:', error.message.toString());
-    }
-  }, [customEffects]);
+    },
+    [customEffects]
+  );
 
   /**
    * Change device brightness
    */
-  const handleBrightnessChange = useCallback(async (
-    brightness: number,
-    device: WledDevice | undefined
-  ) => {
-    if (!device?.isConnected) {
-      return;
-    }
+  const handleBrightnessChange = useCallback(
+    async (brightness: number, device: WledDevice | undefined) => {
+      if (!device?.isConnected) {
+        return;
+      }
 
-    try {
-      wledWebSocketService.sendCommand({ bri: brightness });
-      logger.log(`✅ Brightness command sent: ${brightness} on ${device.name}`);
-    } catch (error: any) {
-      logger.error('❌ Failed to set brightness:', error.message);
-    }
-  }, []);
+      try {
+        wledWebSocketService.sendCommand({ bri: brightness });
+        logger.log(
+          `✅ Brightness command sent: ${brightness} on ${device.name}`
+        );
+      } catch (error: any) {
+        logger.error("❌ Failed to set brightness:", error.message);
+      }
+    },
+    []
+  );
 
   /**
    * Refresh device state and info
    */
-  const refreshDeviceState = useCallback(async (
-    device: WledDevice | undefined,
-    onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void
-  ) => {
-    if (!device?.isConnected) {
-      logger.warn('Cannot refresh device state - device not connected');
-      return;
-    }
-
-    try {
-      const deviceAddress = getDeviceAddress(device);
-      const protocol = device.protocol || 'http';
-
-      logger.log('🔄 Refreshing device state and info for:', device.name);
-
-      // Fetch both device info AND state
-      const [infoResponse, stateResponse] = await Promise.all([
-        fetch(`${protocol}://${deviceAddress}/json/info`),
-        getWledState(deviceAddress!, protocol)
-      ]);
-
-      if (stateResponse.success && stateResponse.data) {
-        let updatedWledInfo = device.wledInfo || {};
-
-        // If we got device info, merge it first
-        if (infoResponse.ok) {
-          const deviceInfo = await infoResponse.json();
-          updatedWledInfo = { ...updatedWledInfo, ...deviceInfo };
-          logger.log('📥 Device info fetched during refresh - LED count:', deviceInfo.leds?.count);
-        }
-
-        // Then update with current state
-        updatedWledInfo = {
-          ...updatedWledInfo,
-          bri: stateResponse.data.bri,
-          on: stateResponse.data.on,
-          ps: stateResponse.data.ps // current preset
-        };
-
-        // Build device updates
-        const deviceUpdates: Partial<WledDevice> = { wledInfo: updatedWledInfo };
-
-        // Update activePreset to match current preset from device
-        if (stateResponse.data.ps) {
-          deviceUpdates.activePreset = stateResponse.data.ps;
-          logger.log('🎯 Active preset synced from device:', stateResponse.data.ps);
-        }
-
-        onDeviceUpdate(device.id, deviceUpdates);
-
-        logger.log(
-          '✅ Device state and info refreshed - brightness:',
-          stateResponse.data.bri,
-          'on:',
-          stateResponse.data.on,
-          'LED count:',
-          updatedWledInfo.leds?.count
-        );
+  const refreshDeviceState = useCallback(
+    async (
+      device: WledDevice | undefined,
+      onDeviceUpdate: (id: number, updates: Partial<WledDevice>) => void
+    ) => {
+      if (!device?.isConnected) {
+        logger.warn("Cannot refresh device state - device not connected");
+        return;
       }
-    } catch (error: any) {
-      logger.error('❌ Failed to refresh device state:', error);
-    }
-  }, []);
+
+      try {
+        const deviceAddress = getDeviceAddress(device);
+        const protocol = device.protocol || "http";
+
+        logger.log("🔄 Refreshing device state and info for:", device.name);
+
+        // Fetch both device info AND state
+        const [infoResponse, stateResponse] = await Promise.all([
+          fetch(`${protocol}://${deviceAddress}/json/info`),
+          getWledState(deviceAddress!, protocol),
+        ]);
+
+        if (stateResponse.success && stateResponse.data) {
+          let updatedWledInfo = device.wledInfo || {};
+
+          // If we got device info, merge it first
+          if (infoResponse.ok) {
+            const deviceInfo = await infoResponse.json();
+            updatedWledInfo = { ...updatedWledInfo, ...deviceInfo };
+            logger.log(
+              "📥 Device info fetched during refresh - LED count:",
+              deviceInfo.leds?.count
+            );
+          }
+
+          // Then update with current state
+          updatedWledInfo = {
+            ...updatedWledInfo,
+            bri: stateResponse.data.bri,
+            on: stateResponse.data.on,
+            ps: stateResponse.data.ps, // current preset
+          };
+
+          // Build device updates
+          const deviceUpdates: Partial<WledDevice> = {
+            wledInfo: updatedWledInfo,
+          };
+
+          // Update activePreset to match current preset from device
+          if (stateResponse.data.ps) {
+            deviceUpdates.activePreset = stateResponse.data.ps;
+            logger.log(
+              "🎯 Active preset synced from device:",
+              stateResponse.data.ps
+            );
+          }
+
+          onDeviceUpdate(device.id, deviceUpdates);
+
+          logger.log(
+            "✅ Device state and info refreshed - brightness:",
+            stateResponse.data.bri,
+            "on:",
+            stateResponse.data.on,
+            "LED count:",
+            updatedWledInfo.leds?.count
+          );
+        }
+      } catch (error: any) {
+        logger.error("❌ Failed to refresh device state:", error);
+      }
+    },
+    []
+  );
 
   return {
     customEffects,
@@ -368,6 +475,6 @@ export function usePresetManager(): UsePresetManagerReturn {
     fetchWledPresets,
     handlePresetSelect,
     handleBrightnessChange,
-    refreshDeviceState
+    refreshDeviceState,
   };
 }

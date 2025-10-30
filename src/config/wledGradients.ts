@@ -1,4 +1,8 @@
-import { WLED_PALETTES_DATA, WLED_PALETTES_DEF, PaletteColor } from "../constants/palettes";
+import {
+  WLED_PALETTES_DATA,
+  WLED_PALETTES_DEF,
+  PaletteColor,
+} from "../constants/palettes";
 
 /**
  * WLED Gradient Generation Utilities
@@ -66,10 +70,12 @@ export const generatePlaylistGradient = (
  */
 export const generatePresetGradient = (paletteId: number): string => {
   // Find palette name from WLED_PALETTES_DEF using the palette ID
-  const paletteDef = WLED_PALETTES_DEF.find(p => p.id === paletteId);
+  const paletteDef = WLED_PALETTES_DEF.find((p) => p.id === paletteId);
 
   if (!paletteDef) {
-    console.warn(`⚠️ Palette ID ${paletteId} not found in WLED_PALETTES_DEF, using default`);
+    console.warn(
+      `⚠️ Palette ID ${paletteId} not found in WLED_PALETTES_DEF, using default`
+    );
     return `linear-gradient(135deg, #888, #555)`;
   }
 
@@ -77,12 +83,16 @@ export const generatePresetGradient = (paletteId: number): string => {
   const paletteData = WLED_PALETTES_DATA[paletteName];
 
   if (!paletteData) {
-    console.warn(`⚠️ Palette "${paletteName}" (ID ${paletteId}) not found in WLED_PALETTES_DATA, using fallback`);
+    console.warn(
+      `⚠️ Palette "${paletteName}" (ID ${paletteId}) not found in WLED_PALETTES_DATA, using fallback`
+    );
     return `linear-gradient(135deg, #888, #555)`;
   }
 
   if (paletteData.length === 0) {
-    console.warn(`⚠️ Palette "${paletteName}" (ID ${paletteId}) has no color data, using fallback`);
+    console.warn(
+      `⚠️ Palette "${paletteName}" (ID ${paletteId}) has no color data, using fallback`
+    );
     return `linear-gradient(135deg, #888, #555)`;
   }
 
@@ -103,10 +113,12 @@ export const generateLinearGradientColors = (
   paletteId: number
 ): readonly string[] => {
   // Find palette name from WLED_PALETTES_DEF using the palette ID
-  const paletteDef = WLED_PALETTES_DEF.find(p => p.id === paletteId);
+  const paletteDef = WLED_PALETTES_DEF.find((p) => p.id === paletteId);
 
   if (!paletteDef) {
-    console.warn(`⚠️ Palette ID ${paletteId} not found in WLED_PALETTES_DEF, using default colors`);
+    console.warn(
+      `⚠️ Palette ID ${paletteId} not found in WLED_PALETTES_DEF, using default colors`
+    );
     return ["#888888", "#555555"] as const;
   }
 
@@ -114,7 +126,9 @@ export const generateLinearGradientColors = (
   const paletteData = WLED_PALETTES_DATA[paletteName];
 
   if (!paletteData) {
-    console.warn(`⚠️ Palette "${paletteName}" (ID ${paletteId}) not found in WLED_PALETTES_DATA, using fallback colors`);
+    console.warn(
+      `⚠️ Palette "${paletteName}" (ID ${paletteId}) not found in WLED_PALETTES_DATA, using fallback colors`
+    );
     return ["#888888", "#555555"] as const;
   }
 

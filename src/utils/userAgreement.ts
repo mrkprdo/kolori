@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
-import { AGREEMENT_VERSION } from '../components/UserAgreement';
-import { storage, STORAGE_KEYS } from './storage';
+import { Platform } from "react-native";
+import { AGREEMENT_VERSION } from "../components/UserAgreement";
+import { storage, STORAGE_KEYS } from "./storage";
 
 export interface AgreementSignature {
   version: string;
@@ -14,7 +14,7 @@ function simpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash).toString(16);
@@ -25,12 +25,12 @@ export function generateAgreementSignature(): AgreementSignature {
   const deviceInfo = `${Platform.OS}-${Platform.Version}`;
   const signatureData = `${AGREEMENT_VERSION}-${timestamp}-${deviceInfo}`;
   const hash = simpleHash(signatureData);
-  
+
   return {
     version: AGREEMENT_VERSION,
     timestamp,
     deviceInfo,
-    hash
+    hash,
   };
 }
 
@@ -46,7 +46,7 @@ export async function getAgreementSignature(): Promise<AgreementSignature | null
 export async function hasValidAgreement(): Promise<boolean> {
   const signature = await getAgreementSignature();
   if (!signature) return false;
-  
+
   // Check if the agreement version matches current version
   return signature.version === AGREEMENT_VERSION;
 }
