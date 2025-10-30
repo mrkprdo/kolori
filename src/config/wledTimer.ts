@@ -309,54 +309,64 @@ export const resetWledTimerSettings = async (
   try {
     logger.log(`🔄 Resetting WLED timer settings to defaults on ${deviceAddress}`);
 
-    const formData = new URLSearchParams();
+    // Fetch current settings to preserve time/timezone settings
+    const settingsUrl = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=5");
+    const settingsResult = await fetchWithTimeout(
+      settingsUrl,
+      { method: "GET" },
+      (r) => r.text()
+    );
 
-    // NTP and time settings
-    formData.append("NT", "on");
-    formData.append("NS", "0.wled.pool.ntp.org");
-    formData.append("CF", "on");
-    formData.append("TZ", "4");
-    formData.append("UO", "0");
-    formData.append("LN", "0.00");
-    formData.append("LT", "0.00");
-
-    // Overlay/Macro settings
-    formData.append("O1", "0");
-    formData.append("O2", "29");
-    formData.append("OM", "0");
-
-    // Countdown settings
-    formData.append("CY", "20");
-    formData.append("CI", "1");
-    formData.append("CD", "1");
-    formData.append("CH", "0");
-    formData.append("CM", "0");
-    formData.append("CS", "0");
-    formData.append("A0", "0");
-    formData.append("A1", "0");
-
-    // Alexa settings
-    formData.append("MC", "0");
-    formData.append("MN", "0");
-
-    // Timer settings (all 8 timers with default values)
-    for (let i = 0; i < 8; i++) {
-      formData.append(`H${i}`, "0");
-      formData.append(`N${i}`, "0");
-      formData.append(`T${i}`, "0");
-      formData.append(`W${i}`, "255");
-      formData.append(`M${i}`, "1");
-      formData.append(`P${i}`, "12");
-      formData.append(`D${i}`, "1");
-      formData.append(`E${i}`, "31");
+    if (!settingsResult.success) {
+      throw new Error(`Failed to fetch current settings: ${settingsResult.error}`);
     }
 
-    formData.append("N8", "0");
-    formData.append("T8", "0");
-    formData.append("W8", "255");
-    formData.append("N9", "0");
-    formData.append("T9", "0");
-    formData.append("W9", "255");
+    const jsText = settingsResult.data || "";
+    const parsedValues = parseWledSettingsJS(jsText);
+    const formData = convertToPostFormData(parsedValues);
+
+    // Only reset timer-related fields, preserve NTP/timezone/time settings
+    // Reset all 8 timers to default disabled state
+    for (let i = 0; i < 8; i++) {
+      formData.set(`H${i}`, "0");
+      formData.set(`N${i}`, "0");
+      formData.set(`T${i}`, "0");
+      formData.set(`W${i}`, "255");
+      formData.set(`M${i}`, "1");
+      formData.set(`P${i}`, "12");
+      formData.set(`D${i}`, "1");
+      formData.set(`E${i}`, "31");
+    }
+
+    // Reset additional timer slots
+    formData.set("N8", "0");
+    formData.set("T8", "0");
+    formData.set("W8", "255");
+    formData.set("N9", "0");
+    formData.set("T9", "0");
+    formData.set("W9", "255");
+
+    // Reset overlay/macro settings
+    formData.set("O1", "0");
+    formData.set("O2", "29");
+    formData.set("OM", "0");
+    formData.delete("OL"); // Disable overlay
+    formData.delete("OS");
+    formData.delete("O5");
+    formData.delete("OB");
+
+    // Reset countdown settings
+    formData.delete("CE"); // Disable countdown
+    formData.set("CY", "20");
+    formData.set("CI", "1");
+    formData.set("CD", "1");
+    formData.set("CH", "0");
+    formData.set("CM", "0");
+    formData.set("CS", "0");
+    formData.set("A0", "0");
+    formData.set("A1", "0");
+
+    logger.log(`📤 Resetting timer settings while preserving time/timezone configuration`);
 
     const url = buildWledUrl(deviceAddress, protocol, "/settings/time");
     const result = await fetchWithTimeout(
@@ -383,6 +393,165 @@ export const resetWledTimerSettings = async (
     return formatApiResponse(false, result.error || "Failed to reset timer settings");
   } catch (error: any) {
     logger.error("Failed to reset WLED timer settings:", error);
+    return formatApiResponse(
+      false,
+      error.name === "AbortError" ? "Request timeout" : `Request failed: ${error.message}`
+    );
+  }
+};
+
+/**
+ * Function to fetch current time from WLED device
+ * Returns the device's current time by parsing the settings page
+ */
+export const fetchWledDeviceTime = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse & { deviceTime?: string; timestamp?: number }> => {
+  try {
+    logger.log(`🕐 Fetching current time from WLED device ${deviceAddress}`);
+
+    // Fetch the time settings page to get the current device time
+    const url = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=5");
+    const result = await fetchWithTimeout(url, { method: "GET" }, (r) => r.text());
+
+    if (!result.success || !result.data) {
+      return formatApiResponse(false, result.error || "Failed to fetch device time");
+    }
+
+    const jsText = result.data;
+
+    // Extract the time from: d.getElementsByClassName("times")[0].innerHTML = "2025-10-20, 12:50:46";
+    const timeMatch = jsText.match(/d\.getElementsByClassName\("times"\)\[0\]\.innerHTML\s*=\s*"([^"]+)"/);
+
+    if (timeMatch && timeMatch[1]) {
+      const deviceTimeString = timeMatch[1]; // e.g., "2025-10-20, 12:50:46"
+
+      // Parse the date string: "YYYY-MM-DD, HH:MM:SS"
+      const dateTimeParts = deviceTimeString.split(', ');
+      if (dateTimeParts.length === 2) {
+        const [datePart, timePart] = dateTimeParts;
+
+        // Create a Date object from the parsed string
+        const deviceDate = new Date(`${datePart}T${timePart}`);
+
+        // Check if date is valid
+        if (!isNaN(deviceDate.getTime())) {
+          const timeString = deviceDate.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          const dateString = deviceDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+
+          const timestamp = Math.floor(deviceDate.getTime() / 1000);
+          logger.log(`✅ WLED device time: ${timeString} on ${dateString}`);
+          return {
+            success: true,
+            message: "Device time retrieved successfully",
+            deviceTime: `${dateString} ${timeString}`,
+            timestamp: timestamp,
+          };
+        }
+      }
+    }
+
+    // If we couldn't parse a valid time, return an error
+    logger.warn(`⚠️ Could not parse valid time from WLED device (found: ${timeMatch?.[1] || 'none'})`);
+    return formatApiResponse(false, "No valid time information available from device");
+  } catch (error: any) {
+    logger.error("Failed to fetch WLED device time:", error);
+    return formatApiResponse(
+      false,
+      error.name === "AbortError" ? "Request timeout" : `Request failed: ${error.message}`
+    );
+  }
+};
+
+/**
+ * Function to sync phone's current time to WLED device
+ * This sets the device time to match the phone's current time and timezone
+ */
+export const syncPhoneTimeToWled = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse> => {
+  try {
+    logger.log(`🔄 Syncing phone time and timezone to WLED device ${deviceAddress}`);
+
+    // Get current phone time
+    const now = new Date();
+    const unixTimestamp = Math.floor(now.getTime() / 1000);
+
+    // Calculate timezone offset in seconds
+    // getTimezoneOffset returns minutes WEST of UTC (negative for east of UTC)
+    // WLED wants offset in seconds EAST of UTC, so we negate and convert to seconds
+    const timezoneOffsetMinutes = -now.getTimezoneOffset();
+    const timezoneOffsetSeconds = timezoneOffsetMinutes * 60;
+
+    logger.log(`📍 Phone timezone offset: ${timezoneOffsetMinutes} minutes (${timezoneOffsetSeconds} seconds)`);
+
+    // First, fetch current settings to preserve all existing time settings
+    const settingsUrl = buildWledUrl(deviceAddress, protocol, "/settings/s.js?p=5");
+    const settingsResult = await fetchWithTimeout(
+      settingsUrl,
+      { method: "GET" },
+      (r) => r.text()
+    );
+
+    if (!settingsResult.success) {
+      throw new Error(`Failed to fetch current settings: ${settingsResult.error}`);
+    }
+
+    const jsText = settingsResult.data || "";
+    const parsedValues = parseWledSettingsJS(jsText);
+    const formData = convertToPostFormData(parsedValues);
+
+    // Override the RTC time with phone's current Unix timestamp
+    // WLED uses UT field for Unix timestamp
+    formData.set("UT", unixTimestamp.toString());
+
+    // Set the timezone offset (UO field = UTC Offset in seconds)
+    formData.set("UO", timezoneOffsetSeconds.toString());
+
+    // Disable NTP sync to prevent it from overriding our manual time
+    formData.delete("NT"); // Remove any existing NT field
+    // NT checkbox is only added if checked, so by not adding it, it's unchecked
+
+    logger.log(`📤 Setting WLED time to Unix timestamp: ${unixTimestamp} (${now.toLocaleString()})`);
+    logger.log(`📤 Setting timezone offset: ${timezoneOffsetSeconds} seconds`);
+
+    // Post the form data to /settings/time endpoint
+    const postUrl = buildWledUrl(deviceAddress, protocol, "/settings/time");
+    const result = await fetchWithTimeout(
+      postUrl,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+        timeout: 10000,
+      },
+      async (response) => {
+        // /settings/time returns HTML, not JSON
+        const text = await response.text();
+        return text;
+      }
+    );
+
+    if (result.success) {
+      logger.log(`✅ Successfully synced phone time and timezone to WLED device`);
+      return formatApiResponse(true, "Time and timezone synced successfully");
+    }
+
+    logger.error(`❌ Failed to sync time to WLED device`);
+    return formatApiResponse(false, result.error || "Failed to sync time");
+  } catch (error: any) {
+    logger.error("Failed to sync time to WLED device:", error);
     return formatApiResponse(
       false,
       error.name === "AbortError" ? "Request timeout" : `Request failed: ${error.message}`

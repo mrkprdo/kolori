@@ -74,12 +74,10 @@ export function useDeviceManagement(): UseDeviceManagementReturn {
       if (hasExistingPresets) {
         // Load existing presets
         deviceSeasonalPresets = await loadDeviceSeasonalPresets(device);
-        console.log('📝 Restored existing seasonal presets for device:', device.name);
       } else {
         // Initialize with default presets
         await saveDeviceSeasonalPresets(device, DEFAULT_SEASONAL_PRESETS);
         deviceSeasonalPresets = DEFAULT_SEASONAL_PRESETS;
-        console.log('✨ Initialized default seasonal presets for new device:', device.name);
       }
 
       // Set as active device
@@ -93,8 +91,6 @@ export function useDeviceManagement(): UseDeviceManagementReturn {
           seasonalPresets: deviceSeasonalPresets,
         });
       }
-
-      console.log('🔧 Device added and set as active:', device.name, 'ID:', device.id);
     } catch (error) {
       console.error('Failed to initialize seasonal presets for device:', error);
 
@@ -141,10 +137,6 @@ export function useDeviceManagement(): UseDeviceManagementReturn {
     });
 
     // Keep device-specific seasonal presets for future use
-    if (deviceToDelete) {
-      console.log('📝 Keeping seasonal presets for removed device:', deviceToDelete.name, 'in case it\'s added back');
-    }
-
     // Reset seasonal presets to defaults if active device was deleted
     if (deviceId === activeDeviceId && settings) {
       updateSettings({
@@ -162,7 +154,6 @@ export function useDeviceManagement(): UseDeviceManagementReturn {
     settings: Settings | null,
     updateSettings: (newSettings: Settings) => void
   ) => {
-    console.log('🔄 Active device changing to ID:', id);
     setActiveDeviceId(id);
     saveActiveDeviceId(id);
 

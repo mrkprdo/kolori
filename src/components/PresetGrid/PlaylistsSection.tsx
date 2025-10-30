@@ -48,7 +48,7 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor, position: 'relative' },
+        { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b', position: 'relative' },
       ]}
     >
       <TouchableOpacity
@@ -101,8 +101,8 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
               style={{
                 backgroundColor: cardBackground,
                 borderRadius: 8,
-                borderWidth: 1,
-                borderColor: borderColor,
+                borderWidth: 2,
+                borderColor: isDark ? '#4b5563' : '#1e293b',
                 padding: 16,
                 alignItems: 'center',
                 justifyContent: 'center',

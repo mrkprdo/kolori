@@ -56,7 +56,7 @@ export const sharedStyles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     ...SHADOW_LIGHT,
   },
 
@@ -95,6 +95,7 @@ export const sharedStyles = StyleSheet.create({
   modal: {
     borderRadius: 12,
     padding: 16,
+    borderWidth: 2,
     ...SHADOW_HEAVY,
   },
 
@@ -115,7 +116,7 @@ export const deviceSelectionStyles = StyleSheet.create({
     right: 100,
     height: 56,
     ...FLEX_ROW_CENTER,
-    borderWidth: 1,
+    borderWidth: 2,
     borderRadius: 28,
     paddingLeft: 7,
     paddingRight: 10,
@@ -179,6 +180,7 @@ export const deviceSelectionStyles = StyleSheet.create({
   dropdownModal: {
     borderRadius: 12,
     padding: 16,
+    borderWidth: 2,
     minWidth: 320,
     maxWidth: 400,
     maxHeight: 400,
@@ -205,7 +207,7 @@ export const deviceSelectionStyles = StyleSheet.create({
     ...FLEX_ROW_CENTER,
     paddingVertical: 16,
     paddingHorizontal: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: 2,
     minHeight: 64, // Better touch target
   },
 
@@ -225,6 +227,29 @@ export const deviceSelectionStyles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  deviceManagementButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    gap: 6,
+    borderRadius: 12,
+    borderWidth: 2,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  deviceManagementText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+
   menuButton: {
     padding: 8,
     marginLeft: 8,
@@ -239,6 +264,7 @@ export const liveViewStyles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
+    borderWidth: 2,
     gap: 6,
     minWidth: 90,
   },
@@ -251,7 +277,7 @@ export const liveViewStyles = StyleSheet.create({
   innerCard: {
     borderRadius: 8,
     padding: 12,
-    borderWidth: 1,
+    borderWidth: 2,
   },
 
   innerCardCompact: {
@@ -274,7 +300,7 @@ export const liveViewStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 2,
     gap: 6,
   },
 

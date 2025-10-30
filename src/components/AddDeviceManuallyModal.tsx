@@ -161,7 +161,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     shadowOpacity: isDark ? 0.25 : 0.05,
     shadowRadius: 3,
     elevation: 2,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: isDark ? '#374151' : '#e5e7eb',
   },
   label: { 
@@ -170,18 +170,18 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     color: isDark ? '#ffffff' : '#111827', 
     marginBottom: 8 
   },
-  input: { 
-    backgroundColor: isDark ? '#374151' : '#f9fafb', 
-    color: isDark ? '#ffffff' : '#111827', 
-    padding: 12, 
-    borderRadius: 8, 
-    fontSize: 14, 
-    borderWidth: 1, 
-    borderColor: isDark ? '#4b5563' : '#e5e7eb' 
+  input: {
+    backgroundColor: isDark ? '#374151' : '#f9fafb',
+    color: isDark ? '#ffffff' : '#111827',
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 14,
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#e5e7eb'
   },
   inputError: {
     borderColor: '#ef4444',
-    borderWidth: 1,
+    borderWidth: 2,
   },
   warningText: {
     fontSize: 12,

@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     alignItems: 'center',
   },
   rejectButtonText: {

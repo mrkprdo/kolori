@@ -468,3 +468,108 @@ export const fetchWledCurrentPreset = async (
     message: "No active preset (ps: 0 or undefined)",
   };
 };
+
+/**
+ * Check if the OFF- preset (preset 62) exists on the WLED device
+ * If it doesn't exist, create it with all LEDs set to black (#000000)
+ * This preset is used by the scheduler to turn off the LEDs
+ */
+export const ensureOffPresetExists = async (
+  deviceAddress: string,
+  protocol = "http"
+): Promise<ApiResponse & { presetExists?: boolean; presetId?: number }> => {
+  try {
+    logger.log(`🔍 Checking for OFF- preset (ID: 62) on ${deviceAddress}`);
+
+    // Fetch all presets to check if preset 62 exists
+    const presetsResult = await fetchWledPresets(deviceAddress, protocol);
+
+    if (!presetsResult.success || !presetsResult.presets) {
+      return {
+        success: false,
+        message: "Failed to fetch presets from device",
+      };
+    }
+
+    // Check if preset 62 exists and is named "OFF-"
+    const offPreset = presetsResult.presets.find((p) => p.presetId === 62);
+
+    if (offPreset && offPreset.name.startsWith("OFF-")) {
+      logger.log(`✅ OFF- preset already exists at slot 62`);
+      return {
+        success: true,
+        presetExists: true,
+        presetId: 62,
+        message: "OFF- preset exists",
+      };
+    }
+
+    // Preset doesn't exist or has wrong name, create it
+    logger.log(`📝 Creating OFF- preset at slot 62`);
+
+    const applyUrl = buildWledUrl(deviceAddress, protocol, `/json/state`);
+
+    // First, turn off all segments by setting brightness to 0 and color to black
+    const offState = {
+      on: false,
+      bri: 0,
+      seg: [
+        {
+          col: [[0, 0, 0]], // Black color
+          fx: 0, // Solid effect
+        },
+      ],
+    };
+
+    const applyResult = await fetchWithTimeout(applyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(offState),
+    });
+
+    if (!applyResult.success) {
+      return {
+        success: false,
+        message: `Failed to apply OFF state: ${applyResult.error}`,
+      };
+    }
+
+    // Wait for state to be applied
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Save as preset 62 with name "OFF-"
+    const savePayload = {
+      psave: 62,
+      n: "OFF-",
+      ib: true, // Include brightness
+      sb: true, // Include segments
+    };
+
+    const saveResult = await fetchWithTimeout(applyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(savePayload),
+    });
+
+    if (!saveResult.success) {
+      return {
+        success: false,
+        message: `Failed to save OFF- preset: ${saveResult.error}`,
+      };
+    }
+
+    logger.log(`✅ OFF- preset created successfully at slot 62`);
+    return {
+      success: true,
+      presetExists: false,
+      presetId: 62,
+      message: "OFF- preset created successfully",
+    };
+  } catch (error: any) {
+    logger.error("Failed to ensure OFF- preset exists:", error);
+    return {
+      success: false,
+      message: `Error: ${error.message}`,
+    };
+  }
+};

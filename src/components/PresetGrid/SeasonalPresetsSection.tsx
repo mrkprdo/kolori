@@ -105,7 +105,7 @@ const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor, position: 'relative' },
+        { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b', position: 'relative' },
       ]}
     >
       <TouchableOpacity

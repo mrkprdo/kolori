@@ -144,6 +144,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderRadius: 8,
     backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
     gap: 4,
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
   deviceCard: {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
@@ -155,8 +157,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     shadowOpacity: isDark ? 0.25 : 0.05,
     shadowRadius: 3,
     elevation: 2,
-    borderWidth: 1,
-    borderColor: isDark ? '#374151' : '#e5e7eb',
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
   deviceCardHeader: {
     flexDirection: 'row',
@@ -180,6 +182,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     padding: 5,
     borderRadius: 6,
     backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
   },
   noDevicesContainer: {
     alignItems: 'center',
@@ -187,7 +191,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: isDark ? '#374151' : '#d1d5db',
     marginBottom: 12,
@@ -204,15 +208,17 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     gap: 8,
   },
   footerButtonPrimary: {
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingVertical: 14, 
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12, 
-    backgroundColor: '#059669', 
+    borderRadius: 12,
+    backgroundColor: '#059669',
     gap: 6,
+    borderWidth: 2,
+    borderColor: isDark ? '#4b5563' : '#1e293b',
     shadowColor: '#059669',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -354,17 +360,12 @@ export default function ScanNetworkModal({
     const preLoadedDevices: DeviceWithStatus[] = [];
 
     for (const device of backgroundScanDevices) {
-      console.log('🔍 Pre-validating background device:', device.name);
-
       // Validate device to filter out non-WLED devices
       const validation = await wledMdnsDiscovery.validateWledDevice(device);
 
       if (!validation.isValid) {
-        console.log('❌ Background device failed validation, skipping:', device.name, validation.error);
         continue; // Skip non-WLED devices
       }
-
-      console.log('✅ Background device validated successfully:', device.name);
 
       const nameInfo = await enhanceDeviceName(device);
       const isAlreadyAdded = isDeviceAlreadyAdded(device);
@@ -390,7 +391,7 @@ export default function ScanNetworkModal({
         };
       }
     } catch (error) {
-      console.log('Failed to get enhanced name for device:', device.name, error);
+      // Failed to get enhanced name, use default
     }
     return { enhancedName: device.name };
   };
@@ -400,17 +401,12 @@ export default function ScanNetworkModal({
     
     wledMdnsDiscovery.setListeners({
       onDeviceFound: async (device: MdnsWledDevice) => {
-        console.log('🔍 Device found, validating:', device.name);
-
         // Validate device immediately to filter out non-WLED devices
         const validation = await wledMdnsDiscovery.validateWledDevice(device);
 
         if (!validation.isValid) {
-          console.log('❌ Device failed validation, skipping:', device.name, validation.error);
           return; // Don't add non-WLED devices to the UI
         }
-
-        console.log('✅ Device validated successfully:', device.name);
 
         const nameInfo = await enhanceDeviceName(device);
         const isAlreadyAdded = isDeviceAlreadyAdded(device);
@@ -467,14 +463,6 @@ export default function ScanNetworkModal({
   };
 
   const connectToDevice = async (device: DeviceWithStatus, setConnectingStatus = true) => {
-    console.log('🔵 Connecting to device:', device.name);
-    console.log('🔵 Device details:', {
-      name: device.name,
-      host: device.host,
-      addresses: device.addresses,
-      port: device.port,
-    });
-
     if (setConnectingStatus) {
       updateDeviceStatus(device.name, 'connecting');
     }
@@ -482,7 +470,6 @@ export default function ScanNetworkModal({
     try {
       // Device is already validated at discovery time, so we can proceed directly
       const primaryIP = device.addresses?.[0] || device.host;
-      console.log('✅ Using validated device IP:', primaryIP);
 
       const newDevice: Device = {
         id: ipToDeviceId(primaryIP),
@@ -516,10 +503,6 @@ export default function ScanNetworkModal({
 
   const addAllDevices = () => {
     const availableDevices = discoveredDevices.filter(device => device.status === 'discovered');
-    console.log('🚀 Starting Add All Devices:', { 
-      availableCount: availableDevices.length, 
-      deviceNames: availableDevices.map(d => d.name) 
-    });
     
     if (availableDevices.length === 0) {
       Alert.alert('No Devices', 'No devices available to add.');
@@ -528,7 +511,6 @@ export default function ScanNetworkModal({
     
     // Prevent navigation during discovery process
     setIsDiscoveryInProgress?.(true);
-    console.log('🔒 Discovery in progress - navigation disabled');
     
     // Mark all available devices as connecting
     setDiscoveredDevices(prev => 
@@ -545,31 +527,24 @@ export default function ScanNetworkModal({
     // Connect to devices with staggered delays
     availableDevices.forEach((device, index) => {
       const delay = index * 1000; // 1 second between each device
-      console.log(`📱 Scheduling device ${index + 1}/${totalDevices} (${device.name}) with ${delay}ms delay`);
-      
+
       setTimeout(async () => {
-        console.log(`🔵 Starting connection for device: ${device.name}`);
         try {
           await connectToDevice(device, false);
-          console.log(`✅ Completed device: ${device.name}`);
         } catch (error) {
-          console.log(`❌ Failed device: ${device.name}`, error);
+          console.error(`Failed to connect device: ${device.name}`, error);
         }
-        
+
         completedDevices++;
-        console.log(`📊 Progress: ${completedDevices}/${totalDevices} devices completed`);
-        
+
         // Re-enable navigation after all devices are completed
         if (completedDevices === totalDevices) {
           setTimeout(() => {
             setIsDiscoveryInProgress?.(false);
-            console.log('🔓 Discovery completed - navigation re-enabled');
           }, 2000);
         }
       }, delay);
     });
-    
-    console.log('🏁 Add All Devices scheduled');
   };
 
   const footerContent = (

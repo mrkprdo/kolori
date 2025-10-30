@@ -67,8 +67,16 @@ export default function FloatingModal({
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
-        // Move modal up by keyboard height plus extra to eliminate gap
-        keyboardHeight.value = withTiming(-(e.endCoordinates.height + 10), { duration: Platform.OS === 'ios' ? 250 : 200 });
+        if (Platform.OS === 'android') {
+          // On Android, don't move the modal - let the system handle it
+          // The windowSoftInputMode in AndroidManifest should be set to "adjustResize"
+          keyboardHeight.value = 0;
+        } else {
+          // On iOS, move modal up by keyboard height plus extra padding
+          keyboardHeight.value = withTiming(-(e.endCoordinates.height + 10), {
+            duration: 250
+          });
+        }
       }
     );
 
@@ -140,7 +148,7 @@ export default function FloatingModal({
 
         {/* Modal Container */}
         <SafeAreaView style={styles.safeArea}>
-          <Animated.View style={[styles.modal, { backgroundColor: cardBackground }, animatedStyle]}>
+          <Animated.View style={[styles.modal, { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b' }, animatedStyle]}>
             {/* Draggable Header */}
             <GestureDetector gesture={panGesture}>
               <View style={[styles.header, { borderBottomColor: borderColor }]}>
@@ -205,6 +213,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: 2,
+    borderBottomWidth: 0,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -214,7 +224,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 8,
-    borderBottomWidth: 1,
+    borderBottomWidth: 2,
   },
   handleContainer: {
     alignItems: 'center',
@@ -244,7 +254,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   footer: {
-    borderTopWidth: 1,
+    borderTopWidth: 2,
     padding: 12,
   },
 });

@@ -237,7 +237,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
           styles.dropdownButton,
           {
             backgroundColor: isDark ? '#374151' : '#f9fafb',
-            borderColor: isDark ? '#4b5563' : '#d1d5db',
+            borderColor: isDark ? '#4b5563' : '#1e293b',
             opacity: disabled ? 0.6 : 1,
           },
           containerStyle,
@@ -296,7 +296,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
               styles.dropdownModal,
               {
                 backgroundColor: isDark ? '#1f2937' : '#ffffff',
-                borderColor: isDark ? '#374151' : '#e5e7eb',
+                borderColor: isDark ? '#4b5563' : '#1e293b',
                 height: modalHeight,
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     minHeight: 50,
     // Platform-specific shadow/elevation
     ...Platform.select({
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     maxWidth: 380,
     minWidth: 300,
     borderRadius: 16,
-    borderWidth: Platform.OS === 'ios' ? 0 : 1,
+    borderWidth: 2,
     // Platform-specific shadow/elevation for modal
     ...Platform.select({
       ios: {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     paddingHorizontal: 12,
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'transparent',
     // Platform-specific text input styling
     ...Platform.select({

@@ -168,19 +168,6 @@ export const getDeviceIdentifier = (device: any): string => {
     ? `mac_${macAddress}`
     : `device_${device?.ip || "unknown"}_${device?.name || "unnamed"}`;
 
-  console.log(
-    "📍 Device identifier for",
-    device?.name || "unnamed device",
-    ":",
-    identifier
-  );
-  console.log("📍 Device data:", {
-    mac: macAddress,
-    ip: device?.ip,
-    name: device?.name,
-    wledInfo: device?.wledInfo,
-  });
-
   return identifier;
 };
 
@@ -282,21 +269,10 @@ export const hasDeviceSeasonalPresets = async (
       {}
     );
 
-    console.log(
-      "🔍 Checking for stored presets. All stored device presets:",
-      Object.keys(allDevicePresets)
-    );
-    console.log("🔍 Looking for identifier:", deviceIdentifier);
-    console.log(
-      "🔍 Found stored presets for this device:",
-      allDevicePresets[deviceIdentifier]
-    );
-
     // Check if this device has stored presets (not just fallback defaults)
     const hasPresets =
       allDevicePresets[deviceIdentifier] &&
       Array.isArray(allDevicePresets[deviceIdentifier]);
-    console.log("🔍 Device has stored presets:", hasPresets);
 
     return hasPresets;
   } catch (error) {

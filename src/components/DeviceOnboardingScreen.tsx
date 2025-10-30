@@ -129,8 +129,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   welcomeTitle: { fontSize: 24, fontWeight: '600', textAlign: 'center', marginBottom: 8, color: isDark ? '#FFF' : '#111827' },
   welcomeText: { textAlign: 'center', lineHeight: 22, fontSize: 16, color: isDark ? '#9ca3af' : '#6b7280' },
   buttonSection: { gap: 12, paddingHorizontal: 20 },
-  primaryButton: { backgroundColor: '#3b82f6', paddingVertical: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  primaryButton: { backgroundColor: '#3b82f6', paddingVertical: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 2, borderColor: isDark ? '#4b5563' : '#1e293b' },
   primaryButtonText: { color: 'white', fontWeight: '600', fontSize: 16 },
-  secondaryButton: { backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  secondaryButton: { backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 2, borderColor: isDark ? '#4b5563' : '#d1d5db' },
   secondaryButtonText: { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '500', fontSize: 14 },
 });

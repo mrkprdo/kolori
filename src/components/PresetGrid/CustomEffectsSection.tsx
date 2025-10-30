@@ -57,7 +57,7 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
     <View
       style={[
         sharedStyles.sectionCard,
-        { backgroundColor: cardBackground, borderColor, position: 'relative' },
+        { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b', position: 'relative' },
       ]}
     >
       <TouchableOpacity
@@ -89,7 +89,7 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
                   {
                     borderRadius: 8,
                     padding: 12,
-                    borderWidth: 1,
+                    borderWidth: 2,
                     overflow: 'hidden',
                     position: 'relative',
                     backgroundColor: isCooldownActive
@@ -99,7 +99,7 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
                       : isDark
                       ? '#374151'
                       : '#f3f4f6',
-                    borderColor: isDark ? '#6b7280' : '#d1d5db',
+                    borderColor: isDark ? '#4b5563' : '#1e293b',
                     opacity: isCooldownActive ? 0.6 : 1,
                   },
                 ]}
