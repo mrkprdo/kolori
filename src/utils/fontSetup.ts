@@ -1,4 +1,4 @@
-import { Text } from 'react-native';
+import { Text } from "react-native";
 
 // Setup default font for all Text components
 export const setupDefaultFont = () => {
@@ -11,7 +11,7 @@ export const setupDefaultFont = () => {
       ...origin,
       props: {
         ...origin.props,
-        style: [{ fontFamily: 'Montserrat_400Regular' }, origin.props.style],
+        style: [{ fontFamily: "Montserrat_400Regular" }, origin.props.style],
       },
     };
   };

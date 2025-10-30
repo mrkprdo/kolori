@@ -5,12 +5,12 @@
  * Based on WLED's AudioReactive usermod UDP protocol
  */
 
-import dgram from 'react-native-udp';
-import { AudioFeatures } from './audioProcessing';
-import { logger } from './logger';
+import dgram from "react-native-udp";
+import { AudioFeatures } from "./audioProcessing";
+import { logger } from "./logger";
 
 const WLED_AUDIO_SYNC_PORT = 11988; // WLED audio sync UDP port
-const WLED_REALTIME_PORT = 21324;   // WLED realtime UDP port
+const WLED_REALTIME_PORT = 21324; // WLED realtime UDP port
 
 // Singleton socket for reuse
 let audioSocket: any = null;
@@ -24,20 +24,20 @@ let packetsDropped: number = 0;
 function getAudioSocket() {
   if (!audioSocket) {
     try {
-      audioSocket = dgram.createSocket('udp4');
+      audioSocket = dgram.createSocket("udp4");
       socketReady = false;
 
       audioSocket.bind(0, () => {
-        logger.log('📡 UDP audio socket bound and ready');
+        logger.log("📡 UDP audio socket bound and ready");
         socketReady = true;
       });
 
-      audioSocket.on('error', function(error: any) {
-        logger.error('UDP socket error:', error);
+      audioSocket.on("error", function (error: any) {
+        logger.error("UDP socket error:", error);
         socketReady = false;
       });
     } catch (error) {
-      logger.error('Failed to create UDP socket:', error);
+      logger.error("Failed to create UDP socket:", error);
       return null;
     }
   }
@@ -87,7 +87,7 @@ export function sendAudioDataToWLED(
     if (useV1) {
       // WLED AudioSync V1 packet format (for WLED < 0.14):
       // This is a simplified version - V1 has different structure
-      logger.warn('V1 protocol not fully implemented yet');
+      logger.warn("V1 protocol not fully implemented yet");
       return;
     }
 
@@ -143,7 +143,10 @@ export function sendAudioDataToWLED(
       for (let i = 0; i < targetBands; i++) {
         const sourceIndex = (i / targetBands) * melSpectrum.length;
         const lowerIndex = Math.floor(sourceIndex);
-        const upperIndex = Math.min(Math.ceil(sourceIndex), melSpectrum.length - 1);
+        const upperIndex = Math.min(
+          Math.ceil(sourceIndex),
+          melSpectrum.length - 1
+        );
         const fraction = sourceIndex - lowerIndex;
 
         const interpolated =
@@ -180,7 +183,7 @@ export function sendAudioDataToWLED(
     // Send UDP packet (don't close socket, reuse it)
     // react-native-udp expects base64 encoded string OR buffer
     // Convert Uint8Array to base64
-    let base64 = '';
+    let base64 = "";
     const len = buffer.length;
     for (let i = 0; i < len; i++) {
       base64 += String.fromCharCode(buffer[i]);
@@ -190,17 +193,29 @@ export function sendAudioDataToWLED(
     // Debug: log first few packets sent
     if (!audioSocket._debugLogged || packetsSent < 5) {
       logger.log(`📡 Packet #${packetsSent + 1} to ${deviceIp}:${port}`);
-      logger.log(`   Header: [${buffer[0]}, ${buffer[1]}, ${buffer[2]}, ${buffer[3]}, ${buffer[4]}, ${buffer[5]}] = "${String.fromCharCode(buffer[0])}${String.fromCharCode(buffer[1])}${String.fromCharCode(buffer[2])}${String.fromCharCode(buffer[3])}${String.fromCharCode(buffer[4])}"`);
+      logger.log(
+        `   Header: [${buffer[0]}, ${buffer[1]}, ${buffer[2]}, ${buffer[3]}, ${
+          buffer[4]
+        }, ${buffer[5]}] = "${String.fromCharCode(
+          buffer[0]
+        )}${String.fromCharCode(buffer[1])}${String.fromCharCode(
+          buffer[2]
+        )}${String.fromCharCode(buffer[3])}${String.fromCharCode(buffer[4])}"`
+      );
       logger.log(`   Sample Raw: ${sampleRaw.toFixed(2)} (bytes 6-9)`);
       logger.log(`   Sample Smooth: ${sampleSmooth.toFixed(2)} (bytes 10-13)`);
       logger.log(`   Peak: ${peak} (byte 14)`);
-      logger.log(`   FFT bins (bytes 16-31): [${fftData.slice(0, 16).join(', ')}]`);
+      logger.log(
+        `   FFT bins (bytes 16-31): [${fftData.slice(0, 16).join(", ")}]`
+      );
       logger.log(`   FFT Magnitude: ${fftMagnitude.toFixed(2)} (bytes 32-35)`);
       logger.log(`   Peak Freq: ${peakFrequency.toFixed(2)} Hz (bytes 36-39)`);
       logger.log(`   Total packet size: ${buffer.length} bytes`);
 
       // Log raw bytes in hex
-      const hexBytes = Array.from(buffer.slice(0, 40)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      const hexBytes = Array.from(buffer.slice(0, 40))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(" ");
       logger.log(`   Raw hex: ${hexBytes}`);
 
       if (packetsSent >= 4) {
@@ -216,7 +231,10 @@ export function sendAudioDataToWLED(
       deviceIp,
       (err: any) => {
         if (err) {
-          logger.error(`❌ Failed to send audio data to WLED ${deviceIp}:${port}:`, err);
+          logger.error(
+            `❌ Failed to send audio data to WLED ${deviceIp}:${port}:`,
+            err
+          );
           packetsDropped++;
         } else {
           packetsSent++;
@@ -224,7 +242,7 @@ export function sendAudioDataToWLED(
       }
     );
   } catch (error) {
-    logger.error('Error sending audio data to WLED:', error);
+    logger.error("Error sending audio data to WLED:", error);
   }
 }
 
@@ -255,10 +273,12 @@ export function closeAudioSocket(): void {
       audioSocket.close();
       audioSocket = null;
       socketReady = false;
-      logger.log(`📡 UDP audio socket closed (Sent: ${packetsSent}, Dropped: ${packetsDropped})`);
+      logger.log(
+        `📡 UDP audio socket closed (Sent: ${packetsSent}, Dropped: ${packetsDropped})`
+      );
       resetPacketStats();
     } catch (error) {
-      logger.error('Error closing audio socket:', error);
+      logger.error("Error closing audio socket:", error);
     }
   }
 }

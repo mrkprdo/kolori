@@ -4,7 +4,7 @@
  * Verifies if WLED device is properly configured for UDP Realtime control
  */
 
-import { logger } from './logger';
+import { logger } from "./logger";
 
 export interface WLEDConfigStatus {
   isReady: boolean;
@@ -21,7 +21,10 @@ export interface WLEDConfigStatus {
 /**
  * Check if WLED device is configured for UDP Realtime control
  */
-export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPort: number = 21324): Promise<WLEDConfigStatus> {
+export async function checkWLEDAudioReactiveConfig(
+  deviceIp: string,
+  expectedPort: number = 21324
+): Promise<WLEDConfigStatus> {
   const status: WLEDConfigStatus = {
     isReady: false,
     hasAudioReactive: false,
@@ -41,7 +44,7 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
     const infoResponse = await fetch(`http://${deviceIp}/json/info`);
 
     if (!configResponse.ok || !stateResponse.ok) {
-      status.issues.push('Failed to fetch WLED configuration');
+      status.issues.push("Failed to fetch WLED configuration");
       return status;
     }
 
@@ -50,11 +53,16 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
     const info = await infoResponse.json();
 
     // Check LED strip color order from segment config
-    let detectedColorOrder = 'RGB';
-    if (config.hw && config.hw.led && config.hw.led.ins && config.hw.led.ins[0]) {
+    let detectedColorOrder = "RGB";
+    if (
+      config.hw &&
+      config.hw.led &&
+      config.hw.led.ins &&
+      config.hw.led.ins[0]
+    ) {
       const colorOrder = config.hw.led.ins[0].order;
-      const colorOrderNames = ['GRB', 'RGB', 'BRG', 'RBG', 'GBR', 'BGR'];
-      detectedColorOrder = colorOrderNames[colorOrder] || 'RGB';
+      const colorOrderNames = ["GRB", "RGB", "BRG", "RBG", "GBR", "BGR"];
+      detectedColorOrder = colorOrderNames[colorOrder] || "RGB";
       logger.log(`🎨 LED Color Order: ${detectedColorOrder}`);
     } else {
       logger.log(`🎨 LED Color Order: Using default RGB`);
@@ -82,10 +90,12 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
 
       // Check timeout setting (optional but useful info)
       if (config.if.live.timeout !== undefined && status.udpRealtimeEnabled) {
-        logger.log(`   UDP Realtime timeout: ${config.if.live.timeout} seconds`);
+        logger.log(
+          `   UDP Realtime timeout: ${config.if.live.timeout} seconds`
+        );
       }
     } else {
-      status.issues.push('Cannot access UDP Realtime configuration');
+      status.issues.push("Cannot access UDP Realtime configuration");
     }
 
     // Also check UDP Sound Sync (informational - not needed for our approach)
@@ -106,8 +116,16 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
 
           // Check audio source setting (informational)
           if (arConfig.audioSource !== undefined) {
-            const sources = ['None', 'Microphone', 'Line-In', 'UDP Sound Sync', 'I2S'];
-            status.audioSource = sources[arConfig.audioSource] || `Unknown (${arConfig.audioSource})`;
+            const sources = [
+              "None",
+              "Microphone",
+              "Line-In",
+              "UDP Sound Sync",
+              "I2S",
+            ];
+            status.audioSource =
+              sources[arConfig.audioSource] ||
+              `Unknown (${arConfig.audioSource})`;
           }
         }
       }
@@ -120,26 +138,41 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
 
       // Note: When using UDP Realtime, the current effect doesn't matter
       // because we're controlling LEDs directly, bypassing WLED effects
-      logger.log(`   Current Effect: ${status.currentEffect} (will be overridden by UDP Realtime)`);
+      logger.log(
+        `   Current Effect: ${status.currentEffect} (will be overridden by UDP Realtime)`
+      );
     }
 
     // Overall ready status - UDP Realtime enabled AND correct port
-    status.isReady = status.udpRealtimeEnabled && (status.realtimePort === expectedPort || status.realtimePort === null);
+    status.isReady =
+      status.udpRealtimeEnabled &&
+      (status.realtimePort === expectedPort || status.realtimePort === null);
 
     logger.log(`📊 WLED Config Check for ${deviceIp}:`);
-    logger.log(`   UDP Realtime Enabled: ${status.udpRealtimeEnabled ? '✅' : '❌'}`);
-    logger.log(`   UDP Realtime Port: ${status.realtimePort || 'Unknown'} (expected: ${expectedPort})`);
-    logger.log(`   Has AudioReactive usermod: ${status.hasAudioReactive ? '✅' : 'ℹ️ (not needed)'}`);
-    logger.log(`   UDP Sound Sync: ${status.udpSyncEnabled ? '✅' : 'ℹ️ (not needed)'}`);
-    logger.log(`   Audio Source: ${status.audioSource || 'N/A (not needed)'}`);
-    logger.log(`   Ready for UDP Realtime: ${status.isReady ? '✅' : '❌'}`);
+    logger.log(
+      `   UDP Realtime Enabled: ${status.udpRealtimeEnabled ? "✅" : "❌"}`
+    );
+    logger.log(
+      `   UDP Realtime Port: ${
+        status.realtimePort || "Unknown"
+      } (expected: ${expectedPort})`
+    );
+    logger.log(
+      `   Has AudioReactive usermod: ${
+        status.hasAudioReactive ? "✅" : "ℹ️ (not needed)"
+      }`
+    );
+    logger.log(
+      `   UDP Sound Sync: ${status.udpSyncEnabled ? "✅" : "ℹ️ (not needed)"}`
+    );
+    logger.log(`   Audio Source: ${status.audioSource || "N/A (not needed)"}`);
+    logger.log(`   Ready for UDP Realtime: ${status.isReady ? "✅" : "❌"}`);
 
     if (status.issues.length > 0) {
-      logger.warn('   Issues:', status.issues);
+      logger.warn("   Issues:", status.issues);
     }
-
   } catch (error) {
-    logger.error('Failed to check WLED config:', error);
+    logger.error("Failed to check WLED config:", error);
     status.issues.push(`Failed to connect to WLED device: ${error}`);
   }
 
@@ -150,22 +183,27 @@ export async function checkWLEDAudioReactiveConfig(deviceIp: string, expectedPor
  * Enable or disable UDP Realtime on WLED device
  * Note: This changes the config which requires a reboot to persist
  */
-export async function setWLEDUdpRealtime(deviceIp: string, enable: boolean): Promise<{ success: boolean; needsReboot: boolean }> {
+export async function setWLEDUdpRealtime(
+  deviceIp: string,
+  enable: boolean
+): Promise<{ success: boolean; needsReboot: boolean }> {
   try {
-    logger.log(`🔧 ${enable ? 'Enabling' : 'Disabling'} UDP Realtime on ${deviceIp}...`);
+    logger.log(
+      `🔧 ${enable ? "Enabling" : "Disabling"} UDP Realtime on ${deviceIp}...`
+    );
 
     // WLED API: POST to /json/cfg to update config (persists across reboots)
     const response = await fetch(`http://${deviceIp}/json/cfg`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         if: {
           live: {
             en: enable, // Enable/disable UDP Realtime
-          }
-        }
+          },
+        },
       }),
     });
 
@@ -174,10 +212,12 @@ export async function setWLEDUdpRealtime(deviceIp: string, enable: boolean): Pro
       return { success: false, needsReboot: false };
     }
 
-    logger.log(`✅ UDP Realtime ${enable ? 'enabled' : 'disabled'} - reboot required`);
+    logger.log(
+      `✅ UDP Realtime ${enable ? "enabled" : "disabled"} - reboot required`
+    );
     return { success: true, needsReboot: true };
   } catch (error) {
-    logger.error('Error updating UDP Realtime:', error);
+    logger.error("Error updating UDP Realtime:", error);
     return { success: false, needsReboot: false };
   }
 }
@@ -190,9 +230,9 @@ export async function rebootWLED(deviceIp: string): Promise<boolean> {
     logger.log(`🔄 Rebooting WLED device at ${deviceIp}...`);
 
     const response = await fetch(`http://${deviceIp}/json/state`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         rb: true, // Reboot command
@@ -207,7 +247,7 @@ export async function rebootWLED(deviceIp: string): Promise<boolean> {
     logger.log(`✅ WLED reboot command sent`);
     return true;
   } catch (error) {
-    logger.error('Error rebooting WLED:', error);
+    logger.error("Error rebooting WLED:", error);
     return false;
   }
 }

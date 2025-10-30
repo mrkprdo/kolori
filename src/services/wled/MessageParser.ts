@@ -4,7 +4,7 @@
  * Parses incoming WebSocket messages (binary LED data and JSON)
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from "../../utils/logger";
 
 export interface LEDColor {
   r: number;
@@ -14,7 +14,7 @@ export interface LEDColor {
 }
 
 export interface ParsedMessage {
-  type: 'leds' | 'state' | 'info' | 'unknown';
+  type: "leds" | "state" | "info" | "unknown";
   data: any;
   matrixDimensions?: { width: number; height: number };
 }
@@ -36,11 +36,11 @@ export class MessageParser {
     }
 
     // JSON string
-    if (typeof data === 'string') {
+    if (typeof data === "string") {
       return this.parseJsonMessage(data);
     }
 
-    return { type: 'unknown', data };
+    return { type: "unknown", data };
   }
 
   /**
@@ -61,20 +61,24 @@ export class MessageParser {
 
         // Parse RGB data starting from byte 4
         let dataIndex = 4;
-        for (let led = 0; led < expectedLEDs && dataIndex + 2 < byteArray.length; led++) {
+        for (
+          let led = 0;
+          led < expectedLEDs && dataIndex + 2 < byteArray.length;
+          led++
+        ) {
           colors.push({
             r: byteArray[dataIndex],
             g: byteArray[dataIndex + 1],
             b: byteArray[dataIndex + 2],
-            w: 0
+            w: 0,
           });
           dataIndex += 3;
         }
 
         return {
-          type: 'leds',
+          type: "leds",
           data: colors,
-          matrixDimensions: { width, height }
+          matrixDimensions: { width, height },
         };
       }
 
@@ -100,12 +104,15 @@ export class MessageParser {
               r: byteArray[i],
               g: byteArray[i + 1],
               b: byteArray[i + 2],
-              w: bytesPerLed === 4 && i + 3 < byteArray.length ? byteArray[i + 3] : undefined
+              w:
+                bytesPerLed === 4 && i + 3 < byteArray.length
+                  ? byteArray[i + 3]
+                  : undefined,
             });
           }
         }
 
-        return { type: 'leds', data: colors };
+        return { type: "leds", data: colors };
       }
     }
 
@@ -121,12 +128,15 @@ export class MessageParser {
           r: byteArray[i],
           g: byteArray[i + 1],
           b: byteArray[i + 2],
-          w: bytesPerLed === 4 && i + 3 < byteArray.length ? byteArray[i + 3] : undefined
+          w:
+            bytesPerLed === 4 && i + 3 < byteArray.length
+              ? byteArray[i + 3]
+              : undefined,
         });
       }
     }
 
-    return { type: 'leds', data: colors };
+    return { type: "leds", data: colors };
   }
 
   /**
@@ -142,43 +152,54 @@ export class MessageParser {
           r: led[0],
           g: led[1],
           b: led[2],
-          w: led[3]
+          w: led[3],
         }));
-        return { type: 'leds', data: colors };
+        return { type: "leds", data: colors };
       }
 
       // State update - WLED sends state directly at root level
       // Check for common state properties (including "v" which WLED sends for state updates)
-      if (json && (json.on !== undefined || json.bri !== undefined || json.ps !== undefined || json.v !== undefined)) {
-        logger.log('📥 Detected state update:', json);
-        return { type: 'state', data: json };
+      if (
+        json &&
+        (json.on !== undefined ||
+          json.bri !== undefined ||
+          json.ps !== undefined ||
+          json.v !== undefined)
+      ) {
+        logger.log("📥 Detected state update:", json);
+        return { type: "state", data: json };
       }
 
       // Device info - check for info-specific properties
-      if (json && (json.ver !== undefined || json.name !== undefined || json.leds?.count !== undefined)) {
-        return { type: 'info', data: json };
+      if (
+        json &&
+        (json.ver !== undefined ||
+          json.name !== undefined ||
+          json.leds?.count !== undefined)
+      ) {
+        return { type: "info", data: json };
       }
 
       // Command acknowledgment - WLED sends {success: true} for command responses
       if (json && json.success !== undefined) {
         // Silently ignore success responses (no need to log)
-        return { type: 'unknown', data: json };
+        return { type: "unknown", data: json };
       }
 
       // Legacy: check nested state/info
       if (json.state) {
-        return { type: 'state', data: json.state };
+        return { type: "state", data: json.state };
       }
 
       if (json.info) {
-        return { type: 'info', data: json.info };
+        return { type: "info", data: json.info };
       }
 
-      logger.log('📥 Unknown WebSocket message:', json);
-      return { type: 'unknown', data: json };
+      logger.log("📥 Unknown WebSocket message:", json);
+      return { type: "unknown", data: json };
     } catch (error) {
-      logger.error('Failed to parse JSON message:', error);
-      return { type: 'unknown', data: jsonString };
+      logger.error("Failed to parse JSON message:", error);
+      return { type: "unknown", data: jsonString };
     }
   }
 }

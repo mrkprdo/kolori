@@ -8,9 +8,9 @@
  * - Connection state management
  */
 
-import { CommandQueue } from './CommandQueue';
-import { MessageParser, LEDColor } from './MessageParser';
-import { logger } from '../../utils/logger';
+import { CommandQueue } from "./CommandQueue";
+import { MessageParser, LEDColor } from "./MessageParser";
+import { logger } from "../../utils/logger";
 
 type EventHandler = (...args: any[]) => void;
 
@@ -28,7 +28,7 @@ export class WledWebSocketService {
 
   // Connection state
   private currentIp: string | null = null;
-  private currentProtocol: 'ws' | 'wss' = 'ws';
+  private currentProtocol: "ws" | "wss" = "ws";
   private isManualDisconnect: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
@@ -38,7 +38,7 @@ export class WledWebSocketService {
   private currentState: DeviceState = {
     on: false,
     brightness: 128,
-    activePreset: null
+    activePreset: null,
   };
   private liveLedData: LEDColor[] = [];
 
@@ -49,7 +49,7 @@ export class WledWebSocketService {
   /**
    * Connect to WLED device
    */
-  async connect(ip: string, protocol: 'ws' | 'wss' = 'ws'): Promise<void> {
+  async connect(ip: string, protocol: "ws" | "wss" = "ws"): Promise<void> {
     logger.log(`🔌 Connecting to ${protocol}://${ip}/ws`);
 
     // Disconnect existing connection first
@@ -67,15 +67,15 @@ export class WledWebSocketService {
 
     try {
       this.ws = new WebSocket(wsUrl);
-      this.ws.binaryType = 'arraybuffer';
+      this.ws.binaryType = "arraybuffer";
 
       this.ws.onopen = () => this.handleOpen();
       this.ws.onmessage = (event) => this.handleMessage(event);
       this.ws.onclose = (event) => this.handleClose(event);
       this.ws.onerror = (error) => this.handleError(error);
     } catch (error) {
-      logger.error('Failed to create WebSocket:', error);
-      this.emit('error', error);
+      logger.error("Failed to create WebSocket:", error);
+      this.emit("error", error);
     }
   }
 
@@ -83,7 +83,7 @@ export class WledWebSocketService {
    * Disconnect from device
    */
   disconnect(): void {
-    logger.log('🔌 Disconnecting WebSocket');
+    logger.log("🔌 Disconnecting WebSocket");
 
     this.isManualDisconnect = true;
 
@@ -98,8 +98,11 @@ export class WledWebSocketService {
       this.ws.onclose = null;
       this.ws.onerror = null;
 
-      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.close(1000, 'Manual disconnect');
+      if (
+        this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING
+      ) {
+        this.ws.close(1000, "Manual disconnect");
       }
 
       this.ws = null;
@@ -119,7 +122,7 @@ export class WledWebSocketService {
   /**
    * Send command (queued)
    */
-  sendCommand(command: object, priority: 'normal' | 'urgent' = 'normal'): void {
+  sendCommand(command: object, priority: "normal" | "urgent" = "normal"): void {
     this.commandQueue.enqueue(command, priority);
   }
 
@@ -158,7 +161,7 @@ export class WledWebSocketService {
    * Emit event to all subscribers
    */
   private emit(event: string, ...args: any[]): void {
-    this.eventHandlers.get(event)?.forEach(handler => {
+    this.eventHandlers.get(event)?.forEach((handler) => {
       try {
         handler(...args);
       } catch (error) {
@@ -172,17 +175,20 @@ export class WledWebSocketService {
    */
   private sendRaw(command: object): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      logger.warn('⚠️ Cannot send command - WebSocket not connected. State:', this.ws?.readyState);
+      logger.warn(
+        "⚠️ Cannot send command - WebSocket not connected. State:",
+        this.ws?.readyState
+      );
       return false;
     }
 
     try {
       const cmdStr = JSON.stringify(command);
-      logger.log('📤 Sending WebSocket command:', cmdStr);
+      logger.log("📤 Sending WebSocket command:", cmdStr);
       this.ws.send(cmdStr);
       return true;
     } catch (error) {
-      logger.error('Failed to send command:', error);
+      logger.error("Failed to send command:", error);
       return false;
     }
   }
@@ -191,13 +197,13 @@ export class WledWebSocketService {
    * Handle WebSocket open
    */
   private handleOpen(): void {
-    logger.log('✅ WebSocket connected');
+    logger.log("✅ WebSocket connected");
     this.reconnectAttempts = 0;
-    this.emit('connected', true);
+    this.emit("connected", true);
 
     // Request initial state and info
-    this.sendCommand({ info: {} }, 'urgent');
-    this.sendCommand({ state: {} }, 'urgent');
+    this.sendCommand({ info: {} }, "urgent");
+    this.sendCommand({ state: {} }, "urgent");
   }
 
   /**
@@ -208,32 +214,38 @@ export class WledWebSocketService {
       const parsed = await MessageParser.parse(event.data);
 
       switch (parsed.type) {
-        case 'leds':
+        case "leds":
           this.liveLedData = parsed.data;
-          this.emit('leds', parsed.data, parsed.matrixDimensions);
+          this.emit("leds", parsed.data, parsed.matrixDimensions);
           break;
 
-        case 'state':
+        case "state":
           // Normalize WLED state property names
           const normalizedState = {
             ...parsed.data,
-            brightness: parsed.data.bri !== undefined ? parsed.data.bri : parsed.data.brightness,
-            activePreset: parsed.data.ps !== undefined ? parsed.data.ps : parsed.data.activePreset
+            brightness:
+              parsed.data.bri !== undefined
+                ? parsed.data.bri
+                : parsed.data.brightness,
+            activePreset:
+              parsed.data.ps !== undefined
+                ? parsed.data.ps
+                : parsed.data.activePreset,
           };
           this.currentState = { ...this.currentState, ...normalizedState };
-          logger.log('📊 State updated:', this.currentState);
-          this.emit('state', this.currentState);
+          logger.log("📊 State updated:", this.currentState);
+          this.emit("state", this.currentState);
           break;
 
-        case 'info':
-          this.emit('info', parsed.data);
+        case "info":
+          this.emit("info", parsed.data);
           break;
 
         default:
-          this.emit('message', parsed.data);
+          this.emit("message", parsed.data);
       }
     } catch (error) {
-      logger.error('Error handling WebSocket message:', error);
+      logger.error("Error handling WebSocket message:", error);
     }
   }
 
@@ -241,15 +253,23 @@ export class WledWebSocketService {
    * Handle WebSocket close
    */
   private handleClose(event: CloseEvent): void {
-    logger.log('❌ WebSocket closed');
-    this.emit('connected', false);
+    logger.log("❌ WebSocket closed");
+    this.emit("connected", false);
 
     // Auto-reconnect if not manual disconnect
-    if (!this.isManualDisconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+    if (
+      !this.isManualDisconnect &&
+      this.reconnectAttempts < this.maxReconnectAttempts
+    ) {
       this.reconnect();
     } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.warn(`⚠️ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
-      this.emit('connectionFailed', { reason: 'max_attempts_reached', attempts: this.reconnectAttempts });
+      logger.warn(
+        `⚠️ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`
+      );
+      this.emit("connectionFailed", {
+        reason: "max_attempts_reached",
+        attempts: this.reconnectAttempts,
+      });
     }
   }
 
@@ -257,26 +277,27 @@ export class WledWebSocketService {
    * Handle WebSocket error
    */
   private handleError(error: Event): void {
-    const errorMessage = (error as any)?.message || '';
+    const errorMessage = (error as any)?.message || "";
 
     // Ignore non-critical masking errors
-    if (errorMessage.includes('Server-sent frames must not be masked')) {
+    if (errorMessage.includes("Server-sent frames must not be masked")) {
       return;
     }
 
     // Check if it's a connectivity/offline issue
-    const isConnectivityError = errorMessage.includes('Host is down') ||
-                                errorMessage.includes('Network is unreachable') ||
-                                errorMessage.includes('Connection refused') ||
-                                errorMessage.includes('timeout');
+    const isConnectivityError =
+      errorMessage.includes("Host is down") ||
+      errorMessage.includes("Network is unreachable") ||
+      errorMessage.includes("Connection refused") ||
+      errorMessage.includes("timeout");
 
     if (isConnectivityError) {
-      logger.warn('⚠️ Device may be offline or unreachable:', errorMessage);
+      logger.warn("⚠️ Device may be offline or unreachable:", errorMessage);
     } else {
-      logger.error('WebSocket error:', error);
+      logger.warn("WebSocket failed:", error);
     }
 
-    this.emit('error', error);
+    this.emit("error", error);
   }
 
   /**
@@ -288,8 +309,13 @@ export class WledWebSocketService {
     // Increment attempts before scheduling reconnection
     this.reconnectAttempts++;
 
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
-    logger.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    const delay = Math.min(
+      1000 * Math.pow(2, this.reconnectAttempts - 1),
+      30000
+    );
+    logger.log(
+      `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    );
 
     this.reconnectTimeout = setTimeout(() => {
       this.connect(this.currentIp!, this.currentProtocol);
@@ -297,7 +323,7 @@ export class WledWebSocketService {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

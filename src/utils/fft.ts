@@ -13,7 +13,7 @@ export function fft(input: number[]): number[] {
 
   // Check if power of 2
   if ((n & (n - 1)) !== 0) {
-    throw new Error('FFT size must be a power of 2');
+    throw new Error("FFT size must be a power of 2");
   }
 
   // Create complex arrays (real and imaginary parts)

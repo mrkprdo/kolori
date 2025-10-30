@@ -1,6 +1,6 @@
-import { checkWledHeartbeat } from '../config/wledApi';
-import { logger } from '../utils/logger';
-import { WledDevice } from '../types';
+import { checkWledHeartbeat } from "../config/wledApi";
+import { logger } from "../utils/logger";
+import { WledDevice } from "../types";
 
 export interface DeviceStatus {
   deviceId: number;
@@ -33,7 +33,7 @@ class DeviceMonitorService {
     this.devices = devices;
     this.isMonitoring = true;
 
-    logger.log('🔍 Device monitor started with', devices.length, 'devices');
+    logger.log("🔍 Device monitor started with", devices.length, "devices");
 
     // Initial check
     this.checkAllDevices();
@@ -53,7 +53,7 @@ class DeviceMonitorService {
       this.monitoringInterval = null;
     }
     this.isMonitoring = false;
-    logger.log('⏹️ Device monitor stopped');
+    logger.log("⏹️ Device monitor stopped");
   };
 
   /**
@@ -121,7 +121,9 @@ class DeviceMonitorService {
     const startTime = Date.now();
 
     // Create promises for all device checks
-    const checkPromises = this.devices.map(device => this.checkSingleDevice(device));
+    const checkPromises = this.devices.map((device) =>
+      this.checkSingleDevice(device)
+    );
 
     try {
       // Run all checks in parallel
@@ -129,7 +131,7 @@ class DeviceMonitorService {
       const statuses: DeviceStatus[] = [];
 
       results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           statuses.push(result.value);
         } else {
           // Handle failed check
@@ -139,15 +141,20 @@ class DeviceMonitorService {
             deviceId: device.id,
             isOnline: false,
             lastChecked: Date.now(),
-            consecutiveFailures: (previousStatus?.consecutiveFailures || 0) + 1
+            consecutiveFailures: (previousStatus?.consecutiveFailures || 0) + 1,
           };
           statuses.push(failedStatus);
-          logger.error('Device check failed for', device.name, ':', result.reason);
+          logger.error(
+            "Device check failed for",
+            device.name,
+            ":",
+            result.reason
+          );
         }
       });
 
       // Update internal status map
-      statuses.forEach(status => {
+      statuses.forEach((status) => {
         this.currentStatuses.set(status.deviceId, status);
       });
 
@@ -155,21 +162,24 @@ class DeviceMonitorService {
       this.notifyCallbacks(statuses);
 
       // Only log if there are offline devices or errors
-      const onlineCount = statuses.filter(s => s.isOnline).length;
+      const onlineCount = statuses.filter((s) => s.isOnline).length;
       if (onlineCount < statuses.length) {
         const totalTime = Date.now() - startTime;
-        logger.log(`⚠️ Device check: ${onlineCount}/${statuses.length} online (${totalTime}ms)`);
+        logger.log(
+          `⚠️ Device check: ${onlineCount}/${statuses.length} online (${totalTime}ms)`
+        );
       }
-
     } catch (error) {
-      logger.error('Device monitoring error:', error);
+      logger.error("Device monitoring error:", error);
     }
-  }
+  };
 
   /**
    * Check connectivity for a single device with retry logic
    */
-  private readonly checkSingleDevice = async (device: WledDevice): Promise<DeviceStatus> => {
+  private readonly checkSingleDevice = async (
+    device: WledDevice
+  ): Promise<DeviceStatus> => {
     const startTime = Date.now();
     const deviceAddress = device.bestAddress || device.ip;
     const previousStatus = this.currentStatuses.get(device.id);
@@ -180,7 +190,7 @@ class DeviceMonitorService {
         deviceId: device.id,
         isOnline: false,
         lastChecked: Date.now(),
-        consecutiveFailures: failures
+        consecutiveFailures: failures,
       };
     }
 
@@ -195,53 +205,68 @@ class DeviceMonitorService {
           isOnline: true,
           lastChecked: Date.now(),
           responseTime,
-          consecutiveFailures: 0
+          consecutiveFailures: 0,
         };
       } else {
         // Device check failed - increment failure count
         const failures = (previousStatus?.consecutiveFailures || 0) + 1;
         const shouldMarkOffline = failures >= this.MAX_CONSECUTIVE_FAILURES;
-        
+
         // If we haven't reached max failures yet, keep the device as online if it was previously online
-        const isOnline = shouldMarkOffline ? false : (previousStatus?.isOnline || false);
-        
-        logger.log(`Device ${device.name} failed check ${failures}/${this.MAX_CONSECUTIVE_FAILURES}${shouldMarkOffline ? ' - marking offline' : ''}`);
+        const isOnline = shouldMarkOffline
+          ? false
+          : previousStatus?.isOnline || false;
+
+        logger.log(
+          `Device ${device.name} failed check ${failures}/${
+            this.MAX_CONSECUTIVE_FAILURES
+          }${shouldMarkOffline ? " - marking offline" : ""}`
+        );
 
         return {
           deviceId: device.id,
           isOnline,
           lastChecked: Date.now(),
-          consecutiveFailures: failures
+          consecutiveFailures: failures,
         };
       }
     } catch (error) {
       // Network error or timeout - increment failure count
       const failures = (previousStatus?.consecutiveFailures || 0) + 1;
       const shouldMarkOffline = failures >= this.MAX_CONSECUTIVE_FAILURES;
-      
+
       // If we haven't reached max failures yet, keep the device as online if it was previously online
-      const isOnline = shouldMarkOffline ? false : (previousStatus?.isOnline || false);
-      
-      logger.log(`Device ${device.name} connection error ${failures}/${this.MAX_CONSECUTIVE_FAILURES}${shouldMarkOffline ? ' - marking offline' : ''}:`, error);
+      const isOnline = shouldMarkOffline
+        ? false
+        : previousStatus?.isOnline || false;
+
+      logger.log(
+        `Device ${device.name} connection error ${failures}/${
+          this.MAX_CONSECUTIVE_FAILURES
+        }${shouldMarkOffline ? " - marking offline" : ""}:`,
+        error
+      );
 
       return {
         deviceId: device.id,
         isOnline,
         lastChecked: Date.now(),
-        consecutiveFailures: failures
+        consecutiveFailures: failures,
       };
     }
-  }
+  };
 
   /**
    * Notify all registered callbacks with status updates
    */
-  private readonly notifyCallbacks = (statuses: readonly DeviceStatus[]): void => {
-    this.statusCallbacks.forEach(callback => {
+  private readonly notifyCallbacks = (
+    statuses: readonly DeviceStatus[]
+  ): void => {
+    this.statusCallbacks.forEach((callback) => {
       try {
         callback([...statuses]);
       } catch (error) {
-        logger.error('Status callback error:', error);
+        logger.error("Status callback error:", error);
       }
     });
   };
@@ -256,19 +281,18 @@ class DeviceMonitorService {
     lastCheckTime: number | null;
   } => {
     const statuses = Array.from(this.currentStatuses.values());
-    const onlineCount = statuses.filter(status => status.isOnline).length;
-    
-    const lastCheckTimes = statuses.map(status => status.lastChecked);
-    
-    const lastCheckTime = lastCheckTimes.length > 0 
-      ? Math.max(...lastCheckTimes) 
-      : null;
+    const onlineCount = statuses.filter((status) => status.isOnline).length;
+
+    const lastCheckTimes = statuses.map((status) => status.lastChecked);
+
+    const lastCheckTime =
+      lastCheckTimes.length > 0 ? Math.max(...lastCheckTimes) : null;
 
     return {
       isMonitoring: this.isMonitoring,
       deviceCount: this.devices.length,
       onlineCount,
-      lastCheckTime
+      lastCheckTime,
     };
   };
 }
