@@ -2035,7 +2035,10 @@ export default function PresetGrid({
           <View
             style={[
               fabStyles.fabOptionsContainer,
-              { backgroundColor: cardBackground },
+              {
+                backgroundColor: cardBackground,
+                borderColor: isDark ? '#4b5563' : '#1e293b'
+              },
             ]}
           >
             <Text style={[fabStyles.fabTitle, { color: textColor }]}>

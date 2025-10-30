@@ -128,7 +128,13 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
           style={styles.dropdownOverlay}
         >
           <View
-            style={[styles.dropdownModal, { backgroundColor: cardBackground }]}
+            style={[
+              styles.dropdownModal,
+              {
+                backgroundColor: cardBackground,
+                borderColor: isDark ? '#4b5563' : '#1e293b'
+              }
+            ]}
           >
             <Text style={[styles.dropdownTitle, { color: textColor }]}>
               Select Device
