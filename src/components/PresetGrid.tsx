@@ -79,7 +79,6 @@ import PresetCard from "./PresetGrid/PresetCard";
 import MemoizedPresetCard from "./PresetGrid/MemoizedPresetCard";
 import { fabStyles } from "./PresetGrid/FABStyles";
 import { deleteModeStyles } from "./PresetGrid/DeleteModeStyles";
-import { checkWLEDAudioReactiveConfig } from "../utils/wledConfigChecker";
 
 interface PresetGridProps {
   activePreset: string | number | null;
@@ -822,23 +821,6 @@ export default function PresetGrid({
         logger.log(`💡 Brightness updated from refresh: ${newBrightness}`);
       }
 
-      // Also check UDP Realtime status after refresh
-      if (currentDevice?.ip && currentDevice?.isConnected) {
-        try {
-          const status = await checkWLEDAudioReactiveConfig(currentDevice.ip);
-          // If UDP Realtime is enabled, block presets access
-          if (status.udpRealtimeEnabled) {
-            logger.log('⚠️ UDP Realtime detected as enabled after refresh - blocking access');
-            setIsAudioReactiveActive(true);
-          } else if (!status.udpRealtimeEnabled && isAudioReactiveActive) {
-            // If UDP Realtime is disabled but we're showing the overlay, hide it
-            logger.log('✅ UDP Realtime is disabled after refresh - allowing preset access');
-            setIsAudioReactiveActive(false);
-          }
-        } catch (error) {
-          logger.error('Failed to check UDP Realtime status on refresh:', error);
-        }
-      }
     } catch (error) {
       logger.error("Failed to refresh presets:", error);
     } finally {
@@ -848,34 +830,8 @@ export default function PresetGrid({
     onRefreshPresets,
     isRefreshing,
     sliderBrightness,
-    isAudioReactiveActive,
   ]);
 
-  // Check UDP Realtime status when switching to presets page (page 0)
-  useEffect(() => {
-    const checkUdpStatusOnPageChange = async () => {
-      // Only check when on page 0 (presets) and device is connected
-      if (currentPage === 0 && activeDevice?.ip && activeDevice?.isConnected) {
-        try {
-          const status = await checkWLEDAudioReactiveConfig(activeDevice.ip);
-
-          // If UDP Realtime is enabled, block presets access
-          if (status.udpRealtimeEnabled) {
-            logger.log('⚠️ UDP Realtime is enabled when navigating to presets page - blocking access');
-            setIsAudioReactiveActive(true);
-          } else if (!status.udpRealtimeEnabled && isAudioReactiveActive) {
-            // If UDP Realtime is disabled but we're showing the overlay, hide it
-            logger.log('✅ UDP Realtime is disabled - allowing preset access');
-            setIsAudioReactiveActive(false);
-          }
-        } catch (error) {
-          logger.error('Failed to check UDP Realtime status on page change:', error);
-        }
-      }
-    };
-
-    checkUdpStatusOnPageChange();
-  }, [currentPage, activeDevice?.ip, activeDevice?.isConnected, isAudioReactiveActive]);
 
   // Animation coordination (non-blocking)
   const fabAnimationInProgress = useRef(false);
@@ -1760,7 +1716,6 @@ export default function PresetGrid({
             borderColor={borderColor}
             textColor={textColor}
             subtextColor={subtextColor}
-            onBrightnessChange={onBrightnessChange}
             activeDeviceIp={activeDevice?.ip}
             isDeviceConnected={activeDevice?.isConnected}
             onAudioReactiveChange={setIsAudioReactiveActive}

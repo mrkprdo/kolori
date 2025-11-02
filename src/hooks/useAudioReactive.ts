@@ -207,7 +207,7 @@ export function useAudioReactive(
         // Extract audio features
         const features = extractAudioFeatures(normalizedMelSpec);
 
-        // Call direct callback immediately (for UDP sending - no React re-render)
+        // Call direct callback immediately (for DDP sending - no React re-render)
         if (audioCallbackRef.current) {
           audioCallbackRef.current(features, normalizedMelSpec);
         }
