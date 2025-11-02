@@ -1716,7 +1716,6 @@ export default function PresetGrid({
             borderColor={borderColor}
             textColor={textColor}
             subtextColor={subtextColor}
-            onBrightnessChange={onBrightnessChange}
             activeDeviceIp={activeDevice?.ip}
             isDeviceConnected={activeDevice?.isConnected}
             onAudioReactiveChange={setIsAudioReactiveActive}
