@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
+import { Picker } from '@react-native-picker/picker';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sharedStyles } from './styles';
 import { useAudioReactive } from '../../hooks/useAudioReactive';
 import AudioVisualizer from '../AudioVisualizer';
-import { sendRealtimeToWLED, closeRealtimeSocket, getRealtimePacketStats, resetRealtimePacketStats, resetRealtimeState, sendTestPatternOnce, turnOffAllLEDs } from '../../utils/wledUdpRealtime';
-import { checkWLEDAudioReactiveConfig, WLEDConfigStatus, setWLEDUdpRealtime, rebootWLED } from '../../utils/wledConfigChecker';
+import AudioReactiveSettingsModal from '../AudioReactiveSettingsModal';
+import { sendDdpToWLED, closeDdpSocket, getDdpPacketStats, resetDdpPacketStats, resetDdpState, sendBlankFrame } from '../../utils/wledDdp';
+import { LEDFX_EFFECTS, EffectType, EffectConfig } from '../../utils/ledfxEffects';
 
 interface AudioReactiveSectionProps {
   isDark: boolean;
@@ -15,7 +17,6 @@ interface AudioReactiveSectionProps {
   borderColor: string;
   textColor: string;
   subtextColor: string;
-  onBrightnessChange?: (brightness: number) => void;
   activeDeviceIp?: string;
   isDeviceConnected?: boolean;
   onAudioReactiveChange?: (isActive: boolean) => void;
@@ -24,15 +25,15 @@ interface AudioReactiveSectionProps {
 /**
  * Audio Reactive Section Component
  *
- * Displays audio reactive controls and live frequency visualizer for WLED effects.
- * Based on LedFx's audio processing algorithm using FFT and mel filterbank.
+ * LedFx-style audio reactive visualizations using DDP protocol.
+ * Processes audio locally and sends RGB pixel data to WLED via DDP (port 4048).
  *
- * IMPORTANT: For WLED to respond to audio reactive effects, you must:
- * 1. Enable "Audio Reactive" usermod in WLED (Settings > Usermods > AudioReactive)
- * 2. Set "UDP Sound Sync" to enabled in WLED
- * 3. Select an audio reactive effect (e.g., "Waverly", "GEQ", "Akemi")
- * 4. Make sure your WLED device is on the same network
- * 5. Check that UDP port matches (default: 11988)
+ * Features:
+ * - 6 classic LedFx effects (Wavelength, Energy, Scroll, Bars, Pulse, Wave)
+ * - Real-time FFT audio processing with mel-scale filterbank
+ * - DDP protocol for reliable LED streaming
+ * - Live audio visualizer
+ * - No WLED configuration required - works out of the box!
  */
 const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   isDark,
@@ -40,7 +41,6 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   borderColor,
   textColor,
   subtextColor,
-  onBrightnessChange,
   activeDeviceIp,
   isDeviceConnected = false,
   onAudioReactiveChange,
@@ -51,8 +51,6 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
     melSpectrum,
     startAudioCapture,
     stopAudioCapture,
-    config,
-    updateConfig,
     error,
     setAudioCallback,
   } = useAudioReactive();
@@ -62,17 +60,60 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   const [packetStats, setPacketStats] = useState({ sent: 0, dropped: 0 });
   const [packetsPerSecond, setPacketsPerSecond] = useState(0);
   const [numLeds, setNumLeds] = useState(50);
-  const [testMode, setTestMode] = useState(false);
-  const [configStatus, setConfigStatus] = useState<WLEDConfigStatus | null>(null);
-  const [checkingConfig, setCheckingConfig] = useState(false);
-  const [enablingUdp, setEnablingUdp] = useState(false);
-  const [rebooting, setRebooting] = useState(false);
-  const [effectType, setEffectType] = useState<'spectrum' | 'volume' | 'waves'>('spectrum');
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [sensitivity, setSensitivity] = useState(1.0);
+  const [ledOffset, setLedOffset] = useState(15); // LED offset compensation (default 15)
 
-  // Refs for intervals and stats tracking
-  const testIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Effect selection and configuration
+  const [selectedEffect, setSelectedEffect] = useState<EffectType>('wavelength');
+  const [effectConfig, setEffectConfig] = useState<EffectConfig>({
+    brightness: 1.0, // Full brightness by default
+    speed: 2,
+    blur: 0.3,
+  });
+
+  // Refs for stats tracking
   const previousSentRef = React.useRef(0);
   const lastStatsUpdateRef = React.useRef(0);
+
+  // Handle effect change - turn off LEDs before switching
+  const handleEffectChange = (newEffect: EffectType) => {
+    if (activeDeviceIp && newEffect !== selectedEffect) {
+      // Send blank frame to turn off LEDs (with offset compensation)
+      sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
+      // Reset effect state
+      resetDdpState();
+      // Update selected effect
+      setSelectedEffect(newEffect);
+    }
+  };
+
+  // Load LED offset from storage on mount
+  useEffect(() => {
+    const loadLedOffset = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@audio_reactive_led_offset');
+        if (saved !== null) {
+          setLedOffset(parseInt(saved, 10));
+        }
+      } catch (error) {
+        console.error('Failed to load LED offset:', error);
+      }
+    };
+    loadLedOffset();
+  }, []);
+
+  // Save LED offset to storage whenever it changes
+  useEffect(() => {
+    const saveLedOffset = async () => {
+      try {
+        await AsyncStorage.setItem('@audio_reactive_led_offset', ledOffset.toString());
+      } catch (error) {
+        console.error('Failed to save LED offset:', error);
+      }
+    };
+    saveLedOffset();
+  }, [ledOffset]);
 
   // Detect LED count from WLED device
   useEffect(() => {
@@ -104,13 +145,10 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
 
   const handleToggleAudioReactive = async () => {
     if (isRecording) {
-      // Turn off all LEDs before stopping
-      if (activeDeviceIp) {
-        turnOffAllLEDs(activeDeviceIp, numLeds);
-      }
-
+      // Stop audio capture
       stopAudioCapture();
-      closeRealtimeSocket(); // Close UDP socket when stopping
+      closeDdpSocket(); // Close DDP socket
+      resetDdpState(); // Reset effect state
       setAudioReactiveEnabled(false);
     } else {
       // Check if device is connected
@@ -119,134 +157,42 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
         return;
       }
 
+      // Turn off LEDs first to clear any existing WLED state (with offset compensation)
+      sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
+      resetDdpState(); // Reset effect state for clean start
+
       // Show loading state
       setIsStarting(true);
-      setTestMode(false);
-      resetRealtimeState();
-      resetRealtimePacketStats(); // Reset stats for new session
+      resetDdpPacketStats(); // Reset stats for new session
 
-      // Check UDP Realtime status before starting
+      // Start audio capture - DDP works out of the box, no WLED config needed!
       try {
-        const status = await checkWLEDAudioReactiveConfig(activeDeviceIp);
-        setConfigStatus(status);
-
-        if (!status.udpRealtimeEnabled) {
-          setIsStarting(false);
-          alert('UDP Realtime is not enabled on your WLED device.\n\nPlease tap "Enable UDP" below to enable it, or enable it manually in WLED settings:\nSettings > Sync Interfaces > Realtime UDP');
-          return;
+        const success = await startAudioCapture();
+        setIsStarting(false);
+        if (success) {
+          setAudioReactiveEnabled(true);
+          activateKeepAwakeAsync(); // Keep screen awake during audio reactive
         }
-
-        // UDP Realtime is enabled, proceed with starting audio
-        startAudioCapture().then((success) => {
-          setIsStarting(false);
-          if (success) {
-            setAudioReactiveEnabled(true);
-            // Clear any test patterns
-            if (activeDeviceIp) {
-              turnOffAllLEDs(activeDeviceIp, numLeds);
-            }
-          }
-        }).catch(() => {
-          setIsStarting(false);
-        });
       } catch (error) {
         setIsStarting(false);
-        alert('Failed to check WLED configuration. Please ensure your device is connected.');
-        console.error('Config check error:', error);
+        alert('Failed to start audio capture. Please check microphone permissions.');
+        console.error('Audio capture error:', error);
       }
     }
   };
 
-  const handleCheckConfig = async () => {
-    if (!activeDeviceIp) return;
-
-    setCheckingConfig(true);
-    try {
-      const status = await checkWLEDAudioReactiveConfig(activeDeviceIp);
-      setConfigStatus(status);
-    } catch (error) {
-      console.error('Failed to check WLED config:', error);
-    } finally {
-      setCheckingConfig(false);
-    }
-  };
-
-  const handleEnableUdp = async () => {
-    if (!activeDeviceIp) return;
-
-    setEnablingUdp(true);
-    try {
-      const enable = !configStatus?.udpRealtimeEnabled;
-      const result = await setWLEDUdpRealtime(activeDeviceIp, enable);
-
-      if (result.success) {
-        // Wait a moment for WLED to apply the change, then re-check
-        setTimeout(async () => {
-          await handleCheckConfig();
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Failed to toggle UDP Realtime:', error);
-    } finally {
-      setEnablingUdp(false);
-    }
-  };
-
-  const handleReboot = async () => {
-    if (!activeDeviceIp) return;
-
-    setRebooting(true);
-    try {
-      const success = await rebootWLED(activeDeviceIp);
-      if (success) {
-        // Wait 5 seconds for device to reboot, then re-check
-        setTimeout(async () => {
-          await handleCheckConfig();
-          setRebooting(false);
-        }, 5000);
-      } else {
-        setRebooting(false);
-      }
-    } catch (error) {
-      console.error('Failed to reboot WLED:', error);
-      setRebooting(false);
-    }
-  };
-
-  const handleTestUDP = () => {
-    if (!activeDeviceIp) {
-      alert('No device connected! Please connect to a WLED device first.');
-      return;
-    }
-
-    setTestMode(!testMode);
-  };
-
-  const handleReset = () => {
-    if (activeDeviceIp) {
-      turnOffAllLEDs(activeDeviceIp, numLeds);
-    }
-    setTestMode(false);
-    setConfigStatus(null);
-    if (isRecording) {
-      stopAudioCapture();
-      closeRealtimeSocket();
-      setAudioReactiveEnabled(false);
-    }
-  };
-
-  // Setup direct audio callback for high-performance UDP sending (bypasses React re-renders)
+  // Setup DDP audio callback - sends RGB pixel data directly to WLED
   React.useEffect(() => {
     if (audioReactiveEnabled && isRecording && activeDeviceIp) {
       // Set up direct callback that runs on every audio frame
       setAudioCallback((features, spectrum) => {
-        // Send UDP packet with LED colors (no React re-render!)
-        sendRealtimeToWLED(activeDeviceIp, features, spectrum, numLeds, effectType);
+        // Send RGB pixel data via DDP using selected effect
+        sendDdpToWLED(activeDeviceIp, features, spectrum, numLeds, selectedEffect, effectConfig, ledOffset);
 
         // Update stats every second (throttled to avoid excessive state updates)
         const now = Date.now();
         if (now - lastStatsUpdateRef.current >= 1000) {
-          const stats = getRealtimePacketStats();
+          const stats = getDdpPacketStats();
           const pps = stats.sent - previousSentRef.current;
           setPacketStats(stats);
           setPacketsPerSecond(pps);
@@ -262,7 +208,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
     return () => {
       setAudioCallback(null);
     };
-  }, [audioReactiveEnabled, isRecording, activeDeviceIp, effectType, numLeds, setAudioCallback]);
+  }, [audioReactiveEnabled, isRecording, activeDeviceIp, selectedEffect, effectConfig, numLeds, ledOffset, setAudioCallback]);
 
   // Notify parent when AR state changes
   React.useEffect(() => {
@@ -284,47 +230,6 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       deactivateKeepAwake('audio-reactive');
     };
   }, [audioReactiveEnabled, isRecording]);
-
-  // Update packet stats for test mode (audio mode updates inline above)
-  React.useEffect(() => {
-    if (!testMode) return;
-
-    const intervalId = setInterval(() => {
-      const stats = getRealtimePacketStats();
-      const pps = stats.sent - previousSentRef.current;
-      setPacketStats(stats);
-      setPacketsPerSecond(pps);
-      previousSentRef.current = stats.sent;
-    }, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [testMode]);
-
-  // Send test pattern repeatedly when test mode is active
-  React.useEffect(() => {
-    if (!testMode || !activeDeviceIp) {
-      if (testIntervalRef.current) {
-        clearInterval(testIntervalRef.current);
-        testIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Send immediately
-    sendTestPatternOnce(activeDeviceIp, numLeds);
-
-    // Then send every 2 seconds
-    testIntervalRef.current = setInterval(() => {
-      sendTestPatternOnce(activeDeviceIp, numLeds);
-    }, 2000);
-
-    return () => {
-      if (testIntervalRef.current) {
-        clearInterval(testIntervalRef.current);
-        testIntervalRef.current = null;
-      }
-    };
-  }, [testMode, activeDeviceIp, numLeds]);
 
   return (
     <View style={[sharedStyles.sectionCard, { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b', position: 'relative' }]}>
@@ -378,143 +283,85 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
             Audio Reactive
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={handleToggleAudioReactive}
-          disabled={isStarting}
-          style={[
-            styles.toggleButton,
-            {
-              backgroundColor: isRecording ? '#10b981' : (isDark ? '#374151' : '#e5e7eb'),
-              borderColor: isDark ? '#4b5563' : '#1e293b',
-              opacity: isStarting ? 0.5 : 1,
-            },
-          ]}
-        >
-          <Ionicons
-            name={isStarting ? 'hourglass-outline' : (isRecording ? 'mic-outline' : 'mic-off-outline')}
-            size={18}
-            color={isRecording ? '#ffffff' : textColor}
-          />
-          <Text style={[styles.toggleText, { color: isRecording ? '#ffffff' : textColor }]}>
-            {isStarting ? 'Starting...' : (isRecording ? 'Active' : 'Start')}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          {isRecording && (
+            <TouchableOpacity
+              onPress={() => setSettingsModalVisible(true)}
+              style={[
+                styles.settingsButton,
+                {
+                  backgroundColor: isDark ? '#374151' : '#e5e7eb',
+                  borderColor: isDark ? '#4b5563' : '#1e293b',
+                },
+              ]}
+            >
+              <Ionicons name="settings-outline" size={18} color={textColor} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={handleToggleAudioReactive}
+            disabled={isStarting}
+            style={[
+              styles.toggleButton,
+              {
+                backgroundColor: isRecording ? '#10b981' : (isDark ? '#374151' : '#e5e7eb'),
+                borderColor: isDark ? '#4b5563' : '#1e293b',
+                opacity: isStarting ? 0.5 : 1,
+              },
+            ]}
+          >
+            <Ionicons
+              name={isStarting ? 'hourglass-outline' : (isRecording ? 'mic-outline' : 'mic-off-outline')}
+              size={18}
+              color={isRecording ? '#ffffff' : textColor}
+            />
+            <Text style={[styles.toggleText, { color: isRecording ? '#ffffff' : textColor }]}>
+              {isStarting ? 'Starting...' : (isRecording ? 'Active' : 'Start')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={sharedStyles.sectionContent}>
-        {/* Audio Visualizer with Sensitivity Slider */}
-        <View style={styles.visualizerContainer}>
-          <View style={[styles.visualizerWrapper, { borderColor: borderColor }]}>
-            <AudioVisualizer
-              audioFeatures={isRecording ? audioFeatures : null}
-              melSpectrum={isRecording ? melSpectrum : []}
-              isDark={isDark}
-              height={140}
-              isActive={isRecording}
-            />
-          </View>
-          <View style={styles.verticalSliderWrapper}>
-            <Text style={[styles.sliderValue, { color: isDark ? '#93c5fd' : '#3b82f6', opacity: isRecording ? 1 : 0.5 }]}>
-              {config.sensitivity.toFixed(1)}x
-            </Text>
-            <Slider
-              style={styles.verticalSlider}
-              minimumValue={0.1}
-              maximumValue={2.0}
-              step={0.1}
-              value={config.sensitivity}
-              onSlidingComplete={(value) => updateConfig({ sensitivity: value })}
-              minimumTrackTintColor="#3b82f6"
-              maximumTrackTintColor={isDark ? '#4b5563' : '#e5e7eb'}
-              thumbTintColor={isDark ? '#ffffff' : '#3b82f6'}
-              disabled={!isRecording}
-            />
-            <Text style={[styles.sliderLabel, { color: subtextColor, opacity: isRecording ? 1 : 0.5 }]}>
-              Sens
-            </Text>
-          </View>
+        {/* Audio Visualizer */}
+        <View style={[styles.visualizerWrapper, { borderColor: borderColor }]}>
+          <AudioVisualizer
+            audioFeatures={isRecording ? audioFeatures : null}
+            melSpectrum={isRecording ? melSpectrum : []}
+            isDark={isDark}
+            height={140}
+            isActive={isRecording}
+          />
         </View>
 
-        {/* Effect Type Selector */}
+        {/* LedFx Effect Preset Dropdown */}
         {isRecording && (
-          <View style={styles.effectTypeContainer}>
-            <Text style={[styles.effectTypeLabel, { color: subtextColor }]}>Effect:</Text>
-            <View style={styles.effectTypeButtons}>
-              <TouchableOpacity
-                onPress={() => setEffectType('spectrum')}
-                style={[
-                  styles.effectTypeButton,
-                  {
-                    backgroundColor: effectType === 'spectrum' ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
-                  }
-                ]}
+          <View style={styles.effectDropdownContainer}>
+            <Text style={[styles.effectDropdownLabel, { color: textColor }]}>Effect Preset:</Text>
+            <View style={[styles.pickerWrapper, {
+              backgroundColor: isDark ? '#374151' : '#f3f4f6',
+              borderColor: isDark ? '#4b5563' : '#d1d5db',
+            }]}>
+              <Picker
+                selectedValue={selectedEffect}
+                onValueChange={(itemValue) => handleEffectChange(itemValue as EffectType)}
+                style={[styles.picker, { color: textColor }]}
+                dropdownIconColor={textColor}
               >
-                <Text style={[styles.effectTypeButtonText, { color: effectType === 'spectrum' ? '#ffffff' : textColor }]}>
-                  Spectrum
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setEffectType('volume')}
-                style={[
-                  styles.effectTypeButton,
-                  {
-                    backgroundColor: effectType === 'volume' ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
-                  }
-                ]}
-              >
-                <Text style={[styles.effectTypeButtonText, { color: effectType === 'volume' ? '#ffffff' : textColor }]}>
-                  Volume
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setEffectType('waves')}
-                style={[
-                  styles.effectTypeButton,
-                  {
-                    backgroundColor: effectType === 'waves' ? '#3b82f6' : (isDark ? '#374151' : '#e5e7eb'),
-                  }
-                ]}
-              >
-                <Text style={[styles.effectTypeButtonText, { color: effectType === 'waves' ? '#ffffff' : textColor }]}>
-                  Waves
-                </Text>
-              </TouchableOpacity>
+                {LEDFX_EFFECTS.map((effect) => (
+                  <Picker.Item
+                    key={effect.id}
+                    label={effect.name}
+                    value={effect.id}
+                  />
+                ))}
+              </Picker>
             </View>
+            <Text style={[styles.effectDescription, { color: subtextColor }]}>
+              {LEDFX_EFFECTS.find(e => e.id === selectedEffect)?.description}
+            </Text>
           </View>
         )}
-
-        {/* Audio Features Display */}
-        {audioFeatures && isRecording && (
-          <View style={styles.featuresContainer}>
-            <View style={styles.featureRow}>
-              <View style={styles.featureItem}>
-                <Text style={[styles.featureLabel, { color: subtextColor }]}>Bass</Text>
-                <Text style={[styles.featureValue, { color: '#ef4444' }]}>
-                  {Math.round(audioFeatures.bass * 100)}%
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Text style={[styles.featureLabel, { color: subtextColor }]}>Mid</Text>
-                <Text style={[styles.featureValue, { color: '#10b981' }]}>
-                  {Math.round(audioFeatures.mid * 100)}%
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Text style={[styles.featureLabel, { color: subtextColor }]}>Treble</Text>
-                <Text style={[styles.featureValue, { color: '#3b82f6' }]}>
-                  {Math.round(audioFeatures.treble * 100)}%
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Text style={[styles.featureLabel, { color: subtextColor }]}>Vol</Text>
-                <Text style={[styles.featureValue, { color: textColor }]}>
-                  {Math.round(audioFeatures.volume * 100)}%
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
 
         {/* Error Display */}
         {error && (
@@ -534,126 +381,6 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
           </View>
         )}
 
-        {/* Test, Check Config & Reset Buttons */}
-        {!isRecording && activeDeviceIp && (
-          <View style={styles.configCheckerContainer}>
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                onPress={handleTestUDP}
-                style={[
-                  styles.checkConfigButton,
-                  styles.flexButton,
-                  {
-                    backgroundColor: testMode ? '#10b981' : (isDark ? '#374151' : '#f3f4f6'),
-                    borderColor: isDark ? '#4b5563' : '#1e293b',
-                  }
-                ]}
-              >
-                <Ionicons
-                  name={testMode ? 'stop-circle' : 'flash'}
-                  size={16}
-                  color={testMode ? '#ffffff' : textColor}
-                />
-                <Text style={[styles.checkConfigText, { color: testMode ? '#ffffff' : textColor }]}>
-                  {testMode ? 'Stop' : 'Test'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleCheckConfig}
-                disabled={checkingConfig}
-                style={[
-                  styles.checkConfigButton,
-                  styles.flexButton,
-                  {
-                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                    borderColor: isDark ? '#4b5563' : '#1e293b',
-                    opacity: checkingConfig ? 0.5 : 1,
-                  }
-                ]}
-              >
-                <Ionicons
-                  name="shield-checkmark"
-                  size={16}
-                  color={textColor}
-                />
-                <Text style={[styles.checkConfigText, { color: textColor }]}>
-                  {checkingConfig ? 'Checking...' : 'Check'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleReset}
-                style={[
-                  styles.checkConfigButton,
-                  styles.flexButton,
-                  {
-                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                    borderColor: isDark ? '#4b5563' : '#1e293b',
-                  }
-                ]}
-              >
-                <Ionicons
-                  name="refresh"
-                  size={16}
-                  color={textColor}
-                />
-                <Text style={[styles.checkConfigText, { color: textColor }]}>
-                  Reset
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Test Mode Help Message */}
-            {testMode && (
-              <View style={[styles.testHelpContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                <Ionicons name="bulb" size={14} color={isDark ? '#93c5fd' : '#3b82f6'} />
-                <Text style={[styles.testHelpText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
-                  If you don't see light effects, this means UDP Realtime is not working. Press "Check" to see UDP status and enable it if needed.
-                </Text>
-              </View>
-            )}
-
-
-            {/* Config Status Display */}
-            {configStatus && (
-              <View style={styles.configStatusContainer}>
-                <View style={[
-                  styles.configStatusItem,
-                  { backgroundColor: configStatus.isReady ? (isDark ? '#064e3b' : '#d1fae5') : (isDark ? '#7f1d1d' : '#fee2e2') }
-                ]}>
-                  <Ionicons
-                    name={configStatus.isReady ? 'checkmark-circle' : 'alert-circle'}
-                    size={16}
-                    color={configStatus.isReady ? '#10b981' : '#ef4444'}
-                  />
-                  <Text style={[styles.configStatusText, { color: configStatus.isReady ? '#10b981' : '#ef4444' }]}>
-                    {configStatus.isReady ? 'UDP Realtime Ready ✓' : configStatus.issues[0] || 'Configuration Issues'}
-                  </Text>
-                </View>
-
-                {/* Enable/Disable UDP Button */}
-                <TouchableOpacity
-                  onPress={handleEnableUdp}
-                  disabled={enablingUdp}
-                  style={[
-                    styles.enableUdpButton,
-                    {
-                      backgroundColor: configStatus.udpRealtimeEnabled ? '#ef4444' : '#10b981',
-                      borderColor: borderColor,
-                      opacity: enablingUdp ? 0.5 : 1,
-                    }
-                  ]}
-                >
-                  <Ionicons name="power" size={16} color="#ffffff" />
-                  <Text style={[styles.enableUdpText, { color: '#ffffff' }]}>
-                    {enablingUdp ? 'Updating...' : (configStatus.udpRealtimeEnabled ? 'Disable UDP' : 'Enable UDP')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* Active status indicator */}
         {isRecording && activeDeviceIp && (
@@ -661,21 +388,47 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
             <View style={[styles.statusPulse, { backgroundColor: '#10b981' }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.statusText, { color: subtextColor }]}>
-                UDP Realtime → {activeDeviceIp}:21324
+                DDP Protocol → {activeDeviceIp}:4048
               </Text>
               <Text style={[styles.packetStatsText, { color: subtextColor }]}>
-                📦 {packetStats.sent} sent • {packetsPerSecond}/s
+                📦 {packetStats.sent} sent • {packetsPerSecond}/s • {numLeds} LEDs
                 {packetStats.dropped > 0 && ` • ⚠️ ${packetStats.dropped} dropped`}
               </Text>
             </View>
           </View>
         )}
       </View>
+
+      {/* Settings Modal */}
+      <AudioReactiveSettingsModal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+        isDark={isDark}
+        sensitivity={sensitivity}
+        onSensitivityChange={setSensitivity}
+        effectConfig={effectConfig}
+        onEffectConfigChange={setEffectConfig}
+        ledOffset={ledOffset}
+        onLedOffsetChange={setLedOffset}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -689,25 +442,6 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 13,
     fontWeight: '600',
-  },
-  featuresContainer: {
-    marginTop: 12,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  featureItem: {
-    alignItems: 'center',
-  },
-  featureLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  featureValue: {
-    fontSize: 14,
-    fontWeight: '700',
   },
   controlContainer: {
     marginTop: 12,
@@ -744,54 +478,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 8,
     overflow: 'hidden',
-  },
-  disabledOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  verticalSliderWrapper: {
-    height: 170,
-    width: 60,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexShrink: 0,
-    paddingVertical: 8,
-  },
-  verticalSlider: {
-    width: 120,
-    height: 40,
-    transform: [{ rotate: '-90deg' }],
-  },
-  sliderValue: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  sliderLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  portInput: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 2,
-    fontSize: 14,
-    fontWeight: '600',
-    minWidth: 80,
-    textAlign: 'center',
-  },
-  portHint: {
-    fontSize: 10,
-    marginTop: 2,
-    paddingHorizontal: 4,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -840,121 +526,28 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     marginTop: 2,
   },
-  effectTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 10,
-  },
-  effectTypeLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  effectTypeButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    flex: 1,
-  },
-  effectTypeButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  effectTypeButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  configCheckerContainer: {
-    marginTop: 10,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  checkConfigButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 2,
+  effectDropdownContainer: {
+    marginTop: 12,
     gap: 6,
   },
-  flexButton: {
-    flex: 1,
-  },
-  checkConfigText: {
-    fontSize: 12,
+  effectDropdownLabel: {
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 2,
   },
-  configStatusContainer: {
-    marginTop: 8,
-  },
-  configStatusItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 6,
-    gap: 6,
-  },
-  configStatusText: {
-    fontSize: 11,
-    fontWeight: '500',
-    flex: 1,
-    lineHeight: 16,
-  },
-  protocolButtons: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 8,
-  },
-  protocolButton: {
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    borderWidth: 2,
-    alignItems: 'center',
-  },
-  protocolButtonText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  enableUdpButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  pickerWrapper: {
     borderRadius: 8,
-    borderWidth: 2,
-    gap: 6,
+    borderWidth: 1.5,
+    overflow: 'hidden',
   },
-  enableUdpText: {
-    fontSize: 12,
-    fontWeight: '600',
+  picker: {
+    height: 50,
   },
-  testHelpContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 8,
-    gap: 8,
-  },
-  testHelpText: {
+  effectDescription: {
     fontSize: 11,
     lineHeight: 16,
-    flex: 1,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
 
