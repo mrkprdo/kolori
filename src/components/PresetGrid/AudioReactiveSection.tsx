@@ -90,29 +90,29 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
 
   // Load LED offset from storage on mount
   useEffect(() => {
-    const loadLedOffset = async () => {
+    const loadSettings = async () => {
       try {
-        const saved = await AsyncStorage.getItem('@audio_reactive_led_offset');
-        if (saved !== null) {
-          setLedOffset(parseInt(saved, 10));
+        const savedOffset = await AsyncStorage.getItem('@audio_reactive_led_offset');
+        if (savedOffset !== null) {
+          setLedOffset(parseInt(savedOffset, 10));
         }
       } catch (error) {
         console.error('Failed to load LED offset:', error);
       }
     };
-    loadLedOffset();
+    loadSettings();
   }, []);
 
   // Save LED offset to storage whenever it changes
   useEffect(() => {
-    const saveLedOffset = async () => {
+    const saveSettings = async () => {
       try {
         await AsyncStorage.setItem('@audio_reactive_led_offset', ledOffset.toString());
       } catch (error) {
         console.error('Failed to save LED offset:', error);
       }
     };
-    saveLedOffset();
+    saveSettings();
   }, [ledOffset]);
 
   // Detect LED count from WLED device
