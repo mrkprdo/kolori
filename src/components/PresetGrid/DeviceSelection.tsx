@@ -105,12 +105,22 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
                 },
               ]}
             />
-            <Text
-              style={[styles.dropdownText, { color: textColor }]}
-              numberOfLines={1}
-            >
-              {activeDevice?.name || 'No Device'}
-            </Text>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text
+                style={[styles.dropdownText, { color: textColor, marginLeft: 0, flex: 0 }]}
+                numberOfLines={1}
+              >
+                {activeDevice?.name || 'No Device'}
+              </Text>
+              {activeDevice?.ip && (
+                <Text
+                  style={[styles.dropdownText, { color: subtextColor, fontSize: 12, marginLeft: 0, flex: 0, marginTop: 2 }]}
+                  numberOfLines={1}
+                >
+                  {activeDevice.ip}
+                </Text>
+              )}
+            </View>
             <Ionicons
               name={showDeviceDropdown ? 'chevron-up' : 'chevron-down'}
               size={16}
