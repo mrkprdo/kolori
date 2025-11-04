@@ -67,6 +67,7 @@ import CustomEffectsModal from "./CustomEffectsModal";
 import SchedulerModal from "./SchedulerModal";
 import PlaylistCreationModal from "./PlaylistCreationModal";
 import DeviceManagementModal from "./DeviceManagementModal";
+import PresetOptionsModal from "./PresetOptionsModal";
 import { WLEDEffectData, getEffectByName } from "../data/wledEffects";
 import { WLED_PALETTES_DEF } from "../constants/palettes";
 import DeviceSelection from "./PresetGrid/DeviceSelection";
@@ -183,8 +184,51 @@ export default function PresetGrid({
     toggleLiveView: toggleLiveViewWS,
     isConnected: wsConnected,
     liveViewEnabled: liveViewEnabledWS,
-    liveLedData: liveLedDataWS
+    liveLedData: liveLedDataWS,
+    sendCommand: sendWledCommand
   } = useWledDevice();
+
+  // State to hold boot preset ID fetched via HTTP
+  const [fetchedBootPresetId, setFetchedBootPresetId] = useState<number | null>(null);
+
+  // Use boot preset ID from HTTP fetch (bootps is not in WebSocket state, only in /json/cfg)
+  const bootPresetIdFromDevice = fetchedBootPresetId ?? null;
+
+  // Debug: Log the boot preset ID
+  useEffect(() => {
+    logger.log('🔍 Boot Preset ID from device config:', fetchedBootPresetId);
+    logger.log('🔍 Final Boot Preset ID:', bootPresetIdFromDevice);
+  }, [fetchedBootPresetId, bootPresetIdFromDevice]);
+
+  // Fetch boot preset ID from device config when connected
+  useEffect(() => {
+    const fetchBootPresetId = async () => {
+      if (!activeDevice?.ip || !activeDevice?.isConnected) return;
+
+      try {
+        // Fetch from /json/cfg to get the boot preset configuration
+        const response = await fetch(`http://${activeDevice.ip}/json/cfg`);
+        if (response.ok) {
+          const config = await response.json();
+          logger.log('🔍 Fetched device config via HTTP');
+          logger.log('🔍 Boot preset ID in config:', config?.def?.ps);
+
+          if (config?.def?.ps !== undefined) {
+            const bootPs = config.def.ps;
+            setFetchedBootPresetId(bootPs);
+            // Also update local storage
+            await storage.saveToStorage(STORAGE_KEYS.BOOT_PRESET_ID, bootPs);
+            setBootPresetId(bootPs);
+            logger.log('✅ Boot preset ID loaded from device:', bootPs);
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to fetch boot preset ID:', error);
+      }
+    };
+
+    fetchBootPresetId();
+  }, [activeDevice?.ip, activeDevice?.isConnected]);
 
   const [currentPage, setCurrentPage] = useState(0); // 0 = Presets, 1 = Audio Reactive
   const [isAudioReactiveActive, setIsAudioReactiveActive] = useState(false);
@@ -197,6 +241,10 @@ export default function PresetGrid({
   const [showPlaylistCreationModal, setShowPlaylistCreationModal] =
     useState(false);
   const [showSchedulerModal, setShowSchedulerModal] = useState(false);
+  const [showPresetOptionsModal, setShowPresetOptionsModal] = useState(false);
+  const [selectedPresetForOptions, setSelectedPresetForOptions] = useState<any>(null);
+  const [isSelectedPresetDeletable, setIsSelectedPresetDeletable] = useState(true);
+  const [bootPresetId, setBootPresetId] = useState<string | number | null>(null);
   const [showFabOptions, setShowFabOptions] = useState(false);
   const [showCreateNewOptions, setShowCreateNewOptions] = useState(false);
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
@@ -821,6 +869,25 @@ export default function PresetGrid({
         logger.log(`💡 Brightness updated from refresh: ${newBrightness}`);
       }
 
+      // Also fetch boot preset ID from device config
+      if (currentDevice?.ip) {
+        try {
+          const response = await fetch(`http://${currentDevice.ip}/json/cfg`);
+          if (response.ok) {
+            const config = await response.json();
+            if (config?.def?.ps !== undefined) {
+              const bootPs = config.def.ps;
+              setFetchedBootPresetId(bootPs);
+              await storage.saveToStorage(STORAGE_KEYS.BOOT_PRESET_ID, bootPs);
+              setBootPresetId(bootPs);
+              logger.log('✅ Boot preset ID refreshed from device:', bootPs);
+            }
+          }
+        } catch (bootError) {
+          logger.error('Failed to fetch boot preset during refresh:', bootError);
+        }
+      }
+
     } catch (error) {
       logger.error("Failed to refresh presets:", error);
     } finally {
@@ -832,6 +899,272 @@ export default function PresetGrid({
     sliderBrightness,
   ]);
 
+  // Load boot preset from storage
+  useEffect(() => {
+    const loadBootPreset = async () => {
+      try {
+        const saved = await storage.loadFromStorage(STORAGE_KEYS.BOOT_PRESET_ID, null);
+        if (saved) {
+          setBootPresetId(saved);
+        }
+      } catch (error) {
+        logger.error('Failed to load boot preset:', error);
+      }
+    };
+    loadBootPreset();
+  }, []);
+
+  // Handle preset long press to show options
+  const handlePresetLongPress = useCallback((preset: any, isDeletable: boolean = true) => {
+    setSelectedPresetForOptions(preset);
+    setIsSelectedPresetDeletable(isDeletable);
+    setShowPresetOptionsModal(true);
+  }, []);
+
+  // Handle enabling/disabling preset at boot
+  const handleEnableAtBoot = useCallback(async () => {
+    if (!selectedPresetForOptions) return;
+
+    const presetId = selectedPresetForOptions.presetId || selectedPresetForOptions.id;
+    const presetName = selectedPresetForOptions.name;
+
+    // Check if this is a playlist (has items array) or a regular preset
+    const isPlaylist = Array.isArray(selectedPresetForOptions.items);
+
+    // Debug: Log the preset details
+    logger.log('🔍 Selected preset for boot:', JSON.stringify(selectedPresetForOptions, null, 2));
+    logger.log('🔍 Detected as playlist?', isPlaylist);
+    logger.log('🔍 Items array?', Array.isArray(selectedPresetForOptions.items));
+    logger.log('🔍 Items:', selectedPresetForOptions.items);
+
+    // If already boot preset, disable it
+    if (bootPresetId === presetId) {
+      Alert.alert(
+        'Disable Boot Preset',
+        `Disable "${presetName}" from loading at boot?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Disable boot preset by setting it to 0 in the device config
+                if (activeDevice?.ip) {
+                  const command = { def: { ps: 0 } };
+                  logger.log('📡 Disabling boot preset via /json/cfg');
+
+                  try {
+                    const response = await fetch(`http://${activeDevice.ip}/json/cfg`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(command),
+                    });
+
+                    if (response.ok) {
+                      logger.log('✅ Boot preset disabled on device');
+                    } else {
+                      logger.error(`Failed to disable boot preset: HTTP ${response.status}`);
+                    }
+                  } catch (httpError) {
+                    logger.error('Failed to send disable command:', httpError);
+                  }
+                }
+
+                await storage.removeFromStorage(STORAGE_KEYS.BOOT_PRESET_ID);
+                setBootPresetId(null);
+                setFetchedBootPresetId(0); // Set to 0 to indicate no boot preset
+                logger.log('🔴 Boot preset disabled');
+
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show('Boot preset disabled', ToastAndroid.SHORT);
+                }
+              } catch (error) {
+                logger.error('Failed to disable boot preset:', error);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // If another preset is already set as boot preset, confirm replacement
+    if (bootPresetId && bootPresetId !== presetId) {
+      Alert.alert(
+        'Replace Boot Preset',
+        `Set "${presetName}" as boot preset?\n\nOnly one preset can load at boot. This will replace the current boot preset.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Set as Boot Preset',
+            onPress: async () => {
+              try {
+                if (!activeDevice) {
+                  Alert.alert('Error', 'No active device');
+                  return;
+                }
+
+                // Use /json/cfg endpoint to configure boot preset
+                // The boot preset is stored in cfg.json under "def" -> "ps"
+                const command = { def: { ps: presetId } };
+
+                logger.log(`📡 Setting preset ${presetId} as boot preset via /json/cfg`);
+                logger.log(`📡 Request body:`, JSON.stringify(command));
+
+                // Send to /json/cfg to modify the boot preset configuration
+                try {
+                  const response = await fetch(`http://${activeDevice.ip}/json/cfg`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(command),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                  }
+
+                  const result = await response.json();
+                  logger.log(`✅ HTTP POST response:`, JSON.stringify(result));
+                } catch (httpError) {
+                  logger.error('Failed to set boot preset via /json/cfg:', httpError);
+                  throw httpError;
+                }
+
+                await storage.saveToStorage(STORAGE_KEYS.BOOT_PRESET_ID, presetId);
+                setBootPresetId(presetId);
+                setFetchedBootPresetId(presetId); // Update fetched state so star shows immediately
+                logger.log(`🟢 Boot preset set to: ${presetId}`);
+
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show(`"${presetName}" will load at boot`, ToastAndroid.SHORT);
+                } else {
+                  Alert.alert('Boot Preset Set', `"${presetName}" will load when device powers on\n\nPreset ID: ${presetId}`);
+                }
+              } catch (error) {
+                logger.error('Failed to save boot preset:', error);
+                const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                Alert.alert('Error', `Failed to set boot preset: ${errorMsg}`);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // No existing boot preset, just set it
+      try {
+        if (!activeDevice) {
+          Alert.alert('Error', 'No active device');
+          return;
+        }
+
+        // Use /json/cfg endpoint to configure boot preset
+        // The boot preset is stored in cfg.json under "def" -> "ps"
+        const command = { def: { ps: presetId } };
+
+        logger.log(`📡 Setting preset ${presetId} as boot preset via /json/cfg`);
+        logger.log(`📡 Request body:`, JSON.stringify(command));
+
+        // Send to /json/cfg to modify the boot preset configuration
+        try {
+          const response = await fetch(`http://${activeDevice.ip}/json/cfg`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(command),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          logger.log(`✅ HTTP POST response:`, JSON.stringify(result));
+        } catch (httpError) {
+          logger.error('Failed to set boot preset via /json/cfg:', httpError);
+          throw httpError;
+        }
+
+        await storage.saveToStorage(STORAGE_KEYS.BOOT_PRESET_ID, presetId);
+        setBootPresetId(presetId);
+        setFetchedBootPresetId(presetId); // Update fetched state so star shows immediately
+        logger.log(`🟢 Boot preset set to: ${presetId}`);
+
+        if (Platform.OS === 'android') {
+          ToastAndroid.show(`"${presetName}" will load at boot`, ToastAndroid.SHORT);
+        } else {
+          Alert.alert('Boot Preset Set', `"${presetName}" will load when device powers on\n\nPreset ID: ${presetId}`);
+        }
+      } catch (error) {
+        logger.error('Failed to save boot preset:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        Alert.alert('Error', `Failed to set boot preset: ${errorMsg}`);
+      }
+    }
+  }, [selectedPresetForOptions, bootPresetId, activeDevice]);
+
+  // Handle deleting preset
+  const handleDeletePreset = useCallback(async () => {
+    if (!selectedPresetForOptions || !activeDevice) return;
+
+    const presetName = selectedPresetForOptions.name;
+    const presetId = selectedPresetForOptions.presetId || selectedPresetForOptions.id;
+
+    Alert.alert(
+      'Delete Preset',
+      `Are you sure you want to delete "${presetName}"?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              logger.log(`🗑️ Deleting preset ${presetId} from device ${activeDevice.ip}`);
+
+              const result = await deleteWledPreset(
+                activeDevice.ip,
+                presetId,
+                activeDevice.protocol || 'http'
+              );
+
+              if (result.success) {
+                logger.log(`✅ Successfully deleted preset ${presetId}`);
+
+                // Refresh presets after deletion
+                if (onRefreshPresets) {
+                  await onRefreshPresets();
+                }
+
+                // Show success message
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show(`Deleted "${presetName}"`, ToastAndroid.SHORT);
+                } else {
+                  Alert.alert('Success', `Deleted "${presetName}"`);
+                }
+              } else {
+                throw new Error(result.error || 'Failed to delete preset');
+              }
+            } catch (error) {
+              logger.error(`Failed to delete preset ${presetId}:`, error);
+              Alert.alert(
+                'Error',
+                `Failed to delete preset: ${error instanceof Error ? error.message : 'Unknown error'}`
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [selectedPresetForOptions, activeDevice, onRefreshPresets]);
 
   // Animation coordination (non-blocking)
   const fabAnimationInProgress = useRef(false);
@@ -1642,6 +1975,7 @@ export default function PresetGrid({
           <SeasonalPresetsSection
             seasonalPresets={seasonalPresets}
             activePreset={activePreset}
+            bootPresetId={bootPresetIdFromDevice}
             isCollapsed={isSeasonalCollapsed}
             isBlocked={!activeDevice?.isConnected || isAudioReactiveActive}
             blockReason={!activeDevice?.isConnected ? 'offline' : 'audioReactive'}
@@ -1652,6 +1986,7 @@ export default function PresetGrid({
             subtextColor={subtextColor}
             onToggleCollapse={() => setIsSeasonalCollapsed(!isSeasonalCollapsed)}
             onPresetSelect={onPresetSelect}
+            onLongPress={handlePresetLongPress}
             PresetCard={PresetCard}
           />
 
@@ -1659,6 +1994,7 @@ export default function PresetGrid({
           <CustomEffectsSection
             customEffects={memoizedCustomEffects}
             activePreset={activePreset}
+            bootPresetId={bootPresetIdFromDevice}
             activeDevice={activeDevice}
             isCollapsed={isCustomEffectsCollapsed}
             isBlocked={!activeDevice?.isConnected || isAudioReactiveActive}
@@ -1676,6 +2012,7 @@ export default function PresetGrid({
             subtextColor={subtextColor}
             onToggleCollapse={() => setIsCustomEffectsCollapsed(!isCustomEffectsCollapsed)}
             onPresetSelect={onPresetSelect}
+            onLongPress={handlePresetLongPress}
             onToggleSelection={toggleCardSelection}
             onGenerateRandom={generateRandomCustomEffect}
             PresetCard={MemoizedPresetCard}
@@ -1685,6 +2022,7 @@ export default function PresetGrid({
           <PlaylistsSection
             savedPlaylists={savedPlaylists}
             customEffectsCount={memoizedCustomEffects.length}
+            bootPresetId={bootPresetIdFromDevice}
             isCollapsed={isPlaylistsCollapsed}
             isBlocked={!activeDevice?.isConnected || isAudioReactiveActive}
             blockReason={!activeDevice?.isConnected ? 'offline' : 'audioReactive'}
@@ -1699,6 +2037,7 @@ export default function PresetGrid({
             subtextColor={subtextColor}
             onToggleCollapse={() => setIsPlaylistsCollapsed(!isPlaylistsCollapsed)}
             onPlaylistSelect={onPlaylistSelect}
+            onLongPress={handlePresetLongPress}
             onToggleSelection={toggleCardSelection}
           />
         </ScrollView>
@@ -2093,6 +2432,18 @@ export default function PresetGrid({
         setConfiguredSchedule={setConfiguredSchedule}
         schedulerEnabled={schedulerEnabled}
         setSchedulerEnabled={setSchedulerEnabled}
+      />
+
+      {/* Preset Options Modal */}
+      <PresetOptionsModal
+        visible={showPresetOptionsModal}
+        onClose={() => setShowPresetOptionsModal(false)}
+        isDark={isDark}
+        presetName={selectedPresetForOptions?.name || ''}
+        isBootPreset={bootPresetId === (selectedPresetForOptions?.presetId || selectedPresetForOptions?.id)}
+        showDelete={isSelectedPresetDeletable}
+        onEnableAtBoot={handleEnableAtBoot}
+        onDelete={handleDeletePreset}
       />
 
       {/* Deletion Progress Modal */}

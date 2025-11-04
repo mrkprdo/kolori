@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   DEVICE_CONFIG: "kolori_device_config",
   SEASONAL_PRESETS: "kolori_seasonal_presets",
   DEVICE_SEASONAL_PRESETS: "kolori_device_seasonal_presets",
+  BOOT_PRESET_ID: "kolori_boot_preset_id",
 };
 
 class Storage {

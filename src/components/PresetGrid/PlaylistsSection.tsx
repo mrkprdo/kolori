@@ -8,6 +8,7 @@ import AnimatedPlaylistItem from './AnimatedPlaylistItem';
 interface PlaylistsSectionProps {
   savedPlaylists: SavedPlaylist[];
   customEffectsCount: number;
+  bootPresetId: number | null;
   isCollapsed: boolean;
   isBlocked?: boolean;
   blockReason?: 'offline' | 'audioReactive';
@@ -22,12 +23,14 @@ interface PlaylistsSectionProps {
   subtextColor: string;
   onToggleCollapse: () => void;
   onPlaylistSelect: (id: number) => void;
+  onLongPress?: (preset: any, isDeletable?: boolean) => void;
   onToggleSelection: (id: string | number) => void;
 }
 
 const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
   savedPlaylists,
   customEffectsCount,
+  bootPresetId,
   isCollapsed,
   isBlocked = false,
   blockReason = 'offline',
@@ -42,6 +45,7 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
   subtextColor,
   onToggleCollapse,
   onPlaylistSelect,
+  onLongPress,
   onToggleSelection,
 }) => {
   return (
@@ -88,7 +92,9 @@ const PlaylistsSection: React.FC<PlaylistsSectionProps> = ({
                   key={`playlist-${playlist.id}-${index}`}
                   playlist={playlist}
                   index={index}
+                  bootPresetId={bootPresetId}
                   onPress={onPlaylistSelect}
+                  onLongPress={onLongPress}
                   isDeleteMode={isDeleteMode}
                   isSelected={selectedForDelete.has(playlist.id)}
                   onToggleSelection={onToggleSelection}

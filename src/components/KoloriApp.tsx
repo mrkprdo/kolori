@@ -142,7 +142,7 @@ function KoloriApp({
     }
   }, [activeDevice?.id, activeDevice?.isConnected, onDeviceUpdate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { liveLedData, setDevice: setWledContextDevice, toggleLiveView, liveViewEnabled } = useWledDevice();
+  const { liveLedData, setDevice: setWledContextDevice, toggleLiveView, liveViewEnabled, state: wledState } = useWledDevice();
 
   // Sync active device with WebSocket context
   useEffect(() => {
@@ -150,6 +150,17 @@ function KoloriApp({
       setWledContextDevice(activeDevice);
     }
   }, [activeDevice, setWledContextDevice]);
+
+  // Sync WebSocket active preset back to device cache
+  useEffect(() => {
+    if (activeDevice?.id && wledState.activePreset !== null && wledState.activePreset !== undefined) {
+      // Only update if the active preset from WebSocket differs from device cache
+      if (activeDevice.activePreset !== wledState.activePreset) {
+        logger.log(`🔄 Syncing active preset from WebSocket to device cache: ${wledState.activePreset}`);
+        onDeviceUpdate(activeDevice.id, { activePreset: wledState.activePreset });
+      }
+    }
+  }, [activeDevice?.id, activeDevice?.activePreset, wledState.activePreset, onDeviceUpdate]);
 
   const deviceMonitor = useDeviceMonitor({
     devices,

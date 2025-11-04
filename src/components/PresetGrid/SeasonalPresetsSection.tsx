@@ -8,6 +8,7 @@ import { sharedStyles } from './styles';
 interface SeasonalPresetsSectionProps {
   seasonalPresets: SeasonalPreset[];
   activePreset: string | number | null;
+  bootPresetId: number | null;
   isCollapsed: boolean;
   isBlocked?: boolean;
   blockReason?: 'offline' | 'audioReactive';
@@ -18,6 +19,7 @@ interface SeasonalPresetsSectionProps {
   subtextColor: string;
   onToggleCollapse: () => void;
   onPresetSelect: (id: string | number) => void;
+  onLongPress?: (preset: any, isDeletable?: boolean) => void;
   PresetCard: React.ComponentType<any>;
 }
 
@@ -26,14 +28,18 @@ const MemoizedSeasonalPresetCard = React.memo(
     preset,
     index,
     activePreset,
+    bootPresetId,
     onPresetSelect,
+    onLongPress,
     isDark,
     PresetCard,
   }: {
     preset: any;
     index: number;
     activePreset: string | number | null;
+    bootPresetId: number | null;
     onPresetSelect: (id: string | number) => void;
+    onLongPress?: (preset: any, isDeletable?: boolean) => void;
     isDark: boolean;
     PresetCard: React.ComponentType<any>;
   }) {
@@ -57,16 +63,29 @@ const MemoizedSeasonalPresetCard = React.memo(
       [activePreset, preset.presetId]
     );
 
+    const isBootPreset = useMemo(
+      () => bootPresetId?.toString() === preset.presetId.toString(),
+      [bootPresetId, preset.presetId]
+    );
+
     const handleClick = useCallback(() => {
       onPresetSelect(preset.presetId);
     }, [onPresetSelect, preset.presetId]);
+
+    const handleLongPress = useCallback(() => {
+      if (onLongPress) {
+        onLongPress(presetObj, false); // Seasonal presets are not deletable
+      }
+    }, [onLongPress, presetObj]);
 
     return (
       <PresetCard
         preset={presetObj}
         animationDelay={index * 50}
         isActive={isActive}
+        isBootPreset={isBootPreset}
         onClick={handleClick}
+        onLongPress={handleLongPress}
         showIcon={true}
         isDark={isDark}
         isDeleteMode={false}
@@ -81,6 +100,7 @@ const MemoizedSeasonalPresetCard = React.memo(
       prevProps.preset.icon === nextProps.preset.icon &&
       prevProps.index === nextProps.index &&
       prevProps.activePreset === nextProps.activePreset &&
+      prevProps.bootPresetId === nextProps.bootPresetId &&
       prevProps.isDark === nextProps.isDark
     );
   }
@@ -89,6 +109,7 @@ const MemoizedSeasonalPresetCard = React.memo(
 const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
   seasonalPresets,
   activePreset,
+  bootPresetId,
   isCollapsed,
   isBlocked = false,
   blockReason = 'offline',
@@ -99,6 +120,7 @@ const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
   subtextColor,
   onToggleCollapse,
   onPresetSelect,
+  onLongPress,
   PresetCard,
 }) => {
   return (
@@ -134,7 +156,9 @@ const SeasonalPresetsSection: React.FC<SeasonalPresetsSectionProps> = ({
                 preset={preset}
                 index={index}
                 activePreset={activePreset}
+                bootPresetId={bootPresetId}
                 onPresetSelect={onPresetSelect}
+                onLongPress={onLongPress}
                 isDark={isDark}
                 PresetCard={PresetCard}
               />
