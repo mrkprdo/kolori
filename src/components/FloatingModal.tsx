@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, SafeAreaView, Platform, Keyboard } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -157,8 +158,17 @@ export default function FloatingModal({
                   <View style={[styles.handle, { backgroundColor: isDark ? '#4b5563' : '#d1d5db' }]} />
                 </View>
 
-                {/* Title */}
-                <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+                {/* Title and Close Button */}
+                <View style={styles.titleRow}>
+                  <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+                  <TouchableOpacity
+                    onPress={onClose}
+                    style={styles.closeButton}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={24} color={textColor} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </GestureDetector>
 
@@ -235,10 +245,23 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 2,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    position: 'relative',
+  },
   title: {
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+    flex: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
   },
   keyboardAvoidingView: {
     flex: 1,
