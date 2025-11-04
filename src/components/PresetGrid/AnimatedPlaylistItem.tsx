@@ -8,7 +8,9 @@ import { parseGradientString, extractPrimaryColor } from '../../utils/presetUtil
 interface AnimatedPlaylistItemProps {
   playlist: SavedPlaylist;
   index: number;
+  bootPresetId?: number | null;
   onPress: (id: number) => void;
+  onLongPress?: (preset: any, isDeletable?: boolean) => void;
   isDeleteMode?: boolean;
   isSelected?: boolean;
   onToggleSelection?: (id: string | number) => void;
@@ -19,7 +21,9 @@ const AnimatedPlaylistItem = React.memo(
   function AnimatedPlaylistItem({
     playlist,
     index,
+    bootPresetId,
     onPress,
+    onLongPress,
     isDeleteMode = false,
     isSelected = false,
     onToggleSelection,
@@ -45,6 +49,32 @@ const AnimatedPlaylistItem = React.memo(
         onPress(playlist.id);
       }
     }, [playlist.id, onPress, isDeleteMode, onToggleSelection]);
+
+    const handleLongPress = useCallback(() => {
+      if (!isDeleteMode && onLongPress) {
+        onLongPress(playlist, true); // Playlists are deletable
+      }
+    }, [playlist, onLongPress, isDeleteMode]);
+
+    // Check if this playlist is the boot preset
+    const isBootPreset = useMemo(
+      () => {
+        if (!bootPresetId) return false;
+
+        // Direct match by id
+        if (bootPresetId.toString() === playlist.id.toString()) {
+          return true;
+        }
+
+        // Match by presetId if available
+        if (playlist.presetId && bootPresetId.toString() === playlist.presetId.toString()) {
+          return true;
+        }
+
+        return false;
+      },
+      [bootPresetId, playlist.id, playlist.presetId]
+    );
 
     // Use LinearGradient colors for playlists if available
     const shouldUseGradient = playlist.gradient;
@@ -110,7 +140,7 @@ const AnimatedPlaylistItem = React.memo(
 
     return (
       <Animated.View style={containerStyle}>
-        <TouchableOpacity onPress={handlePress} style={styles.touchableArea}>
+        <TouchableOpacity onPress={handlePress} onLongPress={handleLongPress} style={styles.touchableArea}>
           <View style={cardStyle}>
             {shouldUseGradient && hasValidGradient && gradientColors && (
               <LinearGradient
@@ -133,6 +163,11 @@ const AnimatedPlaylistItem = React.memo(
                 {playlist.items?.length || 0} effects
               </Text>
             </View>
+            {isBootPreset && !isDeleteMode && (
+              <View style={styles.bootIndicator}>
+                <Ionicons name="star" size={16} color="#FFD700" />
+              </View>
+            )}
             {playlist.isActive && !isDeleteMode && (
               <View style={styles.activeIndicator}>
                 <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
@@ -154,9 +189,11 @@ const AnimatedPlaylistItem = React.memo(
     return (
       prevProps.playlist.id === nextProps.playlist.id &&
       prevProps.playlist.name === nextProps.playlist.name &&
+      prevProps.playlist.presetId === nextProps.playlist.presetId &&
       prevProps.playlist.isActive === nextProps.playlist.isActive &&
       prevProps.playlist.items?.length === nextProps.playlist.items?.length &&
       prevProps.index === nextProps.index &&
+      prevProps.bootPresetId === nextProps.bootPresetId &&
       prevProps.isDeleteMode === nextProps.isDeleteMode &&
       prevProps.isSelected === nextProps.isSelected
     );
@@ -223,6 +260,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
+  },
+  bootIndicator: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
   },
   deleteOverlay: {
     position: 'absolute',

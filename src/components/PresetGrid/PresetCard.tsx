@@ -8,7 +8,9 @@ interface PresetCardProps {
   preset: any;
   animationDelay?: number;
   isActive: boolean;
+  isBootPreset?: boolean;
   onClick: (id: string | number) => void;
+  onLongPress?: (preset: any) => void;
   showIcon?: boolean;
   isDark?: boolean;
   isDeleteMode?: boolean;
@@ -22,7 +24,9 @@ const PresetCard = React.memo(
     preset,
     animationDelay = 0,
     isActive,
+    isBootPreset = false,
     onClick,
+    onLongPress,
     showIcon = false,
     isDark = false,
     isDeleteMode = false,
@@ -76,6 +80,12 @@ const PresetCard = React.memo(
         onClick(preset.id);
       }
     }, [preset.id, onClick, isDeleteMode, onToggleSelection]);
+
+    const handleCardLongPress = useCallback(() => {
+      if (!isDeleteMode && onLongPress) {
+        onLongPress(preset);
+      }
+    }, [preset, onLongPress, isDeleteMode]);
 
     const animatedTransformStyle = useMemo(
       () => ({
@@ -142,6 +152,7 @@ const PresetCard = React.memo(
       <Animated.View style={[animatedTransformStyle, cardItemStyle]}>
         <TouchableOpacity
           onPress={handleCardPress}
+          onLongPress={handleCardLongPress}
           style={styles.touchableArea}
         >
           <View style={cardViewStyle}>
@@ -169,6 +180,11 @@ const PresetCard = React.memo(
                 <Text style={styles.cardSubtitle}>{preset.effectName}</Text>
               )}
             </View>
+            {isBootPreset && !isDeleteMode && (
+              <View style={styles.bootIndicator}>
+                <Ionicons name="star" size={16} color="#FFD700" />
+              </View>
+            )}
             {isActive && !isDeleteMode && (
               <View style={styles.activeIndicator}>
                 <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
@@ -194,6 +210,7 @@ const PresetCard = React.memo(
       prevProps.preset.effectName === nextProps.preset.effectName &&
       prevProps.animationDelay === nextProps.animationDelay &&
       prevProps.isActive === nextProps.isActive &&
+      prevProps.isBootPreset === nextProps.isBootPreset &&
       prevProps.isDeleteMode === nextProps.isDeleteMode &&
       prevProps.isSelected === nextProps.isSelected &&
       prevProps.showIcon === nextProps.showIcon &&
@@ -260,6 +277,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
+  },
+  bootIndicator: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
   },
   deleteOverlay: {
     position: 'absolute',

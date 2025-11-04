@@ -92,8 +92,8 @@ android {
         applicationId 'dev.mrkprdo.kolori'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
-        versionName "0.2.10"
+        versionCode 17
+        versionName "0.2.11"
     }
     signingConfigs {
         debug {

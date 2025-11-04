@@ -7,6 +7,7 @@ import { sharedStyles } from './styles';
 interface CustomEffectsSectionProps {
   customEffects: CustomEffect[];
   activePreset: string | number | null;
+  bootPresetId: number | null;
   activeDevice: { isConnected?: boolean } | undefined;
   isCollapsed: boolean;
   isBlocked?: boolean;
@@ -24,6 +25,7 @@ interface CustomEffectsSectionProps {
   subtextColor: string;
   onToggleCollapse: () => void;
   onPresetSelect: (id: string | number) => void;
+  onLongPress?: (preset: any, isDeletable?: boolean) => void;
   onToggleSelection: (id: string | number) => void;
   onGenerateRandom: () => void;
   PresetCard: React.ComponentType<any>;
@@ -32,6 +34,7 @@ interface CustomEffectsSectionProps {
 const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
   customEffects,
   activePreset,
+  bootPresetId,
   activeDevice,
   isCollapsed,
   isBlocked = false,
@@ -49,6 +52,7 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
   subtextColor,
   onToggleCollapse,
   onPresetSelect,
+  onLongPress,
   onToggleSelection,
   onGenerateRandom,
   PresetCard,
@@ -184,7 +188,9 @@ const CustomEffectsSection: React.FC<CustomEffectsSectionProps> = ({
                       preset={preset}
                       index={index}
                       activePreset={activePreset}
+                      bootPresetId={bootPresetId}
                       onPresetSelect={onPresetSelect}
+                      onLongPress={onLongPress}
                       isDark={isDark}
                       isDeleteMode={isDeleteMode}
                       isSelected={selectedForDelete.has(preset.id)}
