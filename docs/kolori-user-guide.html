@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kolori - User Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #60a5fa;
+            --secondary-color: #818cf8;
+            --accent-1: #34d399;
+            --accent-2: #fbbf24;
+            --accent-3: #f87171;
+            --accent-4: #a78bfa;
+
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-tertiary: #94a3b8;
+
+            --border-color: #334155;
+            --border-color-hover: #475569;
+
+            --card-bg: #1e293b;
+            --card-shadow: rgba(0, 0, 0, 0.3);
+            --card-shadow-hover: rgba(0, 0, 0, 0.5);
+
+            --header-gradient-start: #1e293b;
+            --header-gradient-end: #0f172a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
+            color: var(--text-primary);
+            padding: 80px 0 100px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1), transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.1), transparent 50%);
+        }
+
+        header h1 {
+            font-size: 3.5em;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-4));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            font-size: 1.3em;
+            opacity: 0.85;
+            position: relative;
+            z-index: 1;
+            color: var(--text-secondary);
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--card-bg);
+            box-shadow: 0 2px 10px var(--card-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 0;
+        }
+
+        nav li {
+            margin: 0;
+        }
+
+        nav a {
+            display: block;
+            padding: 20px 25px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            background: var(--bg-tertiary);
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* Main Content */
+        main {
+            padding: 60px 0;
+        }
+
+        section {
+            margin-bottom: 80px;
+            scroll-margin-top: 80px;
+        }
+
+        section h2 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            color: var(--text-primary);
+            position: relative;
+            padding-bottom: 15px;
+        }
+
+        section h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 2px;
+        }
+
+        section h3 {
+            font-size: 1.8em;
+            margin: 30px 0 20px;
+            color: var(--text-primary);
+        }
+
+        section h4 {
+            font-size: 1.3em;
+            margin: 25px 0 15px;
+            color: var(--primary-color);
+        }
+
+        p {
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+            font-size: 1.05em;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px var(--card-shadow);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px var(--card-shadow-hover);
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .feature-card p {
+            color: var(--text-tertiary);
+        }
+
+        /* Steps */
+        .steps {
+            counter-reset: step-counter;
+        }
+
+        .step {
+            counter-increment: step-counter;
+            position: relative;
+            padding-left: 70px;
+            margin-bottom: 40px;
+        }
+
+        .step::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .step h4 {
+            margin-top: 0;
+        }
+
+        .step p, .step ul, .step ol {
+            color: var(--text-secondary);
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 20px 0;
+            padding-left: 30px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        code {
+            background: var(--bg-tertiary);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent-3);
+            font-size: 0.9em;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .badge-primary { background: var(--primary-color); color: white; }
+        .badge-success { background: var(--accent-1); color: white; }
+        .badge-warning { background: var(--accent-2); color: white; }
+        .badge-danger { background: var(--accent-3); color: white; }
+        .badge-purple { background: var(--accent-4); color: white; }
+
+        /* Alert boxes */
+        .alert {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-secondary));
+            border-color: var(--primary-color);
+            color: var(--text-primary);
+        }
+
+        .alert-warning {
+            background: color-mix(in srgb, var(--accent-2) 10%, var(--bg-secondary));
+            border-color: var(--accent-2);
+            color: var(--text-primary);
+        }
+
+        .alert-success {
+            background: color-mix(in srgb, var(--accent-1) 10%, var(--bg-secondary));
+            border-color: var(--accent-1);
+            color: var(--text-primary);
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Links */
+        .card a, .card-grid a, li a, p a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .card a:hover, .card-grid a:hover, li a:hover, p a:hover {
+            text-decoration: underline;
+            color: var(--secondary-color);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2em;
+            }
+
+            section h2 {
+                font-size: 1.8em;
+            }
+
+            nav ul {
+                flex-direction: column;
+            }
+
+            nav a {
+                padding: 15px;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .step {
+                padding-left: 60px;
+            }
+
+            .step::before {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2em;
+            }
+
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+            }
+        }
+
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Fallback for browsers that don't support color-mix */
+        @supports not (background: color-mix(in srgb, red 10%, white)) {
+            .alert-info { background: rgba(59, 130, 246, 0.1); }
+            .alert-warning { background: rgba(245, 158, 11, 0.1); }
+            .alert-success { background: rgba(16, 185, 129, 0.1); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Kolori</h1>
+            <p>Complete User Guide for WLED Control</p>
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#getting-started">Getting Started</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#presets">Presets</a></li>
+            <li><a href="#playlists">Playlists</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+            <li><a href="#faq">FAQ</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <!-- Overview Section -->
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>Kolori is a powerful mobile application designed to control WLED (Wireless LED) devices. With an intuitive interface and advanced features, Kolori makes it easy to manage your LED lighting displays, create custom effects, and organize your favorite presets.</p>
+
+            <div class="card-grid">
+                <div class="card feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h4>Custom Effects</h4>
+                    <p>Create and save your own lighting effects with full control over colors, patterns, and brightness.</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h4>Playlists</h4>
+                    <p>Organize multiple effects into playlists that automatically cycle through your favorite looks.</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h4>Boot Presets</h4>
+                    <p>Set a preset to automatically load when your device powers on, ensuring your lights start how you want.</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">👁️</div>
+                    <h4>Live View</h4>
+                    <p>See real-time visualization of your LED strip, including color changes and animations as they happen.</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">🎵</div>
+                    <h4>Audio Reactive</h4>
+                    <p>Sync your lights to music with built-in audio reactive effects for an immersive experience.</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h4>Multi-Device</h4>
+                    <p>Manage multiple WLED devices from a single app, switching between them seamlessly.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Getting Started Section -->
+        <section id="getting-started">
+            <h2>Getting Started</h2>
+
+            <div class="alert alert-info">
+                <strong>Prerequisites:</strong> Make sure your WLED device is powered on and connected to the same Wi-Fi network as your mobile device.
+            </div>
+
+            <div class="steps">
+                <div class="step">
+                    <h4>Install the App</h4>
+                    <p>Download Kolori from the Google Play Store or Apple App Store and install it on your mobile device.</p>
+                </div>
+
+                <div class="step">
+                    <h4>Add Your First Device</h4>
+                    <p>Tap the device dropdown at the top of the screen and select "Manage Devices". Use the "Scan Network" button to automatically discover WLED devices, or tap "Add Manually" to enter your device's IP address.</p>
+                </div>
+
+                <div class="step">
+                    <h4>Connect to Your Device</h4>
+                    <p>Once added, select your device from the dropdown menu. The app will establish a connection and display the current status with a green indicator dot.</p>
+                </div>
+
+                <div class="step">
+                    <h4>Start Controlling</h4>
+                    <p>Use the preset grid to select effects, adjust brightness with the slider, and explore the various features available.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features">
+            <h2>Features</h2>
+
+            <h3>Device Management</h3>
+            <div class="card">
+                <h4>Adding Devices</h4>
+                <p>To add a WLED device:</p>
+                <ol>
+                    <li>Tap the device dropdown in the header</li>
+                    <li>Select "Manage Devices"</li>
+                    <li>Choose "Scan Network" for automatic discovery, or "Add Manually" to enter IP address</li>
+                    <li>Give your device a friendly name</li>
+                    <li>Tap "Save" to add the device</li>
+                </ol>
+
+                <div class="alert alert-info">
+                    <strong>Tip:</strong> The "Scan Network" feature will automatically discover all WLED devices on your local network, making setup quick and easy.
+                </div>
+            </div>
+
+            <div class="card">
+                <h4>Device Controls</h4>
+                <p>The device selection dropdown shows:</p>
+                <ul>
+                    <li><span class="badge badge-success">●</span> Green dot: Device is connected</li>
+                    <li><span class="badge badge-danger">●</span> Red dot: Device is offline</li>
+                    <li>Power button: Toggle lights on/off</li>
+                    <li>Device name and IP address</li>
+                </ul>
+            </div>
+
+            <h3>Brightness Control</h3>
+            <div class="card">
+                <p>Use the brightness slider to adjust the overall brightness of your LED strip:</p>
+                <ul>
+                    <li>Drag the slider left to decrease brightness (0%)</li>
+                    <li>Drag the slider right to increase brightness (100%)</li>
+                    <li>Changes apply in real-time via WebSocket connection</li>
+                </ul>
+
+                <div class="alert alert-warning">
+                    <strong>Note:</strong> Brightness changes only apply when the device is powered on.
+                </div>
+            </div>
+
+            <h3>Live View</h3>
+            <div class="card">
+                <h4>Real-time LED Visualization</h4>
+                <p>Live View shows you exactly what your LED strip is displaying in real-time. Each LED is represented as a colored circle on screen.</p>
+
+                <p><strong>Features:</strong></p>
+                <ul>
+                    <li>Real-time color updates via WebSocket</li>
+                    <li>Adjustable LED size (compact, normal, large, extra-large)</li>
+                    <li>Matrix layout support for 2D displays</li>
+                    <li>Toggle on/off with the eye icon</li>
+                </ul>
+
+                <div class="alert alert-info">
+                    <strong>Performance Tip:</strong> Live View uses WebSocket streaming. If you experience performance issues, try using a smaller LED size or disable Live View when not needed.
+                </div>
+            </div>
+
+            <h3>Refresh</h3>
+            <div class="card">
+                <p>The refresh button (circular arrow icon) updates the following from your device:</p>
+                <ul>
+                    <li>Current brightness level</li>
+                    <li>Active preset/effect</li>
+                    <li>Boot preset configuration</li>
+                    <li>Device power state</li>
+                    <li>Available presets and playlists</li>
+                </ul>
+
+                <div class="alert alert-success">
+                    <strong>Best Practice:</strong> Refresh after making changes in the WLED web interface to sync the app's state.
+                </div>
+            </div>
+
+            <h3>Floating Action Button (FAB)</h3>
+            <div class="card">
+                <p>The circular button in the bottom-right corner is the Floating Action Button (FAB). Tap it to reveal quick actions:</p>
+                <ul>
+                    <li><strong>Create New:</strong> Opens a menu to create Custom Effects or Playlists</li>
+                    <li><strong>Device Management:</strong> Quick access to manage your devices</li>
+                    <li><strong>Delete Mode:</strong> Enter delete mode to remove multiple presets at once</li>
+                    <li><strong>Settings:</strong> Access app settings</li>
+                    <li><strong>Scheduler:</strong> Schedule presets to activate at specific times</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Presets Section -->
+        <section id="presets">
+            <h2>Presets</h2>
+
+            <h3>Understanding Preset Types</h3>
+            <div class="card">
+                <p>The app displays three types of presets:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-primary">Seasonal</span></td>
+                            <td>Holiday and seasonal effects (configurable in settings)</td>
+                            <td>App-provided</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-success">Custom</span></td>
+                            <td>Your personally created effects</td>
+                            <td>User-created</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-warning">WLED</span></td>
+                            <td>Presets stored on your WLED device</td>
+                            <td>WLED device</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h4>Preset Indicators</h4>
+                <ul>
+                    <li><strong>Blue border:</strong> Currently active preset</li>
+                    <li><strong>Gold star (top-left):</strong> Boot preset (loads on device startup)</li>
+                    <li><strong>Checkmark icon (top-right):</strong> Active effect</li>
+                </ul>
+            </div>
+
+            <h3>Creating Custom Effects</h3>
+            <div class="card">
+                <div class="steps">
+                    <div class="step">
+                        <h4>Open Custom Effect Creator</h4>
+                        <p>Tap the FAB button in the bottom-right corner, then tap "Create New", and select "Custom Effect".</p>
+                    </div>
+
+                    <div class="step">
+                        <h4>Configure Your Effect</h4>
+                        <ul>
+                            <li>Enter a name for your effect</li>
+                            <li>Choose an effect type (Solid, Rainbow, Scan, etc.)</li>
+                            <li>Select colors using the color pickers</li>
+                            <li>Adjust speed, intensity, and other parameters</li>
+                        </ul>
+                    </div>
+
+                    <div class="step">
+                        <h4>Preview and Save</h4>
+                        <p>Use the preview button to test your effect on the device. When satisfied, tap "Save" to store it on your WLED device.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Preset Options</h3>
+            <div class="card">
+                <p>Long-press any preset card to access additional options:</p>
+
+                <ul>
+                    <li><strong>Set as Boot Preset:</strong> Configure this preset to load when device powers on</li>
+                    <li><strong>Disable Boot Preset:</strong> Remove boot preset configuration (only visible if this is the current boot preset)</li>
+                    <li><strong>Delete:</strong> Remove the preset from your device (custom effects only)</li>
+                    <li><strong>Cancel:</strong> Close the options menu</li>
+                </ul>
+            </div>
+
+            <h3>Boot Presets</h3>
+            <div class="card">
+                <h4>What is a Boot Preset?</h4>
+                <p>A boot preset is a preset that automatically activates when your WLED device powers on. This ensures your lights start with your preferred look without manual intervention.</p>
+
+                <h4>Setting a Boot Preset</h4>
+                <ol>
+                    <li>Long-press the preset you want to use</li>
+                    <li>Select "Set as Boot Preset"</li>
+                    <li>Confirm your selection</li>
+                    <li>A gold star icon will appear on the preset card</li>
+                    <li>The configuration is saved to your device's <code>/json/cfg</code></li>
+                </ol>
+
+                <h4>Disabling Boot Preset</h4>
+                <p>Long-press the current boot preset (marked with a star) and select "Disable Boot Preset".</p>
+
+                <div class="alert alert-info">
+                    <strong>Note:</strong> Only one preset or playlist can be set as the boot preset at a time. Setting a new boot preset will automatically replace the previous one.
+                </div>
+
+                <div class="alert alert-success">
+                    <strong>Syncing:</strong> Use the refresh button to sync boot preset changes made in the WLED web interface back to the app.
+                </div>
+            </div>
+        </section>
+
+        <!-- Playlists Section -->
+        <section id="playlists">
+            <h2>Playlists</h2>
+
+            <h3>What are Playlists?</h3>
+            <div class="card">
+                <p>Playlists allow you to create sequences of effects that automatically cycle through at specified intervals. Perfect for creating dynamic lighting displays that change over time.</p>
+            </div>
+
+            <h3>Creating a Playlist</h3>
+            <div class="card">
+                <div class="steps">
+                    <div class="step">
+                        <h4>Open Playlist Creator</h4>
+                        <p>Tap the FAB button, then tap "Create New", and select "Playlist".</p>
+                    </div>
+
+                    <div class="step">
+                        <h4>Name Your Playlist</h4>
+                        <p>Enter a descriptive name for your playlist (e.g., "Evening Ambiance", "Party Mode").</p>
+                    </div>
+
+                    <div class="step">
+                        <h4>Add Effects</h4>
+                        <p>Select effects from your custom effects list. Each effect can be added multiple times if desired.</p>
+                    </div>
+
+                    <div class="step">
+                        <h4>Set Durations</h4>
+                        <p>Configure how long each effect should play before transitioning to the next (in seconds).</p>
+                    </div>
+
+                    <div class="step">
+                        <h4>Configure Transitions</h4>
+                        <p>Choose transition effects between presets for smooth changes.</p>
+                    </div>
+
+                    <div class="step">
+                        <h4>Save Playlist</h4>
+                        <p>Tap "Save" to store your playlist on the WLED device. It will appear in the Playlists section.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Managing Playlists</h3>
+            <div class="card">
+                <h4>Playing a Playlist</h4>
+                <p>Simply tap on a playlist card to start playback. The playlist will cycle through all effects in order, transitioning at the specified intervals.</p>
+
+                <h4>Playlist Options</h4>
+                <p>Long-press a playlist card to access:</p>
+                <ul>
+                    <li><strong>Set as Boot Preset:</strong> Start this playlist automatically on device power-on</li>
+                    <li><strong>Delete:</strong> Remove the playlist from the device</li>
+                </ul>
+
+                <div class="alert alert-success">
+                    <strong>Pro Tip:</strong> Playlists can also be set as boot presets, allowing your lights to automatically cycle through effects on startup!
+                </div>
+            </div>
+        </section>
+
+        <!-- Audio Reactive Section -->
+        <section id="audio-reactive">
+            <h2>Audio Reactive</h2>
+
+            <div class="card">
+                <h4>Music Sync</h4>
+                <p>Audio Reactive mode syncs your LED lights to music and sound. Your WLED device needs to have a microphone or audio input configured.</p>
+
+                <h4>Using Audio Reactive</h4>
+                <ol>
+                    <li>Swipe left to navigate to the "Audio Reactive" page</li>
+                    <li>Browse available audio-reactive presets</li>
+                    <li>Tap a preset to activate it</li>
+                    <li>Adjust sensitivity and gain settings as needed</li>
+                    <li>Play music near your device's microphone</li>
+                </ol>
+
+                <div class="alert alert-warning">
+                    <strong>Hardware Required:</strong> Audio reactive features require your WLED device to have audio input capabilities (microphone, line-in, or UDP sound sync).
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Note:</strong> When Audio Reactive is active, the preset sections on page 1 will be blocked to prevent conflicts.
+                </div>
+            </div>
+        </section>
+
+        <!-- Troubleshooting Section -->
+        <section id="troubleshooting">
+            <h2>Troubleshooting</h2>
+
+            <h3>Connection Issues</h3>
+            <div class="card">
+                <h4>Device Not Connecting</h4>
+                <p><strong>Symptoms:</strong> Red indicator dot, "Device offline" message</p>
+
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Verify your WLED device is powered on</li>
+                    <li>Ensure your phone and WLED device are on the same Wi-Fi network</li>
+                    <li>Check the IP address is correct (it may change after router restart)</li>
+                    <li>Ping the device IP from your network to verify connectivity</li>
+                    <li>Restart your WLED device and try reconnecting</li>
+                    <li>Try adding the device again using "Scan Network"</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>Slow Response Time</h4>
+                <p><strong>Symptoms:</strong> Delayed preset changes, slow brightness adjustments</p>
+
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Check your Wi-Fi signal strength</li>
+                    <li>Reduce the number of LEDs if your device is underpowered</li>
+                    <li>Disable Live View to reduce network traffic</li>
+                    <li>Close other apps that might be using network bandwidth</li>
+                    <li>Restart the WebSocket connection by toggling device off and on</li>
+                </ul>
+            </div>
+
+            <h3>Preset Issues</h3>
+            <div class="card">
+                <h4>Boot Preset Not Working</h4>
+                <p><strong>Problem:</strong> Boot preset doesn't load on device startup</p>
+
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Verify the boot preset is set (look for gold star icon)</li>
+                    <li>Refresh the app after setting boot preset to sync configuration</li>
+                    <li>Power cycle the WLED device completely (unplug power, wait 10 seconds, replug)</li>
+                    <li>Check WLED firmware version (update if necessary)</li>
+                    <li>Verify the preset still exists on the device</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>Missing Presets</h4>
+                <p><strong>Problem:</strong> Presets saved in WLED web interface don't appear in app</p>
+
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Tap the refresh button to sync with device</li>
+                    <li>Ensure presets are saved with segment bounds enabled in WLED</li>
+                    <li>Verify you're connected to the correct device</li>
+                    <li>Check that the preset ID is within the valid range (1-250)</li>
+                </ul>
+            </div>
+
+            <h3>Live View Issues</h3>
+            <div class="card">
+                <h4>Live View Not Updating</h4>
+                <p><strong>Problem:</strong> LEDs not showing real-time updates</p>
+
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Toggle Live View off and on again (eye icon)</li>
+                    <li>Reduce LED size to improve performance</li>
+                    <li>Check WebSocket connection status (green dot)</li>
+                    <li>Restart the app</li>
+                    <li>Verify your WLED firmware supports WebSocket streaming</li>
+                </ul>
+            </div>
+
+            <h3>General Tips</h3>
+            <div class="card">
+                <ul>
+                    <li><strong>App Crashes:</strong> Clear app cache and data, reinstall if needed</li>
+                    <li><strong>Outdated Data:</strong> Use the refresh button regularly to sync with device</li>
+                    <li><strong>Permission Issues:</strong> Check network permissions in device settings</li>
+                    <li><strong>WLED Updates:</strong> Keep WLED firmware up to date for best compatibility</li>
+                    <li><strong>Factory Reset:</strong> If issues persist, try resetting your WLED device to factory defaults</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq">
+            <h2>Frequently Asked Questions</h2>
+
+            <div class="card">
+                <h4>Can I control multiple WLED devices at once?</h4>
+                <p>Currently, Kolori controls one device at a time. However, you can quickly switch between devices using the device dropdown menu in the header.</p>
+            </div>
+
+            <div class="card">
+                <h4>Do my custom effects sync across devices?</h4>
+                <p>Custom effects are saved to each WLED device individually. If you want the same effect on multiple devices, you'll need to create it on each device separately.</p>
+            </div>
+
+            <div class="card">
+                <h4>What's the difference between a preset and a playlist?</h4>
+                <p>A preset is a single lighting effect or configuration, while a playlist is a sequence of multiple presets that automatically cycle through at specified intervals.</p>
+            </div>
+
+            <div class="card">
+                <h4>Can I use Kolori without Wi-Fi?</h4>
+                <p>Kolori requires your phone and WLED device to be on the same network. Without network connection, the app cannot communicate with your devices.</p>
+            </div>
+
+            <div class="card">
+                <h4>How do I find my WLED device's IP address?</h4>
+                <p>Use the "Scan Network" feature in the Device Management screen to automatically discover devices. Alternatively, you can find the IP address in your router's admin panel or in the WLED device's configuration screen (accessible via AP mode).</p>
+            </div>
+
+            <div class="card">
+                <h4>Why isn't my boot preset loading?</h4>
+                <p>Boot presets are configured in the device's <code>/json/cfg</code> file. Make sure you've set it using the app (long-press → Set as Boot Preset), then power cycle the device completely. Use the refresh button to verify the boot preset configuration is synced.</p>
+            </div>
+
+            <div class="card">
+                <h4>Can I schedule presets to activate at specific times?</h4>
+                <p>Yes! Use the Scheduler feature accessible from the FAB menu. Scheduling is also available through WLED's built-in scheduler via the web interface.</p>
+            </div>
+
+            <div class="card">
+                <h4>Does Kolori work with all WLED versions?</h4>
+                <p>Kolori is designed to work with WLED 0.13.0 and later. Some features may not be available on older versions. We recommend keeping your WLED firmware up to date for the best experience.</p>
+            </div>
+
+            <div class="card">
+                <h4>How do I delete a preset?</h4>
+                <p>Long-press the preset card and select "Delete". You can also enter Delete Mode (via FAB menu) to delete multiple presets at once. Note that seasonal presets cannot be deleted, only custom effects and device presets.</p>
+            </div>
+
+            <div class="card">
+                <h4>What does the refresh button do?</h4>
+                <p>The refresh button syncs the app with your WLED device, updating:
+                    <ul>
+                        <li>Current brightness level</li>
+                        <li>Active preset/effect</li>
+                        <li>Boot preset configuration from <code>/json/cfg</code></li>
+                        <li>Available presets and playlists</li>
+                        <li>Device power state</li>
+                    </ul>
+                </p>
+            </div>
+
+            <div class="card">
+                <h4>What is the gold star icon on presets?</h4>
+                <p>The gold star indicates that this preset is configured as the boot preset. It will automatically load when your WLED device powers on.</p>
+            </div>
+
+            <div class="card">
+                <h4>Can playlists be set as boot presets?</h4>
+                <p>Yes! Playlists can also be set as boot presets, allowing your device to automatically cycle through multiple effects on startup.</p>
+            </div>
+        </section>
+
+        <!-- Support Section -->
+        <section id="support">
+            <h2>Support & Feedback</h2>
+
+            <div class="card">
+                <h4>Need Help?</h4>
+                <p>If you encounter issues not covered in this guide:</p>
+                <ul>
+                    <li>Check the official WLED documentation: <a href="https://kno.wled.ge" target="_blank">kno.wled.ge</a></li>
+                    <li>Visit the WLED Discord community for real-time help</li>
+                    <li>Report app issues on our GitHub repository</li>
+                    <li>Check for app updates in your app store</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>Feature Requests</h4>
+                <p>Have an idea for a new feature? We'd love to hear from you! Submit feature requests through our <a href="https://github.com/kolori-app/kolori/issues" target="_blank">GitHub issues page</a>.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Kolori - WLED UI App</p>
+            <p style="margin-top: 20px; font-size: 0.9em;">
+                This app is not officially affiliated with the WLED project.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for navigation
+        document.querySelectorAll('nav a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
