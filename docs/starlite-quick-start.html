@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starlite - Quick Start Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #60a5fa;
+            --secondary-color: #818cf8;
+            --accent-1: #34d399;
+            --accent-2: #fbbf24;
+            --accent-3: #f87171;
+
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-tertiary: #94a3b8;
+
+            --border-color: #334155;
+            --card-bg: #1e293b;
+            --card-shadow: rgba(0, 0, 0, 0.3);
+            --card-shadow-hover: rgba(0, 0, 0, 0.5);
+
+            --success-bg: #064e3b;
+            --success-border: #34d399;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            padding-bottom: 40px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 60px 0 40px;
+        }
+
+        .logo {
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .version {
+            font-size: 0.9em;
+            color: var(--text-tertiary);
+            background: var(--bg-tertiary);
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        /* Section Headers */
+        .section-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin: 40px 0 25px;
+            font-size: 1.8em;
+            font-weight: bold;
+            box-shadow: 0 4px 6px var(--card-shadow);
+        }
+
+        .section-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: white;
+            color: var(--primary-color);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            margin-right: 15px;
+            font-size: 1.1em;
+        }
+
+        /* Steps */
+        .step {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px var(--card-shadow);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px var(--card-shadow-hover);
+        }
+
+        .step-number {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            box-shadow: 0 4px 6px var(--card-shadow);
+        }
+
+        .step-content {
+            margin-left: 70px;
+        }
+
+        .step-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .step-description {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Image Placeholder */
+        .image-placeholder {
+            background: var(--bg-tertiary);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 60px;
+            text-align: center;
+            margin: 20px 0;
+            color: var(--text-tertiary);
+        }
+
+        .image-placeholder-icon {
+            font-size: 4em;
+            margin-bottom: 10px;
+        }
+
+        /* Alert/Info Boxes */
+        .info-box {
+            background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-secondary));
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success-box {
+            background: var(--success-bg);
+            border-left: 4px solid var(--success-border);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success-box-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .info-box strong, .success-box strong {
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .info-box p, .success-box p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* Code/Credential Boxes */
+        .credential-box {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .credential-label {
+            color: var(--text-tertiary);
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+
+        .credential-value {
+            color: var(--text-primary);
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        /* List Styling */
+        .option-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+
+        .option-list li {
+            padding: 12px;
+            background: var(--bg-tertiary);
+            margin: 8px 0;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+        }
+
+        .option-list li::before {
+            content: "•";
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 1.5em;
+            margin-right: 12px;
+        }
+
+        /* Download Link */
+        .download-link {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1em;
+            box-shadow: 0 4px 6px var(--card-shadow);
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+
+        .download-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px var(--card-shadow-hover);
+        }
+
+        .download-link::before {
+            content: "📱 ";
+            font-size: 1.2em;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 30px 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-tertiary);
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2em;
+            }
+
+            .subtitle {
+                font-size: 1.1em;
+            }
+
+            .section-header {
+                font-size: 1.3em;
+                padding: 15px 20px;
+            }
+
+            .section-number {
+                width: 35px;
+                height: 35px;
+                line-height: 35px;
+                font-size: 1em;
+                margin-right: 10px;
+            }
+
+            .step {
+                padding: 25px 20px;
+            }
+
+            .step-number {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5em;
+            }
+
+            .step-content {
+                margin-left: 60px;
+            }
+
+            .step-title {
+                font-size: 1.2em;
+            }
+
+            .step-description {
+                font-size: 1em;
+            }
+        }
+
+        @media print {
+            .step {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Fallback for browsers that don't support color-mix */
+        @supports not (background: color-mix(in srgb, red 10%, white)) {
+            .info-box {
+                background: rgba(96, 165, 250, 0.1);
+            }
+
+            .success-box {
+                background: rgba(16, 185, 129, 0.2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">Starlite</div>
+            <div class="subtitle">Quick Start Guide</div>
+        </header>
+
+        <!-- Product Image -->
+        <div style="text-align: center; margin: 40px 0;">
+            <img src="starlite.jpg" alt="Starlite LED controller with Kolori app" style="width: 100%; max-width: 700px; border-radius: 12px; box-shadow: 0 8px 20px var(--card-shadow); border: 2px solid var(--border-color);">
+        </div>
+
+        <!-- Basic Setup Section -->
+        <div class="section-header">
+            <span class="section-number">1</span>
+            Basic Setup
+        </div>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <div class="step-title">Connect the USB-C Cable</div>
+                <div class="step-description">
+                    Plug the USB-C cable into your Starlite device. Loop the cable around the nub for cable support to keep everything neat and secure.
+                </div>
+                <img src="cable.png" alt="Cable connection diagram showing USB-C cable looped around nub" style="width: 100%; max-width: 600px; border-radius: 8px; margin: 20px 0; border: 2px solid var(--border-color); display: block;">
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <div class="step-title">Connect Power Adapter</div>
+                <div class="step-description">
+                    Connect the other end of the USB cable to your power adapter and plug it into a power outlet.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <div class="step-title">Power On</div>
+                <div class="step-description">
+                    Starlite should start right away with the default lights setup. Your LED strip will begin displaying the default effect immediately!
+                </div>
+                <div class="success-box">
+                    <div class="success-box-icon">✨</div>
+                    <strong>Success!</strong>
+                    <p>Your Starlite is now powered on and running. You can use it with the default settings or proceed to Advanced Setup for full control.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Setup Section -->
+        <div class="section-header">
+            <span class="section-number">2</span>
+            Advanced Setup
+        </div>
+
+        <div class="info-box">
+            <strong>📱 Mobile App Required</strong>
+            <p>For advanced control and customization, you'll need the Kolori mobile app. Follow the steps below to get started.</p>
+        </div>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <div class="step-title">Download Kolori App</div>
+                <div class="step-description">
+                    Download the Kolori app from the official website:
+                </div>
+                <a href="https://kolori.wasmer.app" target="_blank" class="download-link">
+                    Download Kolori App
+                </a>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <div class="step-title">Connect to Starlite Wi-Fi</div>
+                <div class="step-description">
+                    Open your phone's Wi-Fi settings and look for the following access point:
+                </div>
+                <div class="credential-box">
+                    <span class="credential-label">Network Name:</span>
+                    <span class="credential-value">starlite</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <div class="step-title">Enter Wi-Fi Password</div>
+                <div class="step-description">
+                    Connect to the "starlite" network using one of the following passwords:
+                </div>
+                <ul class="option-list">
+                    <li><strong>starlite4321</strong> (Primary)</li>
+                    <li><strong>wled1234</strong> (Fallback)</li>
+                </ul>
+                <div class="info-box">
+                    <strong>💡 Tip</strong>
+                    <p>Try the passwords in order. The first one (starlite4321) is most commonly used.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <div class="step-title">Add Device in Kolori App</div>
+                <div class="step-description">
+                    Open the Kolori app and add your Starlite device manually using the following IP address:
+                </div>
+                <div class="credential-box">
+                    <span class="credential-label">IP Address:</span>
+                    <span class="credential-value">4.3.2.1</span>
+                </div>
+                <div class="info-box">
+                    <strong>How to Add Device</strong>
+                    <p>When you open the Kolori app for the first time, you'll see the onboarding page.<br>
+                    1. Tap "Add Device Manually"<br>
+                    2. Enter device name (e.g., "Starlite")<br>
+                    3. Enter IP address: <code>4.3.2.1</code><br>
+                    4. Tap "Save"</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <div class="step-title">Configure Presets</div>
+                <div class="step-description">
+                    Now you're ready to customize! Use the Kolori app to:
+                </div>
+                <ul class="option-list">
+                    <li>Create custom lighting effects</li>
+                    <li>Set your favorite preset as boot preset</li>
+                    <li>Create playlists that cycle through multiple effects</li>
+                    <li>Adjust brightness and colors</li>
+                    <li>Control your lights from anywhere on the network</li>
+                </ul>
+                <div class="success-box">
+                    <div class="success-box-icon">🎉</div>
+                    <strong>All Set!</strong>
+                    <p>Your Starlite is now fully configured. Enjoy creating amazing lighting displays!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Need Help Section -->
+        <div class="section-header">
+            <span class="section-number">?</span>
+            Need Help?
+        </div>
+
+        <div class="step" style="background: var(--bg-tertiary); border: none;">
+            <div class="step-content" style="margin-left: 0;">
+                <div class="step-title">📚 User Guide</div>
+                <div class="step-description">
+                    For detailed instructions on all features, check out the complete user guide:
+                    <br><br>
+                    <a href="kolori-user-guide.html" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">
+                        → View Complete User Guide
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="step" style="background: var(--bg-tertiary); border: none;">
+            <div class="step-content" style="margin-left: 0;">
+                <div class="step-title">🔧 Troubleshooting</div>
+                <div class="step-description">
+                    <strong>Can't find "starlite" Wi-Fi?</strong><br>
+                    • Make sure Starlite is powered on<br>
+                    • Move closer to the device<br>
+                    • Restart Starlite by unplugging and replugging power<br><br>
+
+                    <strong>Can't connect to the Wi-Fi?</strong><br>
+                    • Double-check the password (case-sensitive)<br>
+                    • Try all three password options<br>
+                    • Forget the network and reconnect<br><br>
+
+                    <strong>App can't find device at 4.3.2.1?</strong><br>
+                    • Ensure you're connected to "starlite" Wi-Fi network<br>
+                    • Try the IP address in a web browser first<br>
+                    • Check your phone's Wi-Fi connection status
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Starlite</strong> - Powered by <a href="https://kno.wled.ge" target="_blank">WLED</a></p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                For more information and support, visit the
+                <a href="kolori-user-guide.html">Complete User Guide</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
