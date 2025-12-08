@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kolori - User Guide</title>
@@ -12,37 +13,51 @@
         }
 
         :root {
-            --primary-color: #60a5fa;
-            --secondary-color: #818cf8;
-            --accent-1: #34d399;
-            --accent-2: #fbbf24;
-            --accent-3: #f87171;
-            --accent-4: #a78bfa;
+            /* Light Mode Neumorphism */
+            --light-bg: #e0e5ec;
+            --light-shadow-dark: rgba(163, 177, 198, 0.6);
+            --light-shadow-light: rgba(255, 255, 255, 0.8);
+            --light-text-primary: #4a5568;
+            --light-text-secondary: #718096;
+            --light-text-tertiary: #a0aec0;
+            --light-card-bg: #e0e5ec;
+            --light-border: #cbd5e0;
 
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
+            /* Dark Mode Neumorphism */
+            --dark-bg: #2d3748;
+            --dark-shadow-dark: rgba(0, 0, 0, 0.4);
+            --dark-shadow-light: rgba(74, 85, 104, 0.3);
+            --dark-text-primary: #e2e8f0;
+            --dark-text-secondary: #cbd5e1;
+            --dark-text-tertiary: #94a3b8;
+            --dark-card-bg: #2d3748;
+            --dark-border: #4a5568;
 
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --text-tertiary: #94a3b8;
-
-            --border-color: #334155;
-            --border-color-hover: #475569;
-
-            --card-bg: #1e293b;
-            --card-shadow: rgba(0, 0, 0, 0.3);
-            --card-shadow-hover: rgba(0, 0, 0, 0.5);
-
-            --header-gradient-start: #1e293b;
-            --header-gradient-end: #0f172a;
+            /* Accent colors (same for both modes) */
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --accent-success: #48bb78;
+            --accent-warning: #ed8936;
+            --accent-danger: #f56565;
+            --accent-purple: #9f7aea;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
-            color: var(--text-primary);
-            background: var(--bg-secondary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Light mode (default in CSS, but JS will set dark mode by default) */
+        body.light-mode {
+            background: var(--light-bg);
+            color: var(--light-text-primary);
+        }
+
+        /* Dark mode */
+        body.dark-mode {
+            background: var(--dark-bg);
+            color: var(--dark-text-primary);
         }
 
         .container {
@@ -51,56 +66,109 @@
             padding: 0 20px;
         }
 
-        /* Header */
-        header {
-            background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
-            color: var(--text-primary);
-            padding: 80px 0 100px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
         }
 
-        header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1), transparent 50%),
-                radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.1), transparent 50%);
+        .light-mode .theme-toggle {
+            background: var(--light-bg);
+            color: var(--light-text-primary);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .theme-toggle {
+            background: var(--dark-bg);
+            color: var(--dark-text-primary);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .light-mode .theme-toggle:active {
+            box-shadow:
+                inset 4px 4px 8px var(--light-shadow-dark),
+                inset -4px -4px 8px var(--light-shadow-light);
+        }
+
+        .dark-mode .theme-toggle:active {
+            box-shadow:
+                inset 4px 4px 8px var(--dark-shadow-dark),
+                inset -4px -4px 8px var(--dark-shadow-light);
+        }
+
+        /* Header */
+        header {
+            padding: 80px 0 60px;
+            text-align: center;
         }
 
         header h1 {
             font-size: 3.5em;
-            margin-bottom: 10px;
-            position: relative;
-            z-index: 1;
-            color: var(--text-primary);
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-4));
+            margin-bottom: 15px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        header p {
+        .light-mode header p {
             font-size: 1.3em;
-            opacity: 0.85;
-            position: relative;
-            z-index: 1;
-            color: var(--text-secondary);
+            color: var(--light-text-secondary);
+        }
+
+        .dark-mode header p {
+            font-size: 1.3em;
+            color: var(--dark-text-secondary);
         }
 
         /* Navigation */
         nav {
-            background: var(--card-bg);
-            box-shadow: 0 2px 10px var(--card-shadow);
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+            border-radius: 25px;
+            padding: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .light-mode nav {
+            background: var(--light-bg);
+            box-shadow:
+                10px 10px 20px var(--light-shadow-dark),
+                -10px -10px 20px var(--light-shadow-light);
+        }
+
+        .dark-mode nav {
+            background: var(--dark-bg);
+            box-shadow:
+                10px 10px 20px var(--dark-shadow-dark),
+                -10px -10px 20px var(--dark-shadow-light);
         }
 
         nav ul {
@@ -117,17 +185,34 @@
 
         nav a {
             display: block;
-            padding: 20px 25px;
-            color: var(--text-primary);
+            padding: 18px 22px;
             text-decoration: none;
             transition: all 0.3s;
-            border-bottom: 3px solid transparent;
+            border-radius: 20px;
             font-weight: 500;
+            margin: 3px;
         }
 
-        nav a:hover {
-            background: var(--bg-tertiary);
-            border-bottom-color: var(--primary-color);
+        .light-mode nav a {
+            color: var(--light-text-primary);
+        }
+
+        .dark-mode nav a {
+            color: var(--dark-text-primary);
+        }
+
+        .light-mode nav a:hover {
+            background: var(--light-bg);
+            box-shadow:
+                inset 4px 4px 8px var(--light-shadow-dark),
+                inset -4px -4px 8px var(--light-shadow-light);
+        }
+
+        .dark-mode nav a:hover {
+            background: var(--dark-bg);
+            box-shadow:
+                inset 4px 4px 8px var(--dark-shadow-dark),
+                inset -4px -4px 8px var(--dark-shadow-light);
         }
 
         /* Main Content */
@@ -137,13 +222,13 @@
 
         section {
             margin-bottom: 80px;
-            scroll-margin-top: 80px;
+            scroll-margin-top: 100px;
         }
 
         section h2 {
             font-size: 2.5em;
-            margin-bottom: 30px;
-            color: var(--text-primary);
+            margin-bottom: 35px;
+            font-weight: 600;
             position: relative;
             padding-bottom: 15px;
         }
@@ -155,52 +240,75 @@
             left: 0;
             width: 60px;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
             border-radius: 2px;
         }
 
         section h3 {
             font-size: 1.8em;
-            margin: 30px 0 20px;
-            color: var(--text-primary);
+            margin: 35px 0 20px;
         }
 
         section h4 {
             font-size: 1.3em;
             margin: 25px 0 15px;
-            color: var(--primary-color);
+            color: var(--accent-primary);
         }
 
-        p {
+        .light-mode p {
             margin-bottom: 20px;
-            color: var(--text-secondary);
+            color: var(--light-text-secondary);
             font-size: 1.05em;
         }
 
-        strong {
-            color: var(--text-primary);
+        .dark-mode p {
+            margin-bottom: 20px;
+            color: var(--dark-text-secondary);
+            font-size: 1.05em;
         }
 
-        /* Cards */
+        /* Neumorphic Cards */
         .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 6px var(--card-shadow);
-            border: 1px solid var(--border-color);
-            transition: transform 0.3s, box-shadow 0.3s;
+            border-radius: 25px;
+            padding: 35px;
+            margin-bottom: 30px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .light-mode .card {
+            background: var(--light-card-bg);
+            box-shadow:
+                10px 10px 20px var(--light-shadow-dark),
+                -10px -10px 20px var(--light-shadow-light);
+        }
+
+        .dark-mode .card {
+            background: var(--dark-card-bg);
+            box-shadow:
+                10px 10px 20px var(--dark-shadow-dark),
+                -10px -10px 20px var(--dark-shadow-light);
         }
 
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px var(--card-shadow-hover);
+            transform: translateY(-3px);
+        }
+
+        .light-mode .card:hover {
+            box-shadow:
+                14px 14px 28px var(--light-shadow-dark),
+                -14px -14px 28px var(--light-shadow-light);
+        }
+
+        .dark-mode .card:hover {
+            box-shadow:
+                14px 14px 28px var(--dark-shadow-dark),
+                -14px -14px 28px var(--dark-shadow-light);
         }
 
         .card-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
+            gap: 30px;
             margin: 30px 0;
         }
 
@@ -211,16 +319,30 @@
 
         .feature-icon {
             font-size: 3em;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            display: inline-block;
+            padding: 20px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .light-mode .feature-icon {
+            background: var(--light-bg);
+            box-shadow:
+                inset 6px 6px 12px var(--light-shadow-dark),
+                inset -6px -6px 12px var(--light-shadow-light);
+        }
+
+        .dark-mode .feature-icon {
+            background: var(--dark-bg);
+            box-shadow:
+                inset 6px 6px 12px var(--dark-shadow-dark),
+                inset -6px -6px 12px var(--dark-shadow-light);
         }
 
         .feature-card h4 {
             margin-top: 0;
             margin-bottom: 15px;
-        }
-
-        .feature-card p {
-            color: var(--text-tertiary);
         }
 
         /* Steps */
@@ -231,8 +353,8 @@
         .step {
             counter-increment: step-counter;
             position: relative;
-            padding-left: 70px;
-            margin-bottom: 40px;
+            padding-left: 80px;
+            margin-bottom: 45px;
         }
 
         .step::before {
@@ -240,24 +362,20 @@
             position: absolute;
             left: 0;
             top: 0;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5em;
+            font-size: 1.6em;
             font-weight: bold;
         }
 
         .step h4 {
             margin-top: 0;
-        }
-
-        .step p, .step ul, .step ol {
-            color: var(--text-secondary);
         }
 
         /* Lists */
@@ -266,62 +384,112 @@
             padding-left: 30px;
         }
 
-        li {
+        .light-mode li {
             margin-bottom: 10px;
-            color: var(--text-secondary);
+            color: var(--light-text-secondary);
+        }
+
+        .dark-mode li {
+            margin-bottom: 10px;
+            color: var(--dark-text-secondary);
         }
 
         /* Code blocks */
         code {
-            background: var(--bg-tertiary);
-            padding: 3px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 8px;
             font-family: 'Courier New', monospace;
-            color: var(--accent-3);
             font-size: 0.9em;
+        }
+
+        .light-mode code {
+            background: var(--light-bg);
+            color: var(--accent-danger);
+            box-shadow:
+                inset 2px 2px 4px var(--light-shadow-dark),
+                inset -2px -2px 4px var(--light-shadow-light);
+        }
+
+        .dark-mode code {
+            background: var(--dark-bg);
+            color: var(--accent-danger);
+            box-shadow:
+                inset 2px 2px 4px var(--dark-shadow-dark),
+                inset -2px -2px 4px var(--dark-shadow-light);
         }
 
         /* Badges */
         .badge {
             display: inline-block;
-            padding: 5px 12px;
+            padding: 6px 16px;
             border-radius: 20px;
             font-size: 0.85em;
             font-weight: 600;
             margin-right: 10px;
             margin-bottom: 10px;
+            color: white;
         }
 
-        .badge-primary { background: var(--primary-color); color: white; }
-        .badge-success { background: var(--accent-1); color: white; }
-        .badge-warning { background: var(--accent-2); color: white; }
-        .badge-danger { background: var(--accent-3); color: white; }
-        .badge-purple { background: var(--accent-4); color: white; }
+        .badge-primary { background: var(--accent-primary); }
+        .badge-success { background: var(--accent-success); }
+        .badge-warning { background: var(--accent-warning); }
+        .badge-danger { background: var(--accent-danger); }
+        .badge-purple { background: var(--accent-purple); }
 
         /* Alert boxes */
         .alert {
-            padding: 20px;
-            border-radius: 8px;
-            margin: 25px 0;
-            border-left: 4px solid;
+            padding: 25px;
+            border-radius: 20px;
+            margin: 30px 0;
+            border-left: 5px solid;
         }
 
-        .alert-info {
-            background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-secondary));
-            border-color: var(--primary-color);
-            color: var(--text-primary);
+        .light-mode .alert-info {
+            background: var(--light-bg);
+            border-color: var(--accent-primary);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
         }
 
-        .alert-warning {
-            background: color-mix(in srgb, var(--accent-2) 10%, var(--bg-secondary));
-            border-color: var(--accent-2);
-            color: var(--text-primary);
+        .dark-mode .alert-info {
+            background: var(--dark-bg);
+            border-color: var(--accent-primary);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
         }
 
-        .alert-success {
-            background: color-mix(in srgb, var(--accent-1) 10%, var(--bg-secondary));
-            border-color: var(--accent-1);
-            color: var(--text-primary);
+        .light-mode .alert-warning {
+            background: var(--light-bg);
+            border-color: var(--accent-warning);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .alert-warning {
+            background: var(--dark-bg);
+            border-color: var(--accent-warning);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
+        }
+
+        .light-mode .alert-success {
+            background: var(--light-bg);
+            border-color: var(--accent-success);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .alert-success {
+            background: var(--dark-bg);
+            border-color: var(--accent-success);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
         }
 
         /* Table */
@@ -329,27 +497,49 @@
             width: 100%;
             border-collapse: collapse;
             margin: 25px 0;
-            background: var(--card-bg);
-            border-radius: 8px;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 2px 4px var(--card-shadow);
-            border: 1px solid var(--border-color);
+        }
+
+        .light-mode table {
+            background: var(--light-card-bg);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode table {
+            background: var(--dark-card-bg);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
         }
 
         th, td {
-            padding: 15px;
+            padding: 18px;
             text-align: left;
-            border-bottom: 1px solid var(--border-color);
         }
 
-        th {
-            background: var(--bg-tertiary);
+        .light-mode th {
+            background: rgba(102, 126, 234, 0.1);
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--light-text-primary);
         }
 
-        td {
-            color: var(--text-secondary);
+        .dark-mode th {
+            background: rgba(102, 126, 234, 0.15);
+            font-weight: 600;
+            color: var(--dark-text-primary);
+        }
+
+        .light-mode td {
+            color: var(--light-text-secondary);
+            border-bottom: 1px solid rgba(163, 177, 198, 0.2);
+        }
+
+        .dark-mode td {
+            color: var(--dark-text-secondary);
+            border-bottom: 1px solid rgba(74, 85, 104, 0.3);
         }
 
         tr:last-child td {
@@ -357,38 +547,46 @@
         }
 
         /* Links */
-        .card a, .card-grid a, li a, p a {
-            color: var(--primary-color);
+        a {
+            color: var(--accent-primary);
             text-decoration: none;
             font-weight: 600;
             transition: all 0.2s;
         }
 
-        .card a:hover, .card-grid a:hover, li a:hover, p a:hover {
+        a:hover {
+            color: var(--accent-secondary);
             text-decoration: underline;
-            color: var(--secondary-color);
         }
 
         /* Footer */
         footer {
-            background: var(--bg-primary);
-            border-top: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 40px 0;
             text-align: center;
+            padding: 50px 0;
+            margin-top: 60px;
+            border-radius: 25px;
         }
 
-        footer p {
-            color: var(--text-secondary);
+        .light-mode footer {
+            background: var(--light-bg);
+            box-shadow:
+                inset 8px 8px 16px var(--light-shadow-dark),
+                inset -8px -8px 16px var(--light-shadow-light);
         }
 
-        footer a {
-            color: var(--primary-color);
-            text-decoration: none;
+        .dark-mode footer {
+            background: var(--dark-bg);
+            box-shadow:
+                inset 8px 8px 16px var(--dark-shadow-dark),
+                inset -8px -8px 16px var(--dark-shadow-light);
         }
 
-        footer a:hover {
-            text-decoration: underline;
+        .light-mode footer p {
+            color: var(--light-text-secondary);
+        }
+
+        .dark-mode footer p {
+            color: var(--dark-text-secondary);
         }
 
         /* Responsive */
@@ -414,18 +612,20 @@
             }
 
             .step {
-                padding-left: 60px;
+                padding-left: 65px;
             }
 
             .step::before {
-                width: 40px;
-                height: 40px;
-                font-size: 1.2em;
+                width: 45px;
+                height: 45px;
+                font-size: 1.3em;
             }
 
             .theme-toggle {
                 top: 10px;
                 right: 10px;
+                width: 50px;
+                height: 50px;
             }
         }
 
@@ -433,16 +633,14 @@
         html {
             scroll-behavior: smooth;
         }
-
-        /* Fallback for browsers that don't support color-mix */
-        @supports not (background: color-mix(in srgb, red 10%, white)) {
-            .alert-info { background: rgba(59, 130, 246, 0.1); }
-            .alert-warning { background: rgba(245, 158, 11, 0.1); }
-            .alert-success { background: rgba(16, 185, 129, 0.1); }
-        }
     </style>
 </head>
-<body>
+<body class="dark-mode">
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <span id="themeIcon">🌙</span>
+    </button>
+
     <header>
         <div class="container">
             <h1>Kolori</h1>
@@ -451,15 +649,17 @@
     </header>
 
     <nav>
-        <ul>
-            <li><a href="#overview">Overview</a></li>
-            <li><a href="#getting-started">Getting Started</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#presets">Presets</a></li>
-            <li><a href="#playlists">Playlists</a></li>
-            <li><a href="#troubleshooting">Troubleshooting</a></li>
-            <li><a href="#faq">FAQ</a></li>
-        </ul>
+        <div class="container">
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#presets">Presets</a></li>
+                <li><a href="#playlists">Playlists</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+        </div>
     </nav>
 
     <main class="container">
@@ -596,34 +796,6 @@
                     <strong>Performance Tip:</strong> Live View uses WebSocket streaming. If you experience performance issues, try using a smaller LED size or disable Live View when not needed.
                 </div>
             </div>
-
-            <h3>Refresh</h3>
-            <div class="card">
-                <p>The refresh button (circular arrow icon) updates the following from your device:</p>
-                <ul>
-                    <li>Current brightness level</li>
-                    <li>Active preset/effect</li>
-                    <li>Boot preset configuration</li>
-                    <li>Device power state</li>
-                    <li>Available presets and playlists</li>
-                </ul>
-
-                <div class="alert alert-success">
-                    <strong>Best Practice:</strong> Refresh after making changes in the WLED web interface to sync the app's state.
-                </div>
-            </div>
-
-            <h3>Floating Action Button (FAB)</h3>
-            <div class="card">
-                <p>The circular button in the bottom-right corner is the Floating Action Button (FAB). Tap it to reveal quick actions:</p>
-                <ul>
-                    <li><strong>Create New:</strong> Opens a menu to create Custom Effects or Playlists</li>
-                    <li><strong>Device Management:</strong> Quick access to manage your devices</li>
-                    <li><strong>Delete Mode:</strong> Enter delete mode to remove multiple presets at once</li>
-                    <li><strong>Settings:</strong> Access app settings</li>
-                    <li><strong>Scheduler:</strong> Schedule presets to activate at specific times</li>
-                </ul>
-            </div>
         </section>
 
         <!-- Presets Section -->
@@ -695,44 +867,6 @@
                     </div>
                 </div>
             </div>
-
-            <h3>Preset Options</h3>
-            <div class="card">
-                <p>Long-press any preset card to access additional options:</p>
-
-                <ul>
-                    <li><strong>Set as Boot Preset:</strong> Configure this preset to load when device powers on</li>
-                    <li><strong>Disable Boot Preset:</strong> Remove boot preset configuration (only visible if this is the current boot preset)</li>
-                    <li><strong>Delete:</strong> Remove the preset from your device (custom effects only)</li>
-                    <li><strong>Cancel:</strong> Close the options menu</li>
-                </ul>
-            </div>
-
-            <h3>Boot Presets</h3>
-            <div class="card">
-                <h4>What is a Boot Preset?</h4>
-                <p>A boot preset is a preset that automatically activates when your WLED device powers on. This ensures your lights start with your preferred look without manual intervention.</p>
-
-                <h4>Setting a Boot Preset</h4>
-                <ol>
-                    <li>Long-press the preset you want to use</li>
-                    <li>Select "Set as Boot Preset"</li>
-                    <li>Confirm your selection</li>
-                    <li>A gold star icon will appear on the preset card</li>
-                    <li>The configuration is saved to your device's <code>/json/cfg</code></li>
-                </ol>
-
-                <h4>Disabling Boot Preset</h4>
-                <p>Long-press the current boot preset (marked with a star) and select "Disable Boot Preset".</p>
-
-                <div class="alert alert-info">
-                    <strong>Note:</strong> Only one preset or playlist can be set as the boot preset at a time. Setting a new boot preset will automatically replace the previous one.
-                </div>
-
-                <div class="alert alert-success">
-                    <strong>Syncing:</strong> Use the refresh button to sync boot preset changes made in the WLED web interface back to the app.
-                </div>
-            </div>
         </section>
 
         <!-- Playlists Section -->
@@ -768,58 +902,9 @@
                     </div>
 
                     <div class="step">
-                        <h4>Configure Transitions</h4>
-                        <p>Choose transition effects between presets for smooth changes.</p>
-                    </div>
-
-                    <div class="step">
                         <h4>Save Playlist</h4>
                         <p>Tap "Save" to store your playlist on the WLED device. It will appear in the Playlists section.</p>
                     </div>
-                </div>
-            </div>
-
-            <h3>Managing Playlists</h3>
-            <div class="card">
-                <h4>Playing a Playlist</h4>
-                <p>Simply tap on a playlist card to start playback. The playlist will cycle through all effects in order, transitioning at the specified intervals.</p>
-
-                <h4>Playlist Options</h4>
-                <p>Long-press a playlist card to access:</p>
-                <ul>
-                    <li><strong>Set as Boot Preset:</strong> Start this playlist automatically on device power-on</li>
-                    <li><strong>Delete:</strong> Remove the playlist from the device</li>
-                </ul>
-
-                <div class="alert alert-success">
-                    <strong>Pro Tip:</strong> Playlists can also be set as boot presets, allowing your lights to automatically cycle through effects on startup!
-                </div>
-            </div>
-        </section>
-
-        <!-- Audio Reactive Section -->
-        <section id="audio-reactive">
-            <h2>Audio Reactive</h2>
-
-            <div class="card">
-                <h4>Music Sync</h4>
-                <p>Audio Reactive mode syncs your LED lights to music and sound. Your WLED device needs to have a microphone or audio input configured.</p>
-
-                <h4>Using Audio Reactive</h4>
-                <ol>
-                    <li>Swipe left to navigate to the "Audio Reactive" page</li>
-                    <li>Browse available audio-reactive presets</li>
-                    <li>Tap a preset to activate it</li>
-                    <li>Adjust sensitivity and gain settings as needed</li>
-                    <li>Play music near your device's microphone</li>
-                </ol>
-
-                <div class="alert alert-warning">
-                    <strong>Hardware Required:</strong> Audio reactive features require your WLED device to have audio input capabilities (microphone, line-in, or UDP sound sync).
-                </div>
-
-                <div class="alert alert-info">
-                    <strong>Note:</strong> When Audio Reactive is active, the preset sections on page 1 will be blocked to prevent conflicts.
                 </div>
             </div>
         </section>
@@ -857,60 +942,6 @@
                     <li>Restart the WebSocket connection by toggling device off and on</li>
                 </ul>
             </div>
-
-            <h3>Preset Issues</h3>
-            <div class="card">
-                <h4>Boot Preset Not Working</h4>
-                <p><strong>Problem:</strong> Boot preset doesn't load on device startup</p>
-
-                <p><strong>Solutions:</strong></p>
-                <ul>
-                    <li>Verify the boot preset is set (look for gold star icon)</li>
-                    <li>Refresh the app after setting boot preset to sync configuration</li>
-                    <li>Power cycle the WLED device completely (unplug power, wait 10 seconds, replug)</li>
-                    <li>Check WLED firmware version (update if necessary)</li>
-                    <li>Verify the preset still exists on the device</li>
-                </ul>
-            </div>
-
-            <div class="card">
-                <h4>Missing Presets</h4>
-                <p><strong>Problem:</strong> Presets saved in WLED web interface don't appear in app</p>
-
-                <p><strong>Solutions:</strong></p>
-                <ul>
-                    <li>Tap the refresh button to sync with device</li>
-                    <li>Ensure presets are saved with segment bounds enabled in WLED</li>
-                    <li>Verify you're connected to the correct device</li>
-                    <li>Check that the preset ID is within the valid range (1-250)</li>
-                </ul>
-            </div>
-
-            <h3>Live View Issues</h3>
-            <div class="card">
-                <h4>Live View Not Updating</h4>
-                <p><strong>Problem:</strong> LEDs not showing real-time updates</p>
-
-                <p><strong>Solutions:</strong></p>
-                <ul>
-                    <li>Toggle Live View off and on again (eye icon)</li>
-                    <li>Reduce LED size to improve performance</li>
-                    <li>Check WebSocket connection status (green dot)</li>
-                    <li>Restart the app</li>
-                    <li>Verify your WLED firmware supports WebSocket streaming</li>
-                </ul>
-            </div>
-
-            <h3>General Tips</h3>
-            <div class="card">
-                <ul>
-                    <li><strong>App Crashes:</strong> Clear app cache and data, reinstall if needed</li>
-                    <li><strong>Outdated Data:</strong> Use the refresh button regularly to sync with device</li>
-                    <li><strong>Permission Issues:</strong> Check network permissions in device settings</li>
-                    <li><strong>WLED Updates:</strong> Keep WLED firmware up to date for best compatibility</li>
-                    <li><strong>Factory Reset:</strong> If issues persist, try resetting your WLED device to factory defaults</li>
-                </ul>
-            </div>
         </section>
 
         <!-- FAQ Section -->
@@ -943,67 +974,8 @@
             </div>
 
             <div class="card">
-                <h4>Why isn't my boot preset loading?</h4>
-                <p>Boot presets are configured in the device's <code>/json/cfg</code> file. Make sure you've set it using the app (long-press → Set as Boot Preset), then power cycle the device completely. Use the refresh button to verify the boot preset configuration is synced.</p>
-            </div>
-
-            <div class="card">
-                <h4>Can I schedule presets to activate at specific times?</h4>
-                <p>Yes! Use the Scheduler feature accessible from the FAB menu. Scheduling is also available through WLED's built-in scheduler via the web interface.</p>
-            </div>
-
-            <div class="card">
                 <h4>Does Kolori work with all WLED versions?</h4>
                 <p>Kolori is designed to work with WLED 0.13.0 and later. Some features may not be available on older versions. We recommend keeping your WLED firmware up to date for the best experience.</p>
-            </div>
-
-            <div class="card">
-                <h4>How do I delete a preset?</h4>
-                <p>Long-press the preset card and select "Delete". You can also enter Delete Mode (via FAB menu) to delete multiple presets at once. Note that seasonal presets cannot be deleted, only custom effects and device presets.</p>
-            </div>
-
-            <div class="card">
-                <h4>What does the refresh button do?</h4>
-                <p>The refresh button syncs the app with your WLED device, updating:
-                    <ul>
-                        <li>Current brightness level</li>
-                        <li>Active preset/effect</li>
-                        <li>Boot preset configuration from <code>/json/cfg</code></li>
-                        <li>Available presets and playlists</li>
-                        <li>Device power state</li>
-                    </ul>
-                </p>
-            </div>
-
-            <div class="card">
-                <h4>What is the gold star icon on presets?</h4>
-                <p>The gold star indicates that this preset is configured as the boot preset. It will automatically load when your WLED device powers on.</p>
-            </div>
-
-            <div class="card">
-                <h4>Can playlists be set as boot presets?</h4>
-                <p>Yes! Playlists can also be set as boot presets, allowing your device to automatically cycle through multiple effects on startup.</p>
-            </div>
-        </section>
-
-        <!-- Support Section -->
-        <section id="support">
-            <h2>Support & Feedback</h2>
-
-            <div class="card">
-                <h4>Need Help?</h4>
-                <p>If you encounter issues not covered in this guide:</p>
-                <ul>
-                    <li>Check the official WLED documentation: <a href="https://kno.wled.ge" target="_blank">kno.wled.ge</a></li>
-                    <li>Visit the WLED Discord community for real-time help</li>
-                    <li>Report app issues on our GitHub repository</li>
-                    <li>Check for app updates in your app store</li>
-                </ul>
-            </div>
-
-            <div class="card">
-                <h4>Feature Requests</h4>
-                <p>Have an idea for a new feature? We'd love to hear from you! Submit feature requests through our <a href="https://github.com/kolori-app/kolori/issues" target="_blank">GitHub issues page</a>.</p>
             </div>
         </section>
     </main>
@@ -1018,6 +990,28 @@
     </footer>
 
     <script>
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const body = document.body;
+
+        // Check for saved theme preference or default to dark mode
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+
+        // Apply the theme
+        body.className = currentTheme + '-mode';
+        themeIcon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+
+        // Toggle theme
+        themeToggle.addEventListener('click', () => {
+            const isDark = body.classList.contains('dark-mode');
+            const newTheme = isDark ? 'light' : 'dark';
+
+            body.className = newTheme + '-mode';
+            themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', newTheme);
+        });
+
         // Smooth scroll for navigation
         document.querySelectorAll('nav a').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

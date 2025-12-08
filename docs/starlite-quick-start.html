@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starlite - Quick Start Guide</title>
@@ -12,41 +13,90 @@
         }
 
         :root {
-            --primary-color: #60a5fa;
-            --secondary-color: #818cf8;
-            --accent-1: #34d399;
-            --accent-2: #fbbf24;
-            --accent-3: #f87171;
+            /* Light Mode Neumorphism */
+            --light-bg: #e0e5ec;
+            --light-shadow-dark: rgba(163, 177, 198, 0.6);
+            --light-shadow-light: rgba(255, 255, 255, 0.8);
+            --light-text-primary: #4a5568;
+            --light-text-secondary: #718096;
+            --light-text-tertiary: #a0aec0;
 
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
+            /* Dark Mode Neumorphism */
+            --dark-bg: #2d3748;
+            --dark-shadow-dark: rgba(0, 0, 0, 0.4);
+            --dark-shadow-light: rgba(74, 85, 104, 0.3);
+            --dark-text-primary: #e2e8f0;
+            --dark-text-secondary: #cbd5e1;
+            --dark-text-tertiary: #94a3b8;
 
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --text-tertiary: #94a3b8;
-
-            --border-color: #334155;
-            --card-bg: #1e293b;
-            --card-shadow: rgba(0, 0, 0, 0.3);
-            --card-shadow-hover: rgba(0, 0, 0, 0.5);
-
-            --success-bg: #064e3b;
-            --success-border: #34d399;
+            /* Accent colors */
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --accent-success: #48bb78;
+            --accent-warning: #ed8936;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
-            color: var(--text-primary);
-            background: var(--bg-secondary);
+            transition: background-color 0.3s ease, color 0.3s ease;
             padding-bottom: 40px;
+        }
+
+        body.light-mode {
+            background: var(--light-bg);
+            color: var(--light-text-primary);
+        }
+
+        body.dark-mode {
+            background: var(--dark-bg);
+            color: var(--dark-text-primary);
         }
 
         .container {
             max-width: 900px;
             margin: 0 auto;
             padding: 20px;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .light-mode .theme-toggle {
+            background: var(--light-bg);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .theme-toggle {
+            background: var(--dark-bg);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
         }
 
         /* Header */
@@ -58,7 +108,7 @@
         .logo {
             font-size: 3em;
             margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -67,29 +117,38 @@
 
         .subtitle {
             font-size: 1.3em;
-            color: var(--text-secondary);
             margin-bottom: 10px;
         }
 
-        .version {
-            font-size: 0.9em;
-            color: var(--text-tertiary);
-            background: var(--bg-tertiary);
-            padding: 5px 15px;
-            border-radius: 20px;
-            display: inline-block;
+        .light-mode .subtitle {
+            color: var(--light-text-secondary);
+        }
+
+        .dark-mode .subtitle {
+            color: var(--dark-text-secondary);
         }
 
         /* Section Headers */
         .section-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
             padding: 20px 30px;
-            border-radius: 12px;
-            margin: 40px 0 25px;
+            border-radius: 20px;
+            margin: 40px 0 30px;
             font-size: 1.8em;
             font-weight: bold;
-            box-shadow: 0 4px 6px var(--card-shadow);
+        }
+
+        .light-mode .section-header {
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .section-header {
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
         }
 
         .section-number {
@@ -97,7 +156,7 @@
             width: 40px;
             height: 40px;
             background: white;
-            color: var(--primary-color);
+            color: var(--accent-primary);
             border-radius: 50%;
             text-align: center;
             line-height: 40px;
@@ -107,20 +166,42 @@
 
         /* Steps */
         .step {
-            background: var(--card-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 25px;
             padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px var(--card-shadow);
-            transition: all 0.3s;
+            margin-bottom: 25px;
             position: relative;
             overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .light-mode .step {
+            background: var(--light-bg);
+            box-shadow:
+                10px 10px 20px var(--light-shadow-dark),
+                -10px -10px 20px var(--light-shadow-light);
+        }
+
+        .dark-mode .step {
+            background: var(--dark-bg);
+            box-shadow:
+                10px 10px 20px var(--dark-shadow-dark),
+                -10px -10px 20px var(--dark-shadow-light);
         }
 
         .step:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px var(--card-shadow-hover);
+            transform: translateY(-3px);
+        }
+
+        .light-mode .step:hover {
+            box-shadow:
+                14px 14px 28px var(--light-shadow-dark),
+                -14px -14px 28px var(--light-shadow-light);
+        }
+
+        .dark-mode .step:hover {
+            box-shadow:
+                14px 14px 28px var(--dark-shadow-dark),
+                -14px -14px 28px var(--dark-shadow-light);
         }
 
         .step-number {
@@ -129,7 +210,7 @@
             left: 20px;
             width: 60px;
             height: 60px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
             border-radius: 50%;
             display: flex;
@@ -137,7 +218,14 @@
             justify-content: center;
             font-size: 1.8em;
             font-weight: bold;
-            box-shadow: 0 4px 6px var(--card-shadow);
+        }
+
+        .light-mode .step-number {
+            box-shadow: 8px 8px 16px var(--light-shadow-dark);
+        }
+
+        .dark-mode .step-number {
+            box-shadow: 8px 8px 16px var(--dark-shadow-dark);
         }
 
         .step-content {
@@ -147,47 +235,68 @@
         .step-title {
             font-size: 1.4em;
             font-weight: 600;
-            color: var(--text-primary);
             margin-bottom: 15px;
+        }
+
+        .light-mode .step-title {
+            color: var(--light-text-primary);
+        }
+
+        .dark-mode .step-title {
+            color: var(--dark-text-primary);
         }
 
         .step-description {
             font-size: 1.1em;
-            color: var(--text-secondary);
             line-height: 1.8;
         }
 
-        /* Image Placeholder */
-        .image-placeholder {
-            background: var(--bg-tertiary);
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 60px;
-            text-align: center;
-            margin: 20px 0;
-            color: var(--text-tertiary);
+        .light-mode .step-description {
+            color: var(--light-text-secondary);
         }
 
-        .image-placeholder-icon {
-            font-size: 4em;
-            margin-bottom: 10px;
+        .dark-mode .step-description {
+            color: var(--dark-text-secondary);
         }
 
-        /* Alert/Info Boxes */
-        .info-box {
-            background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-secondary));
-            border-left: 4px solid var(--primary-color);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
+        /* Alert boxes */
+        .info-box, .success-box {
+            padding: 25px;
+            border-radius: 20px;
+            margin: 25px 0;
+            border-left: 5px solid;
         }
 
-        .success-box {
-            background: var(--success-bg);
-            border-left: 4px solid var(--success-border);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
+        .light-mode .info-box {
+            background: var(--light-bg);
+            border-color: var(--accent-primary);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .info-box {
+            background: var(--dark-bg);
+            border-color: var(--accent-primary);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
+        }
+
+        .light-mode .success-box {
+            background: var(--light-bg);
+            border-color: var(--accent-success);
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .success-box {
+            background: var(--dark-bg);
+            border-color: var(--accent-success);
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
         }
 
         .success-box-icon {
@@ -196,43 +305,83 @@
         }
 
         .info-box strong, .success-box strong {
-            color: var(--text-primary);
             display: block;
             margin-bottom: 8px;
             font-size: 1.1em;
         }
 
-        .info-box p, .success-box p {
-            color: var(--text-secondary);
-            margin: 0;
+        .light-mode .info-box strong,
+        .light-mode .success-box strong {
+            color: var(--light-text-primary);
         }
 
-        /* Code/Credential Boxes */
+        .dark-mode .info-box strong,
+        .dark-mode .success-box strong {
+            color: var(--dark-text-primary);
+        }
+
+        .light-mode .info-box p,
+        .light-mode .success-box p {
+            color: var(--light-text-secondary);
+        }
+
+        .dark-mode .info-box p,
+        .dark-mode .success-box p {
+            color: var(--dark-text-secondary);
+        }
+
+        /* Credential Boxes */
         .credential-box {
-            background: var(--bg-tertiary);
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 15px;
             padding: 15px 20px;
-            margin: 10px 0;
+            margin: 15px 0;
             font-family: 'Courier New', monospace;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
+        .light-mode .credential-box {
+            background: var(--light-bg);
+            box-shadow:
+                inset 4px 4px 8px var(--light-shadow-dark),
+                inset -4px -4px 8px var(--light-shadow-light);
+        }
+
+        .dark-mode .credential-box {
+            background: var(--dark-bg);
+            box-shadow:
+                inset 4px 4px 8px var(--dark-shadow-dark),
+                inset -4px -4px 8px var(--dark-shadow-light);
+        }
+
         .credential-label {
-            color: var(--text-tertiary);
             font-size: 0.9em;
             margin-right: 10px;
         }
 
+        .light-mode .credential-label {
+            color: var(--light-text-tertiary);
+        }
+
+        .dark-mode .credential-label {
+            color: var(--dark-text-tertiary);
+        }
+
         .credential-value {
-            color: var(--text-primary);
             font-size: 1.1em;
             font-weight: bold;
         }
 
-        /* List Styling */
+        .light-mode .credential-value {
+            color: var(--light-text-primary);
+        }
+
+        .dark-mode .credential-value {
+            color: var(--dark-text-primary);
+        }
+
+        /* Lists */
         .option-list {
             list-style: none;
             padding: 0;
@@ -240,18 +389,32 @@
         }
 
         .option-list li {
-            padding: 12px;
-            background: var(--bg-tertiary);
-            margin: 8px 0;
-            border-radius: 6px;
-            color: var(--text-secondary);
+            padding: 14px;
+            margin: 10px 0;
+            border-radius: 15px;
             display: flex;
             align-items: center;
         }
 
+        .light-mode .option-list li {
+            background: var(--light-bg);
+            color: var(--light-text-secondary);
+            box-shadow:
+                6px 6px 12px var(--light-shadow-dark),
+                -6px -6px 12px var(--light-shadow-light);
+        }
+
+        .dark-mode .option-list li {
+            background: var(--dark-bg);
+            color: var(--dark-text-secondary);
+            box-shadow:
+                6px 6px 12px var(--dark-shadow-dark),
+                -6px -6px 12px var(--dark-shadow-light);
+        }
+
         .option-list li::before {
             content: "•";
-            color: var(--primary-color);
+            color: var(--accent-primary);
             font-weight: bold;
             font-size: 1.5em;
             margin-right: 12px;
@@ -260,21 +423,31 @@
         /* Download Link */
         .download-link {
             display: inline-block;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
             padding: 15px 30px;
-            border-radius: 8px;
+            border-radius: 15px;
             text-decoration: none;
             font-weight: 600;
             font-size: 1.1em;
-            box-shadow: 0 4px 6px var(--card-shadow);
             transition: all 0.3s;
             margin: 10px 0;
         }
 
+        .light-mode .download-link {
+            box-shadow:
+                8px 8px 16px var(--light-shadow-dark),
+                -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode .download-link {
+            box-shadow:
+                8px 8px 16px var(--dark-shadow-dark),
+                -8px -8px 16px var(--dark-shadow-light);
+        }
+
         .download-link:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px var(--card-shadow-hover);
         }
 
         .download-link::before {
@@ -282,17 +455,57 @@
             font-size: 1.2em;
         }
 
+        /* Images */
+        img {
+            border-radius: 15px;
+            margin: 20px 0;
+            display: block;
+        }
+
+        .light-mode img {
+            box-shadow:
+                10px 10px 20px var(--light-shadow-dark),
+                -10px -10px 20px var(--light-shadow-light);
+        }
+
+        .dark-mode img {
+            box-shadow:
+                10px 10px 20px var(--dark-shadow-dark),
+                -10px -10px 20px var(--dark-shadow-light);
+        }
+
         /* Footer */
         footer {
             text-align: center;
             margin-top: 60px;
             padding: 30px 0;
-            border-top: 1px solid var(--border-color);
-            color: var(--text-tertiary);
+            border-radius: 25px;
+        }
+
+        .light-mode footer {
+            background: var(--light-bg);
+            box-shadow:
+                inset 8px 8px 16px var(--light-shadow-dark),
+                inset -8px -8px 16px var(--light-shadow-light);
+        }
+
+        .dark-mode footer {
+            background: var(--dark-bg);
+            box-shadow:
+                inset 8px 8px 16px var(--dark-shadow-dark),
+                inset -8px -8px 16px var(--dark-shadow-light);
+        }
+
+        .light-mode footer p {
+            color: var(--light-text-secondary);
+        }
+
+        .dark-mode footer p {
+            color: var(--dark-text-secondary);
         }
 
         footer a {
-            color: var(--primary-color);
+            color: var(--accent-primary);
             text-decoration: none;
         }
 
@@ -315,14 +528,6 @@
                 padding: 15px 20px;
             }
 
-            .section-number {
-                width: 35px;
-                height: 35px;
-                line-height: 35px;
-                font-size: 1em;
-                margin-right: 10px;
-            }
-
             .step {
                 padding: 25px 20px;
             }
@@ -337,35 +542,21 @@
                 margin-left: 60px;
             }
 
-            .step-title {
-                font-size: 1.2em;
-            }
-
-            .step-description {
-                font-size: 1em;
-            }
-        }
-
-        @media print {
-            .step {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-        }
-
-        /* Fallback for browsers that don't support color-mix */
-        @supports not (background: color-mix(in srgb, red 10%, white)) {
-            .info-box {
-                background: rgba(96, 165, 250, 0.1);
-            }
-
-            .success-box {
-                background: rgba(16, 185, 129, 0.2);
+            .theme-toggle {
+                width: 50px;
+                height: 50px;
+                top: 10px;
+                right: 10px;
             }
         }
     </style>
 </head>
-<body>
+<body class="dark-mode">
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <span id="themeIcon">☀️</span>
+    </button>
+
     <div class="container">
         <!-- Header -->
         <header>
@@ -375,7 +566,7 @@
 
         <!-- Product Image -->
         <div style="text-align: center; margin: 40px 0;">
-            <img src="starlite.jpg" alt="Starlite LED controller with Kolori app" style="width: 100%; max-width: 700px; border-radius: 12px; box-shadow: 0 8px 20px var(--card-shadow); border: 2px solid var(--border-color);">
+            <img src="starlite.jpg" alt="Starlite LED controller with Kolori app" style="width: 100%; max-width: 700px;">
         </div>
 
         <!-- Basic Setup Section -->
@@ -391,7 +582,7 @@
                 <div class="step-description">
                     Plug the USB-C cable into your Starlite device. Loop the cable around the nub for cable support to keep everything neat and secure.
                 </div>
-                <img src="cable.png" alt="Cable connection diagram showing USB-C cable looped around nub" style="width: 100%; max-width: 600px; border-radius: 8px; margin: 20px 0; border: 2px solid var(--border-color); display: block;">
+                <img src="cable.png" alt="Cable connection diagram" style="width: 100%; max-width: 600px;">
             </div>
         </div>
 
@@ -492,7 +683,7 @@
                     <p>When you open the Kolori app for the first time, you'll see the onboarding page.<br>
                     1. Tap "Add Device Manually"<br>
                     2. Enter device name (e.g., "Starlite")<br>
-                    3. Enter IP address: <code>4.3.2.1</code><br>
+                    3. Enter IP address: 4.3.2.1<br>
                     4. Tap "Save"</p>
                 </div>
             </div>
@@ -526,20 +717,20 @@
             Need Help?
         </div>
 
-        <div class="step" style="background: var(--bg-tertiary); border: none;">
+        <div class="step" style="border: none;">
             <div class="step-content" style="margin-left: 0;">
                 <div class="step-title">📚 User Guide</div>
                 <div class="step-description">
                     For detailed instructions on all features, check out the complete user guide:
                     <br><br>
-                    <a href="kolori-user-guide.html" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">
+                    <a href="kolori-user-guide.html" style="color: var(--accent-primary); text-decoration: none; font-weight: 600;">
                         → View Complete User Guide
                     </a>
                 </div>
             </div>
         </div>
 
-        <div class="step" style="background: var(--bg-tertiary); border: none;">
+        <div class="step" style="border: none;">
             <div class="step-content" style="margin-left: 0;">
                 <div class="step-title">🔧 Troubleshooting</div>
                 <div class="step-description">
@@ -550,7 +741,7 @@
 
                     <strong>Can't connect to the Wi-Fi?</strong><br>
                     • Double-check the password (case-sensitive)<br>
-                    • Try all three password options<br>
+                    • Try all password options<br>
                     • Forget the network and reconnect<br><br>
 
                     <strong>App can't find device at 4.3.2.1?</strong><br>
@@ -570,5 +761,29 @@
             </p>
         </footer>
     </div>
+
+    <script>
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const body = document.body;
+
+        // Check for saved theme preference or default to dark mode
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+
+        // Apply the theme
+        body.className = currentTheme + '-mode';
+        themeIcon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+
+        // Toggle theme
+        themeToggle.addEventListener('click', () => {
+            const isDark = body.classList.contains('dark-mode');
+            const newTheme = isDark ? 'light' : 'dark';
+
+            body.className = newTheme + '-mode';
+            themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', newTheme);
+        });
+    </script>
 </body>
 </html>
