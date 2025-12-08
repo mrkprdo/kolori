@@ -1,4 +1,11 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="dev.mrkprdo.kolori">
+
+  <!-- Permission definition for widget access -->
+  <permission
+      android:name="dev.mrkprdo.kolori.permission.READ_DEVICE_DATA"
+      android:protectionLevel="signature" />
+
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
   <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
   <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
@@ -23,6 +30,12 @@
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".WidgetDeviceSelectionActivity" android:exported="true" android:theme="@style/Theme.AppCompat.Light.Dialog">
+      <intent-filter>
+        <action android:name="dev.mrkprdo.kolori.ACTION_SELECT_DEVICE_FOR_WIDGET"/>
+        <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
     </activity>
   </application>

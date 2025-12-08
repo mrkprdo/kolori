@@ -30,6 +30,9 @@ import { useAppInitialization } from './src/hooks/useAppInitialization';
 // Contexts
 import { WledDeviceProvider } from './src/contexts/WledDeviceContext';
 
+// Services
+import { initializeWidgetCommandHandler } from './src/services/widgetCommandHandler';
+
 // Types
 import { MdnsWledDevice } from './src/utils/wledMdnsDiscovery';
 
@@ -75,6 +78,9 @@ export default function App() {
 
       return { hasAgreed: true }; // Will be checked by appInit
     });
+
+    // Initialize widget command handler (Android only)
+    initializeWidgetCommandHandler();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper to get current theme isDark value
