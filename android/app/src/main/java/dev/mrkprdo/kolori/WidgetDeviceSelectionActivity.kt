@@ -179,39 +179,15 @@ class WidgetDeviceSelectionActivity : AppCompatActivity() {
     private fun returnDeviceSelection(device: DeviceInfo) {
         Log.d(TAG, "Selected device: ${device.name} (${device.ip})")
 
-        try {
-            // Since we share user ID with widget app, save directly to its SharedPreferences
-            val widgetContext = createPackageContext("com.kolori.widget", Context.CONTEXT_IGNORE_SECURITY)
-            val prefs = widgetContext.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE)
-
-            prefs.edit().apply {
-                putInt("${appWidgetId}_device_id", device.id)
-                putString("${appWidgetId}_device_name", device.name)
-                putString("${appWidgetId}_device_ip", device.ip)
-                commit() // Use commit instead of apply to ensure it's saved immediately
-            }
-
-            Log.d(TAG, "Saved device to widget shared prefs for widget $appWidgetId")
-
-            // Trigger widget update - use ComponentName to target the widget receiver
-            val appWidgetManager = AppWidgetManager.getInstance(widgetContext)
-            val widgetComponent = ComponentName("com.kolori.widget", "com.kolori.widget.KoloriWidgetReceiver")
-
-            // Send broadcast to update the specific widget
-            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
-                component = widgetComponent
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-            }
-            widgetContext.sendBroadcast(intent)
-
-            Log.d(TAG, "Sent update broadcast for widget $appWidgetId")
-
-            Toast.makeText(this, "Widget configured for ${device.name}", Toast.LENGTH_SHORT).show()
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving device selection", e)
-            Toast.makeText(this, "Error configuring widget", Toast.LENGTH_SHORT).show()
+        val resultIntent = Intent().apply {
+            putExtra("device_id", device.id)
+            putExtra("device_name", device.name)
+            putExtra("device_ip", device.ip)
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         }
+        setResult(Activity.RESULT_OK, resultIntent)
+
+        Toast.makeText(this, "Device selected: ${device.name}", Toast.LENGTH_SHORT).show()
 
         finish()
     }
