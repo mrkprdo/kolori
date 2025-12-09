@@ -207,7 +207,6 @@ export const deviceSelectionStyles = StyleSheet.create({
     ...FLEX_ROW_CENTER,
     paddingVertical: 16,
     paddingHorizontal: 12,
-    borderBottomWidth: 2,
     minHeight: 64, // Better touch target
   },
 

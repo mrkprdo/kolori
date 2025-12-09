@@ -12,6 +12,7 @@
  */
 
 import dgram from "react-native-udp";
+import { Buffer } from "buffer";
 import { AudioFeatures } from "./audioProcessing";
 import { logger } from "./logger";
 import { generateEffectColors, EffectType, EffectConfig } from "./ledfxEffects";
@@ -23,7 +24,7 @@ const DDP_HEADER_SIZE = 10;
 // DDP Protocol Constants
 // Flags byte format: bits 7-6 = version (01 = v1), bit 0 = push
 const DDP_FLAGS_VER1 = 0x40; // Version 1 (bits 7-6 = 01)
-const DDP_PUSH_FLAG = 0x01;  // Push flag for final packet
+const DDP_PUSH_FLAG = 0x01; // Push flag for final packet
 const DDP_DATA_TYPE_RGB = 0x01; // RGB 24-bit (3 bytes per pixel)
 
 // Singleton socket
@@ -40,6 +41,9 @@ const defaultEffectConfig: EffectConfig = {
   brightness: 1.0, // Full brightness by default
   speed: 2,
   blur: 0.3,
+  temporalSmoothing: 0.4,
+  noiseGate: 0.05,
+  intensityGamma: 0.85,
 };
 
 /**
@@ -85,26 +89,67 @@ function audioToLEDColors(
   config: EffectConfig = defaultEffectConfig
 ): { r: number; g: number; b: number }[] {
   // Generate colors using effect system
-  let colors = generateEffectColors(effectType, audioFeatures, melSpectrum, numLeds, config);
+  let colors = generateEffectColors(
+    effectType,
+    audioFeatures,
+    melSpectrum,
+    numLeds,
+    config
+  );
 
-  // Apply temporal smoothing for smoother transitions
-  if (previousLedColors.length === colors.length) {
-    colors = colors.map((color, i) => {
-      // Skip smoothing for black pixels
-      if (color.r === 0 && color.g === 0 && color.b === 0) {
-        return color;
-      }
+  const baseSmoothing = Math.min(
+    0.95,
+    Math.max(0, config.temporalSmoothing ?? 0.35)
+  );
 
-      return {
-        r: Math.floor(color.r * 0.6 + previousLedColors[i].r * 0.4),
-        g: Math.floor(color.g * 0.6 + previousLedColors[i].g * 0.4),
-        b: Math.floor(color.b * 0.6 + previousLedColors[i].b * 0.4),
-      };
-    });
+  if (previousLedColors.length !== colors.length) {
+    previousLedColors = colors.map(() => ({ r: 0, g: 0, b: 0 }));
   }
 
-  previousLedColors = colors.map((c) => ({ ...c }));
-  return colors;
+  if (baseSmoothing === 0) {
+    previousLedColors = colors.map((c) => ({ ...c }));
+    return colors;
+  }
+
+  // Temporal smoothing envelope constants:
+  // - ATTACK_BLEND_MIN: Minimum blend for attack (prevents abrupt changes)
+  // - ATTACK_BLEND_MAX: Maximum blend for attack (limits smoothing)
+  // - ATTACK_BLEND_MULTIPLIER: Scales base smoothing for attack phase
+  // - RELEASE_BLEND_OFFSET: Offset added to base smoothing for release phase (slower fade-out)
+  // - RELEASE_BLEND_MAX: Maximum blend for release (prevents excessive smoothing)
+  const ATTACK_BLEND_MIN = 0.05;         // Minimum attack blend
+  const ATTACK_BLEND_MAX = 0.85;         // Maximum attack blend
+  const ATTACK_BLEND_MULTIPLIER = 0.5;   // Attack blend scaling factor
+  const RELEASE_BLEND_OFFSET = 0.45;     // Release blend offset for slower fade
+  const RELEASE_BLEND_MAX = 0.98;        // Maximum release blend
+
+  // Asymmetric attack/release envelope:
+  // - Attack: Faster response to rising values (less smoothing)
+  // - Release: Slower response to falling values (more smoothing)
+  const attackBlend = Math.max(
+    ATTACK_BLEND_MIN,
+    Math.min(ATTACK_BLEND_MAX, baseSmoothing * ATTACK_BLEND_MULTIPLIER)
+  );
+  const releaseBlend = Math.max(
+    attackBlend,
+    Math.min(RELEASE_BLEND_MAX, baseSmoothing + RELEASE_BLEND_OFFSET)
+  );
+
+  const blended = colors.map((color, i) => {
+    const prev = previousLedColors[i] || { r: 0, g: 0, b: 0 };
+    const mixR = color.r >= prev.r ? attackBlend : releaseBlend;
+    const mixG = color.g >= prev.g ? attackBlend : releaseBlend;
+    const mixB = color.b >= prev.b ? attackBlend : releaseBlend;
+
+    return {
+      r: Math.floor(prev.r * mixR + color.r * (1 - mixR)),
+      g: Math.floor(prev.g * mixG + color.g * (1 - mixG)),
+      b: Math.floor(prev.b * mixB + color.b * (1 - mixB)),
+    };
+  });
+
+  previousLedColors = blended.map((c) => ({ ...c }));
+  return blended;
 }
 
 /**
@@ -133,14 +178,14 @@ function buildDdpHeader(
 
   // Bytes 4-7: Data offset (32-bit big-endian)
   // For RGB data type, WLED expects PIXEL offset, not byte offset
-  header[4] = (pixelOffset >> 24) & 0xFF;
-  header[5] = (pixelOffset >> 16) & 0xFF;
-  header[6] = (pixelOffset >> 8) & 0xFF;
-  header[7] = pixelOffset & 0xFF;
+  header[4] = (pixelOffset >> 24) & 0xff;
+  header[5] = (pixelOffset >> 16) & 0xff;
+  header[6] = (pixelOffset >> 8) & 0xff;
+  header[7] = pixelOffset & 0xff;
 
   // Bytes 8-9: Data length (16-bit big-endian)
-  header[8] = (dataLength >> 8) & 0xFF;
-  header[9] = dataLength & 0xFF;
+  header[8] = (dataLength >> 8) & 0xff;
+  header[9] = dataLength & 0xff;
 
   return header;
 }
@@ -166,7 +211,13 @@ export function sendDdpToWLED(
     }
 
     // Generate LED colors from audio using selected effect
-    const ledColors = audioToLEDColors(audioFeatures, melSpectrum, numLeds, effectType, config);
+    const ledColors = audioToLEDColors(
+      audioFeatures,
+      melSpectrum,
+      numLeds,
+      effectType,
+      config
+    );
 
     // Add LED offset compensation to fix data corruption/offset issues
     const sendNumLeds = numLeds + ledOffset;
@@ -183,12 +234,20 @@ export function sendDdpToWLED(
     // Send packets
     for (let packetIndex = 0; packetIndex < totalPackets; packetIndex++) {
       const pixelOffset = packetIndex * DDP_MAX_PIXELS_PER_PACKET;
-      const pixelsInPacket = Math.min(DDP_MAX_PIXELS_PER_PACKET, sendNumLeds - pixelOffset);
+      const pixelsInPacket = Math.min(
+        DDP_MAX_PIXELS_PER_PACKET,
+        sendNumLeds - pixelOffset
+      );
       const dataLength = pixelsInPacket * 3; // 3 bytes per pixel (RGB)
-      const isPushPacket = (packetIndex === totalPackets - 1); // Mark last packet with PUSH flag
+      const isPushPacket = packetIndex === totalPackets - 1; // Mark last packet with PUSH flag
 
       // Build packet header
-      const header = buildDdpHeader(sequenceNumber, pixelOffset, dataLength, isPushPacket);
+      const header = buildDdpHeader(
+        sequenceNumber,
+        pixelOffset,
+        dataLength,
+        isPushPacket
+      );
 
       // Build packet data (RGB values)
       const packetData = new Uint8Array(DDP_HEADER_SIZE + dataLength);
@@ -198,21 +257,17 @@ export function sendDdpToWLED(
       for (let i = 0; i < pixelsInPacket; i++) {
         const color = paddedLedColors[pixelOffset + i] || { r: 0, g: 0, b: 0 };
         const offset = DDP_HEADER_SIZE + i * 3;
-        packetData[offset] = Math.max(0, Math.min(255, color.b));     // Blue
+        packetData[offset] = Math.max(0, Math.min(255, color.b)); // Blue
         packetData[offset + 1] = Math.max(0, Math.min(255, color.g)); // Green
         packetData[offset + 2] = Math.max(0, Math.min(255, color.r)); // Red
       }
 
-      // Convert Uint8Array to binary string (preserves binary data)
-      let binaryString = '';
-      for (let i = 0; i < packetData.length; i++) {
-        binaryString += String.fromCharCode(packetData[i]);
-      }
+      const packetBuffer = Buffer.from(packetData);
 
       socket.send(
-        binaryString,
-        undefined,
-        undefined,
+        packetBuffer,
+        0,
+        packetBuffer.length,
         DDP_PORT,
         deviceIp,
         (err: any) => {
@@ -256,7 +311,7 @@ export function resetDdpPacketStats(): void {
 export function resetDdpState(): void {
   previousLedColors = [];
   // Reset effect-specific state (scroll buffer, wave phase, etc.)
-  const { resetEffectState } = require('./ledfxEffects');
+  const { resetEffectState } = require("./ledfxEffects");
   resetEffectState();
 }
 
@@ -276,37 +331,52 @@ export function sendBlankFrame(deviceIp: string, numLeds: number = 50): void {
 
     for (let packetIndex = 0; packetIndex < totalPackets; packetIndex++) {
       const pixelOffset = packetIndex * DDP_MAX_PIXELS_PER_PACKET;
-      const pixelsInPacket = Math.min(DDP_MAX_PIXELS_PER_PACKET, numLeds - pixelOffset);
+      const pixelsInPacket = Math.min(
+        DDP_MAX_PIXELS_PER_PACKET,
+        numLeds - pixelOffset
+      );
       const dataLength = pixelsInPacket * 3;
-      const isPushPacket = (packetIndex === totalPackets - 1);
+      const isPushPacket = packetIndex === totalPackets - 1;
 
-      const header = buildDdpHeader(sequenceNumber, pixelOffset, dataLength, isPushPacket);
+      const header = buildDdpHeader(
+        sequenceNumber,
+        pixelOffset,
+        dataLength,
+        isPushPacket
+      );
       const packetData = new Uint8Array(DDP_HEADER_SIZE + dataLength);
       packetData.set(header, 0);
 
       // Fill with zeros (all black pixels)
       for (let i = 0; i < pixelsInPacket; i++) {
         const offset = DDP_HEADER_SIZE + i * 3;
-        packetData[offset] = 0;     // B
+        packetData[offset] = 0; // B
         packetData[offset + 1] = 0; // G
         packetData[offset + 2] = 0; // R
       }
 
-      let binaryString = '';
-      for (let i = 0; i < packetData.length; i++) {
-        binaryString += String.fromCharCode(packetData[i]);
-      }
+      const packetBuffer = Buffer.from(packetData);
 
-      socket.send(binaryString, undefined, undefined, DDP_PORT, deviceIp, (err: any) => {
-        if (err) {
-          logger.error(`Failed to send blank frame to ${deviceIp}:${DDP_PORT}:`, err);
+      socket.send(
+        packetBuffer,
+        0,
+        packetBuffer.length,
+        DDP_PORT,
+        deviceIp,
+        (err: any) => {
+          if (err) {
+            logger.error(
+              `Failed to send blank frame to ${deviceIp}:${DDP_PORT}:`,
+              err
+            );
+          }
         }
-      });
+      );
 
       sequenceNumber++;
     }
   } catch (error) {
-    logger.error('Error sending blank frame:', error);
+    logger.error("Error sending blank frame:", error);
   }
 }
 

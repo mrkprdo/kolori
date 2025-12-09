@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { AudioFeatures } from '../utils/audioProcessing';
 
@@ -22,77 +22,102 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   height = 120,
   isActive = false,
 }) => {
-  const barCount = melSpectrum.length || 24;
+  const barCount = melSpectrum.length > 0 ? melSpectrum.length : 24;
   const barWidth = 100 / barCount;
 
-  // Smoothed spectrum values using ref to avoid infinite loop
-  const smoothedSpectrumRef = useRef<number[]>(new Array(barCount).fill(0));
-
-  // Animated values for idle dancing animation - use ref to persist across re-renders
-  const animatedValues = useRef(
-    Array.from({ length: barCount }, () => new Animated.Value(0))
-  ).current;
-
-  // Track if animations are running to prevent restart
+  const smoothedSpectrumRef = useRef<number[]>([]);
+  const animatedValuesRef = useRef<Animated.Value[]>([]);
+  const idleAnimationsRef = useRef<Animated.CompositeAnimation[]>([]);
   const animationsRunning = useRef(false);
 
+  // Keep smoothing buffer aligned with bar count synchronously before render content uses it
+  if (smoothedSpectrumRef.current.length !== barCount) {
+    const nextValues = new Array(barCount)
+      .fill(0)
+      .map((_, idx) => smoothedSpectrumRef.current[idx] || 0);
+    smoothedSpectrumRef.current = nextValues;
+  }
+
+  // Ensure there is an Animated.Value per bar so transforms never read undefined
+  const animatedValues = animatedValuesRef.current;
+  if (animatedValues.length < barCount) {
+    for (let i = animatedValues.length; i < barCount; i++) {
+      animatedValues.push(new Animated.Value(0));
+    }
+  } else if (animatedValues.length > barCount) {
+    animatedValues.splice(barCount);
+  }
+
   // Smooth spectrum updates with stronger smoothing for less jitter
-  const displaySpectrum = isActive && melSpectrum.length > 0
-    ? melSpectrum.map((val, i) => {
-        // Stronger smoothing: 65% new + 35% old for smooth transitions
-        const smoothed = val * 0.65 + (smoothedSpectrumRef.current[i] || 0) * 0.35;
+  const displaySpectrum = useMemo(() => {
+    if (isActive && melSpectrum.length > 0) {
+      return Array.from({ length: barCount }, (_, i) => {
+        const value = melSpectrum[i] ?? melSpectrum[melSpectrum.length - 1] ?? 0;
+        const smoothed = value * 0.65 + (smoothedSpectrumRef.current[i] || 0) * 0.35;
         smoothedSpectrumRef.current[i] = smoothed;
         return smoothed;
-      })
-    : new Array(barCount).fill(0);
+      });
+    }
+
+    smoothedSpectrumRef.current = smoothedSpectrumRef.current.map(() => 0);
+    if (smoothedSpectrumRef.current.length === 0) {
+      smoothedSpectrumRef.current = new Array(barCount).fill(0);
+    }
+
+    return new Array(barCount).fill(0);
+  }, [isActive, melSpectrum, barCount]);
 
   // Show idle animation ONLY when inactive (not when active with quiet audio)
   const shouldShowIdleAnimation = !isActive;
 
   // Smooth wave animation when inactive - more lively with bigger amplitude
   useEffect(() => {
-    if (shouldShowIdleAnimation && !animationsRunning.current) {
-      animationsRunning.current = true;
-
-      // Create lively multi-wave animation with varying speeds
-      const animations = animatedValues.map((anim, index) => {
-        const phase = (index / barCount) * Math.PI * 4; // More waves across the spectrum
-        const baseDelay = index * 25; // Faster stagger for more fluid motion
-
-        // Vary animation speed based on position for more organic feel
-        const speedMultiplier = 0.8 + (Math.sin(index / barCount * Math.PI) * 0.4);
-        const duration = 900 * speedMultiplier;
-
-        return Animated.loop(
-          Animated.sequence([
-            Animated.delay(baseDelay),
-            Animated.timing(anim, {
-              toValue: 0.6 + Math.sin(phase) * 0.35, // Bigger amplitude for more movement
-              duration: duration,
-              useNativeDriver: true,
-            }),
-            Animated.timing(anim, {
-              toValue: 0.25 + Math.sin(phase + Math.PI) * 0.3, // Deeper valleys
-              duration: duration * 1.1, // Slightly asymmetric for organic feel
-              useNativeDriver: true,
-            }),
-          ])
-        );
-      });
-
-      // Start all animations
-      animations.forEach(anim => anim.start());
-
-      return () => {
-        animationsRunning.current = false;
-        animations.forEach(anim => anim.stop());
-      };
-    } else if (!shouldShowIdleAnimation && animationsRunning.current) {
-      // Stop animations when switching to active mode
+    if (!shouldShowIdleAnimation) {
       animationsRunning.current = false;
-      animatedValues.forEach(anim => anim.stopAnimation());
+      idleAnimationsRef.current.forEach((anim) => anim.stop());
+      idleAnimationsRef.current = [];
+      animatedValuesRef.current.forEach((anim) => anim.stopAnimation(() => anim.setValue(0)));
+      return;
     }
-  }, [shouldShowIdleAnimation, animatedValues, barCount]);
+
+    if (animationsRunning.current) {
+      return;
+    }
+
+    animationsRunning.current = true;
+
+    const animations = animatedValuesRef.current.map((anim, index) => {
+      const phase = (index / barCount) * Math.PI * 4;
+      const baseDelay = index * 25;
+      const speedMultiplier = 0.8 + Math.sin((index / barCount) * Math.PI) * 0.4;
+      const duration = 900 * speedMultiplier;
+
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(baseDelay),
+          Animated.timing(anim, {
+            toValue: 0.6 + Math.sin(phase) * 0.35,
+            duration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0.25 + Math.sin(phase + Math.PI) * 0.3,
+            duration: duration * 1.1,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    });
+
+    idleAnimationsRef.current = animations;
+    animations.forEach((anim) => anim.start());
+
+    return () => {
+      animationsRunning.current = false;
+      animations.forEach((anim) => anim.stop());
+      idleAnimationsRef.current = [];
+    };
+  }, [shouldShowIdleAnimation, barCount]);
 
   // Color gradient from bass (indigo) -> mid (green) -> treble (red)
   const getBarColor = (index: number, intensity: number): string => {
@@ -146,7 +171,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
                   backgroundColor: color,
                   transform: [
                     {
-                      scaleY: animatedValues[index].interpolate({
+                      scaleY: animatedValuesRef.current[index]?.interpolate({
                         inputRange: [0, 1],
                         outputRange: [0.1, 1],
                       }),

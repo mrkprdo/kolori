@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -63,6 +63,13 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [sensitivity, setSensitivity] = useState(1.0);
   const [ledOffset, setLedOffset] = useState(15); // LED offset compensation (default 15)
+  const ledCountAbortRef = useRef<AbortController | null>(null);
+  const previouslyActiveRef = useRef(false);
+  const latestDeviceIpRef = useRef<string | undefined>(activeDeviceIp);
+  const latestLedCountRef = useRef(numLeds);
+  const latestOffsetRef = useRef(ledOffset);
+  const isAudioReactiveActive = audioReactiveEnabled && isRecording;
+  const canStartAudioReactive = Boolean(activeDeviceIp && isDeviceConnected);
 
   // Effect selection and configuration
   const [selectedEffect, setSelectedEffect] = useState<EffectType>('wavelength');
@@ -70,30 +77,51 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
     brightness: 1.0, // Full brightness by default
     speed: 2,
     blur: 0.3,
+    temporalSmoothing: 0.4,
+    noiseGate: 0.05,
+    intensityGamma: 0.85,
   });
+  const effectDescription = useMemo(
+    () => LEDFX_EFFECTS.find((effect) => effect.id === selectedEffect)?.description,
+    [selectedEffect]
+  );
+  const toggleDisabled = isStarting || !canStartAudioReactive;
 
   // Refs for stats tracking
   const previousSentRef = React.useRef(0);
   const lastStatsUpdateRef = React.useRef(0);
 
+  useEffect(() => {
+    latestDeviceIpRef.current = activeDeviceIp;
+  }, [activeDeviceIp]);
+
+  useEffect(() => {
+    latestLedCountRef.current = numLeds;
+  }, [numLeds]);
+
+  useEffect(() => {
+    latestOffsetRef.current = ledOffset;
+  }, [ledOffset]);
+
   // Handle effect change - turn off LEDs before switching
-  const handleEffectChange = (newEffect: EffectType) => {
-    if (activeDeviceIp && newEffect !== selectedEffect) {
-      // Send blank frame to turn off LEDs (with offset compensation)
-      sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
-      // Reset effect state
-      resetDdpState();
-      // Update selected effect
+  const handleEffectChange = useCallback((newEffect: EffectType) => {
+    if (!activeDeviceIp || newEffect === selectedEffect) {
       setSelectedEffect(newEffect);
+      return;
     }
-  };
+
+    sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
+    resetDdpState();
+    setSelectedEffect(newEffect);
+  }, [activeDeviceIp, numLeds, ledOffset, selectedEffect]);
 
   // Load LED offset from storage on mount
   useEffect(() => {
+    let isCancelled = false;
     const loadSettings = async () => {
       try {
         const savedOffset = await AsyncStorage.getItem('@audio_reactive_led_offset');
-        if (savedOffset !== null) {
+        if (savedOffset !== null && !isCancelled) {
           setLedOffset(parseInt(savedOffset, 10));
         }
       } catch (error) {
@@ -101,85 +129,131 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       }
     };
     loadSettings();
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Save LED offset to storage whenever it changes
   useEffect(() => {
+    let isCancelled = false;
     const saveSettings = async () => {
       try {
         await AsyncStorage.setItem('@audio_reactive_led_offset', ledOffset.toString());
       } catch (error) {
-        console.error('Failed to save LED offset:', error);
+        if (!isCancelled) {
+          console.error('Failed to save LED offset:', error);
+        }
       }
     };
     saveSettings();
+    return () => {
+      isCancelled = true;
+    };
   }, [ledOffset]);
 
   // Detect LED count from WLED device
   useEffect(() => {
-    const detectLedCount = async () => {
-      if (activeDeviceIp) {
-        try {
-          const response = await fetch(`http://${activeDeviceIp}/json/info`);
-          if (response.ok) {
-            const info = await response.json();
-            if (info.leds && info.leds.count) {
-              setNumLeds(info.leds.count);
-            }
-          }
-        } catch (error) {
-          // Check if it's a network/timeout error
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const isNetworkError = errorMessage.includes('timeout') ||
-                                 errorMessage.includes('Network request') ||
-                                 errorMessage.includes('Failed to fetch');
+    if (!activeDeviceIp) {
+      setNumLeds(50);
+      return;
+    }
 
-          if (!isNetworkError) {
-            console.error('Failed to detect LED count:', error);
-          }
+    const controller = new AbortController();
+    ledCountAbortRef.current?.abort();
+    ledCountAbortRef.current = controller;
+
+    const detectLedCount = async () => {
+      try {
+        const response = await fetch(`http://${activeDeviceIp}/json/info`, { signal: controller.signal });
+        if (!response.ok) {
+          return;
+        }
+        const info = await response.json();
+        if (!controller.signal.aborted && info.leds && info.leds.count) {
+          setNumLeds(info.leds.count);
+        }
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return;
+        }
+
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isNetworkError =
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('Network request') ||
+          errorMessage.includes('Failed to fetch');
+
+        if (!isNetworkError) {
+          console.error('Failed to detect LED count:', error);
         }
       }
     };
+
     detectLedCount();
+
+    return () => {
+      controller.abort();
+      if (ledCountAbortRef.current === controller) {
+        ledCountAbortRef.current = null;
+      }
+    };
   }, [activeDeviceIp]);
 
-  const handleToggleAudioReactive = async () => {
+  const handleToggleAudioReactive = useCallback(async () => {
     if (isRecording) {
-      // Stop audio capture
       stopAudioCapture();
-      closeDdpSocket(); // Close DDP socket
-      resetDdpState(); // Reset effect state
+      closeDdpSocket();
+      resetDdpState();
+      if (activeDeviceIp) {
+        sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
+      }
       setAudioReactiveEnabled(false);
-    } else {
-      // Check if device is connected
-      if (!activeDeviceIp) {
-        alert('No device connected! Please connect to a WLED device first.');
-        return;
-      }
-
-      // Turn off LEDs first to clear any existing WLED state (with offset compensation)
-      sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
-      resetDdpState(); // Reset effect state for clean start
-
-      // Show loading state
-      setIsStarting(true);
-      resetDdpPacketStats(); // Reset stats for new session
-
-      // Start audio capture - DDP works out of the box, no WLED config needed!
-      try {
-        const success = await startAudioCapture();
-        setIsStarting(false);
-        if (success) {
-          setAudioReactiveEnabled(true);
-          activateKeepAwakeAsync(); // Keep screen awake during audio reactive
-        }
-      } catch (error) {
-        setIsStarting(false);
-        alert('Failed to start audio capture. Please check microphone permissions.');
-        console.error('Audio capture error:', error);
-      }
+      return;
     }
-  };
+
+    if (!canStartAudioReactive || !activeDeviceIp) {
+      Alert.alert('Device Required', 'Connect to a WLED device to use Audio Reactive mode.');
+      return;
+    }
+
+    sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
+    resetDdpState();
+    setIsStarting(true);
+    resetDdpPacketStats();
+
+    try {
+      const success = await startAudioCapture();
+      if (success) {
+        setAudioReactiveEnabled(true);
+      } else {
+        Alert.alert('Audio Error', 'Failed to start audio capture. Please check microphone permissions.');
+      }
+    } catch (error) {
+      Alert.alert('Audio Error', 'Failed to start audio capture. Please check microphone permissions.');
+      console.error('Audio capture error:', error);
+    } finally {
+      setIsStarting(false);
+    }
+  }, [
+    isRecording,
+    stopAudioCapture,
+    closeDdpSocket,
+    resetDdpState,
+    activeDeviceIp,
+    numLeds,
+    ledOffset,
+    canStartAudioReactive,
+    sendBlankFrame,
+    resetDdpPacketStats,
+    startAudioCapture,
+  ]);
+
+  useEffect(() => {
+    if (!isRecording && audioReactiveEnabled) {
+      setAudioReactiveEnabled(false);
+    }
+  }, [isRecording, audioReactiveEnabled]);
 
   // Setup DDP audio callback - sends RGB pixel data directly to WLED
   React.useEffect(() => {
@@ -230,6 +304,35 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
       deactivateKeepAwake('audio-reactive');
     };
   }, [audioReactiveEnabled, isRecording]);
+
+  useEffect(() => {
+    const wasActive = previouslyActiveRef.current;
+    if (wasActive && !isAudioReactiveActive && activeDeviceIp) {
+      sendBlankFrame(activeDeviceIp, numLeds + ledOffset);
+      closeDdpSocket();
+      resetDdpState();
+    }
+    previouslyActiveRef.current = isAudioReactiveActive;
+  }, [
+    isAudioReactiveActive,
+    activeDeviceIp,
+    numLeds,
+    ledOffset,
+    closeDdpSocket,
+    resetDdpState,
+    sendBlankFrame,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      const deviceIp = latestDeviceIpRef.current;
+      if (deviceIp) {
+        sendBlankFrame(deviceIp, latestLedCountRef.current + latestOffsetRef.current);
+      }
+      closeDdpSocket();
+      resetDdpState();
+    };
+  }, [closeDdpSocket, resetDdpState, sendBlankFrame]);
 
   return (
     <View style={[sharedStyles.sectionCard, { backgroundColor: cardBackground, borderColor: isDark ? '#4b5563' : '#1e293b', position: 'relative' }]}>
@@ -300,13 +403,13 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
           )}
           <TouchableOpacity
             onPress={handleToggleAudioReactive}
-            disabled={isStarting}
+            disabled={toggleDisabled}
             style={[
               styles.toggleButton,
               {
                 backgroundColor: isRecording ? '#10b981' : (isDark ? '#374151' : '#e5e7eb'),
                 borderColor: isDark ? '#4b5563' : '#1e293b',
-                opacity: isStarting ? 0.5 : 1,
+                opacity: toggleDisabled ? 0.5 : 1,
               },
             ]}
           >
@@ -326,11 +429,11 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
         {/* Audio Visualizer */}
         <View style={[styles.visualizerWrapper, { borderColor: borderColor }]}>
           <AudioVisualizer
-            audioFeatures={isRecording ? audioFeatures : null}
-            melSpectrum={isRecording ? melSpectrum : []}
+            audioFeatures={isAudioReactiveActive ? audioFeatures : null}
+            melSpectrum={isAudioReactiveActive ? melSpectrum : []}
             isDark={isDark}
             height={140}
-            isActive={isRecording}
+            isActive={isAudioReactiveActive}
           />
         </View>
 
@@ -358,7 +461,7 @@ const AudioReactiveSection: React.FC<AudioReactiveSectionProps> = ({
               </Picker>
             </View>
             <Text style={[styles.effectDescription, { color: subtextColor }]}>
-              {LEDFX_EFFECTS.find(e => e.id === selectedEffect)?.description}
+              {effectDescription || 'Select an effect to see details.'}
             </Text>
           </View>
         )}

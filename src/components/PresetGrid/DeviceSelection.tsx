@@ -165,15 +165,9 @@ const DeviceSelection: React.FC<DeviceSelectionProps> = ({
                   }}
                   style={[
                     styles.deviceOption,
-                    { borderBottomWidth: 2, borderBottomColor: isDark ? '#374151' : '#e5e7eb' },
                     device.id === activeDeviceId && {
                       backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                    },
-                    index === devices.length - 1 && {
-                      borderBottomLeftRadius: 10,
-                      borderBottomRightRadius: 10,
-                      borderBottomWidth: 0,
-                    },
+                    }
                   ]}
                 >
                   <View

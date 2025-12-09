@@ -84,6 +84,8 @@ export function useAudioReactive(
   const audioCallbackRef = useRef<
     ((features: AudioFeatures, spectrum: number[]) => void) | null
   >(null);
+  const sampleBufferRef = useRef<number[]>([]);
+  const hopSizeRef = useRef(Math.floor(config.fftSize * 0.5));
 
   // Throttle state updates to reduce re-renders (update UI less frequently)
   const lastStateUpdateRef = useRef<number>(0);
@@ -98,6 +100,7 @@ export function useAudioReactive(
       config.minFreq,
       config.maxFreq
     );
+    hopSizeRef.current = Math.max(256, Math.floor(config.fftSize * 0.5));
     logger.log(`🎵 Mel filterbank created: ${config.numMelBands} bands`);
   }, [
     config.numMelBands,
@@ -106,6 +109,85 @@ export function useAudioReactive(
     config.minFreq,
     config.maxFreq,
   ]);
+
+  const analyzeChunk = useCallback(
+    (chunk: number[]) => {
+      if (!chunk.length) {
+        return;
+      }
+
+      const fftSize = config.fftSize;
+      const paddedChunk =
+        chunk.length === fftSize
+          ? chunk
+          : [...chunk, ...new Array(fftSize - chunk.length).fill(0)];
+
+      const rms = Math.sqrt(
+        paddedChunk.reduce((acc, sample) => acc + sample * sample, 0) /
+          paddedChunk.length
+      );
+
+      if (rms < 0.0005) {
+        if (previousMelSpectrumRef.current.length) {
+          previousMelSpectrumRef.current = previousMelSpectrumRef.current.map(
+            (value) => value * 0.9
+          );
+        }
+        return;
+      }
+
+      const windowedChunk = applyHannWindow(paddedChunk);
+      const fftMagnitudes = performFFT(windowedChunk);
+
+      if (!melFilterbankRef.current.length) {
+        return;
+      }
+
+      let melSpec = applyMelFilterbank(fftMagnitudes, melFilterbankRef.current);
+
+      melSpec = smoothMelSpectrum(
+        melSpec,
+        previousMelSpectrumRef.current,
+        config.smoothingFactor
+      );
+
+      const maxVal = Math.max(...melSpec, 0.001);
+
+      if (maxVal > peakHoldRef.current) {
+        peakHoldRef.current = maxVal;
+      } else {
+        peakHoldRef.current *= 0.9;
+      }
+
+      const normPeak = Math.max(peakHoldRef.current, 0.05);
+
+      const normalizedMelSpec = melSpec.map((val) => {
+        const normalized = val / normPeak;
+        return Math.min(1, normalized * config.sensitivity);
+      });
+
+      const features = extractAudioFeatures(normalizedMelSpec);
+
+      if (audioCallbackRef.current) {
+        audioCallbackRef.current(features, normalizedMelSpec);
+      }
+
+      const now = Date.now();
+      if (now - lastStateUpdateRef.current >= stateUpdateIntervalMs) {
+        setAudioFeatures(features);
+        setMelSpectrum(normalizedMelSpec);
+        lastStateUpdateRef.current = now;
+      }
+
+      previousMelSpectrumRef.current = normalizedMelSpec;
+    },
+    [
+      config.fftSize,
+      config.smoothingFactor,
+      config.sensitivity,
+      stateUpdateIntervalMs,
+    ]
+  );
 
   // Request audio permissions
   const requestPermissions = async (): Promise<boolean> => {
@@ -149,83 +231,35 @@ export function useAudioReactive(
           return;
         }
 
-        // Decode base64 PCM data
         const pcmSamples = decodePCM(pcmDataBase64);
 
         if (!pcmSamples || pcmSamples.length === 0) {
           return;
         }
 
-        // Take a chunk of samples for FFT (must be power of 2)
+        const buffer = sampleBufferRef.current;
         const fftSize = config.fftSize;
-        let chunk = pcmSamples.slice(0, fftSize);
+        const hopSize = hopSizeRef.current;
+        const maxBufferLength = fftSize * 4;
 
-        // Pad with zeros if needed
-        if (chunk.length < fftSize) {
-          chunk = [...chunk, ...new Array(fftSize - chunk.length).fill(0)];
+        if (buffer.length > maxBufferLength) {
+          buffer.splice(0, buffer.length - maxBufferLength);
         }
 
-        // Apply window function to reduce spectral leakage
-        const windowedChunk = applyHannWindow(chunk);
-
-        // Perform FFT
-        const fftMagnitudes = performFFT(windowedChunk);
-
-        // Apply mel filterbank to get mel spectrum
-        let melSpec = applyMelFilterbank(
-          fftMagnitudes,
-          melFilterbankRef.current
-        );
-
-        // Smooth the mel spectrum
-        melSpec = smoothMelSpectrum(
-          melSpec,
-          previousMelSpectrumRef.current,
-          config.smoothingFactor
-        );
-
-        // Simple normalization: find max and normalize to that
-        const maxVal = Math.max(...melSpec, 0.001); // Prevent division by zero
-
-        // Update peak with decay
-        if (maxVal > peakHoldRef.current) {
-          peakHoldRef.current = maxVal;
-        } else {
-          peakHoldRef.current *= 0.9; // Slower decay for stability
+        for (let i = 0; i < pcmSamples.length; i++) {
+          buffer.push(pcmSamples[i]);
         }
 
-        // Keep peak above a minimum to prevent over-amplification
-        const normPeak = Math.max(peakHoldRef.current, 0.05);
-
-        // Normalize and apply sensitivity
-        const normalizedMelSpec = melSpec.map((val) => {
-          const normalized = val / normPeak;
-          // Apply sensitivity
-          return Math.min(1, normalized * config.sensitivity);
-        });
-
-        // Extract audio features
-        const features = extractAudioFeatures(normalizedMelSpec);
-
-        // Call direct callback immediately (for DDP sending - no React re-render)
-        if (audioCallbackRef.current) {
-          audioCallbackRef.current(features, normalizedMelSpec);
+        while (buffer.length >= fftSize) {
+          const chunk = buffer.slice(0, fftSize);
+          buffer.splice(0, hopSize);
+          analyzeChunk(chunk);
         }
-
-        // Throttle React state updates to reduce re-renders (for UI only)
-        const now = Date.now();
-        if (now - lastStateUpdateRef.current >= stateUpdateIntervalMs) {
-          setAudioFeatures(features);
-          setMelSpectrum(normalizedMelSpec);
-          lastStateUpdateRef.current = now;
-        }
-
-        previousMelSpectrumRef.current = normalizedMelSpec;
       } catch (err) {
         logger.error("🎵 Error processing audio data:", err);
       }
     },
-    [config.smoothingFactor, config.sensitivity, config.fftSize]
+    [analyzeChunk, config.fftSize]
   );
 
   // Start audio capture
@@ -257,6 +291,7 @@ export function useAudioReactive(
       previousMelSpectrumRef.current = [];
       peakHoldRef.current = 0;
       audioLevelRef.current = 0.5;
+      sampleBufferRef.current = [];
 
       // Clear any stale audio data from previous session
       setAudioFeatures(null);
@@ -324,6 +359,7 @@ export function useAudioReactive(
       setAudioFeatures(null);
       setMelSpectrum([]);
       previousMelSpectrumRef.current = [];
+      sampleBufferRef.current = [];
       logger.log("🎵 Audio capture stopped");
     } catch (err) {
       logger.error("🎵 Error stopping audio capture:", err);

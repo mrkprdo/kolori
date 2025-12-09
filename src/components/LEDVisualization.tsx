@@ -171,21 +171,6 @@ function LEDVisualization({
 
   const screenWidth = containerWidth || (Dimensions.get('window').width - 96); // Account for card padding + margins
 
-  // Create a stable hash for wledInfo matrix properties to detect device changes
-  const wledInfoHash = useMemo(() => {
-    if (!wledInfo) return 'no-device';
-    const matrix = wledInfo.ledMatrix || wledInfo.leds?.matrix || wledInfo.matrix;
-    if (!matrix) return 'no-matrix';
-    return `${matrix.w || 0}x${matrix.h || 0}`;
-  }, [
-    wledInfo?.ledMatrix?.w,
-    wledInfo?.ledMatrix?.h,
-    wledInfo?.leds?.matrix?.w,
-    wledInfo?.leds?.matrix?.h,
-    wledInfo?.matrix?.w,
-    wledInfo?.matrix?.h,
-  ]);
-
   const matrixInfo = useMemo(() => {
     const detected = detect2DMatrix(wledInfo);
 
@@ -202,7 +187,7 @@ function LEDVisualization({
       }
     }
     return detected;
-  }, [wledInfoHash, ledData.length]);
+  }, [wledInfo, ledData.length]);
 
   const filteredLedData = useMemo(() => {
     // Use all LED data - MessageParser already skips status LED
@@ -212,9 +197,52 @@ function LEDVisualization({
   const ledCount = filteredLedData.length;
 
   // Function to map matrix coordinates to LED index
-  const mapMatrixToLEDIndex = useCallback((row: number, col: number, width: number) => {
-    return row * width + col;
-  }, []);
+  const mapMatrixToLEDIndex = useCallback(
+    (row: number, col: number) => {
+      if (!matrixInfo.is2D || matrixInfo.width <= 0 || matrixInfo.height <= 0) {
+        const fallbackWidth = Math.max(matrixInfo.width, 1);
+        return row * fallbackWidth + col;
+      }
+
+      const { width, height, serpentine, transpose, vertical } = matrixInfo;
+
+      let mappedRow = row;
+      let mappedCol = col;
+
+      if (transpose) {
+        const temp = mappedRow;
+        mappedRow = mappedCol;
+        mappedCol = temp;
+      }
+
+      const clamp = (value: number, min: number, max: number) => {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+      };
+
+      if (vertical) {
+        const columnIndex = clamp(mappedCol, 0, width - 1);
+        let rowIndex = clamp(mappedRow, 0, height - 1);
+
+        if (serpentine && columnIndex % 2 === 1) {
+          rowIndex = height - 1 - rowIndex;
+        }
+
+        return columnIndex * height + rowIndex;
+      }
+
+      const rowIndex = clamp(mappedRow, 0, height - 1);
+      let columnIndex = clamp(mappedCol, 0, width - 1);
+
+      if (serpentine && rowIndex % 2 === 1) {
+        columnIndex = width - 1 - columnIndex;
+      }
+
+      return rowIndex * width + columnIndex;
+    },
+    [matrixInfo]
+  );
 
   const sizeMultiplier = useMemo(() => {
     // For 2D matrices, completely ignore the size setting
@@ -352,7 +380,7 @@ function LEDVisualization({
         const rowLEDs = [];
         for (let col = 0; col < matrixWidth; col++) {
           // Use proper WLED matrix mapping instead of linear index
-          const ledIndex = mapMatrixToLEDIndex(row, col, matrixWidth);
+          const ledIndex = mapMatrixToLEDIndex(row, col);
 
           if (ledIndex < ledsToRender.length && ledsToRender[ledIndex]) {
             rowLEDs.push(
@@ -469,31 +497,31 @@ const styles = StyleSheet.create({
 });
 
 export default React.memo(LEDVisualization, (prevProps, nextProps) => {
-  // Detect if this is a 2D matrix
-  const is2D = (prevProps.wledInfo?.ledMatrix?.w && prevProps.wledInfo?.ledMatrix?.h) ||
-              (prevProps.wledInfo?.leds?.matrix?.w && prevProps.wledInfo?.leds?.matrix?.h);
+  const prevMatrix = detect2DMatrix(prevProps.wledInfo);
+  const nextMatrix = detect2DMatrix(nextProps.wledInfo);
 
-  // For 2D matrices, COMPLETELY ignore liveViewLedSize changes
-  if (is2D) {
-    // Compare matrix dimensions efficiently without JSON.stringify
-    const prevMatrix = prevProps.wledInfo?.ledMatrix || prevProps.wledInfo?.leds?.matrix;
-    const nextMatrix = nextProps.wledInfo?.ledMatrix || nextProps.wledInfo?.leds?.matrix;
+  const basePropsEqual = (
+    prevProps.ledData === nextProps.ledData &&
+    prevProps.subtextColor === nextProps.subtextColor &&
+    prevProps.containerWidth === nextProps.containerWidth &&
+    prevProps.showLedCount === nextProps.showLedCount &&
+    prevProps.brightness === nextProps.brightness
+  );
 
-    const matrixEqual = prevMatrix?.w === nextMatrix?.w &&
-                        prevMatrix?.h === nextMatrix?.h;
+  const matrixEqual = (
+    prevMatrix.is2D === nextMatrix.is2D &&
+    prevMatrix.width === nextMatrix.width &&
+    prevMatrix.height === nextMatrix.height &&
+    prevMatrix.serpentine === nextMatrix.serpentine &&
+    prevMatrix.transpose === nextMatrix.transpose &&
+    prevMatrix.vertical === nextMatrix.vertical
+  );
 
-    const propsEqual = (
-      prevProps.ledData === nextProps.ledData &&
-      prevProps.subtextColor === nextProps.subtextColor &&
-      prevProps.containerWidth === nextProps.containerWidth &&
-      prevProps.showLedCount === nextProps.showLedCount &&
-      matrixEqual
-      // liveViewLedSize is IGNORED for 2D matrices
-    );
-
-    return propsEqual;
+  // If either prop set is 2D-capable, compare against matrix metadata (ignore led size pref)
+  if (prevMatrix.is2D || nextMatrix.is2D) {
+    return basePropsEqual && matrixEqual;
   }
 
-  // For 1D devices, use default comparison (all props including liveViewLedSize matter)
-  return false; // Let React.memo use default shallow comparison
+  // For 1D strips, include the live view sizing preference in the equality check
+  return basePropsEqual && prevProps.liveViewLedSize === nextProps.liveViewLedSize;
 });
