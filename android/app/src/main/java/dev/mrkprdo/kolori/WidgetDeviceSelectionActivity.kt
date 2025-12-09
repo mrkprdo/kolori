@@ -143,9 +143,13 @@ class WidgetDeviceSelectionActivity : AppCompatActivity() {
 
             if (cursor.moveToFirst()) {
                 val devicesJson = cursor.getString(cursor.getColumnIndexOrThrow("value"))
-                Log.d(TAG, "Found devices in RKStorage database")
-                Log.d(TAG, "Devices JSON: $devicesJson")
-
+             if (cursor.moveToFirst()) {
+                 val devicesJson = cursor.getString(cursor.getColumnIndexOrThrow("value"))
+                 Log.d(TAG, "Found devices in RKStorage database")
+                 // Avoid logging full device data in production
+                 if (BuildConfig.DEBUG) {
+                     Log.d(TAG, "Devices JSON: $devicesJson")
+                 }
                 if (!devicesJson.isNullOrEmpty()) {
                     val jsonArray = JSONArray(devicesJson)
 
