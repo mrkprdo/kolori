@@ -362,7 +362,14 @@
         /* Neumorphic Features Section */
         .features {
             padding: 80px 0;
-            background: var(--neu-bg);
+        }
+
+        .light-mode .features {
+            background: var(--light-bg);
+        }
+
+        .dark-mode .features {
+            background: var(--dark-bg);
         }
 
         .features h2 {
@@ -419,11 +426,21 @@
             margin-bottom: 20px;
             display: inline-block;
             padding: 15px;
-            background: var(--neu-bg);
             border-radius: 50%;
+        }
+
+        .light-mode .feature-icon {
+            background: var(--light-bg);
             box-shadow:
-                inset 4px 4px 8px var(--neu-shadow-dark),
-                inset -4px -4px 8px var(--neu-shadow-light);
+                inset 4px 4px 8px var(--light-shadow-dark),
+                inset -4px -4px 8px var(--light-shadow-light);
+        }
+
+        .dark-mode .feature-icon {
+            background: var(--dark-bg);
+            box-shadow:
+                inset 4px 4px 8px var(--dark-shadow-dark),
+                inset -4px -4px 8px var(--dark-shadow-light);
         }
 
         .feature-card h3 {
@@ -449,8 +466,15 @@
         footer {
             text-align: center;
             padding: 50px 0;
-            background: var(--neu-bg);
             margin-top: 40px;
+        }
+
+        .light-mode footer {
+            background: var(--light-bg);
+        }
+
+        .dark-mode footer {
+            background: var(--dark-bg);
         }
 
         footer p {
